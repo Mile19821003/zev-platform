@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "ZEV Platforma",
+    "slug": "zev-platforma",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "plugins": [["expo-image-picker", { "photosPermission": "Fotografija je potrebna za prijavu kvara.", "cameraPermission": "Kamera je potrebna za prijavu kvara." }]],
+    "ios": { "supportsTablet": true },
+    "android": { "package": "ba.zev.platforma" }
+  }
+}

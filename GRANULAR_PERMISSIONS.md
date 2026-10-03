@@ -1,0 +1,33 @@
+# Granularna prava po korisniku i ZEV-u
+
+Efektivno pravo se računa za aktivnog korisnika i aktivni ZEV: sistemski administrator ima implicitno sva prava; ostali nasljeđuju template aktivne uloge unutar organizacijskog ili ZEV scope-a, zatim se primjenjuju važeći `AccessOverride` zapisi za tačan `UserId + ZevId + PermissionKey`. `Deny` ima prednost nad `Grant` i role defaultom. `zev.read` ostaje osnovni uslov. `ActiveZevId` u browseru je samo navigacijski kontekst, nikada dokaz ovlaštenja. Svaki server poziv provjerava svoj `zevId`.
+
+Katalog i role template-i su u `src/Zev.Api/Security/GranularPermissions.cs`. Matrica čita katalog iz `GET /api/zevs/{zevId}/access/permissions`, ciljnog korisnika iz `GET /api/zevs/{zevId}/access/users/{userId}/permissions`, a sve promjene snima jednim `PUT` na isti URL. `PUT` traži razlog, validira actor scope i da actor ne dodjeljuje pravo koje nema, ne dopušta izmjenu System Administratora, čuva izmjene u jednoj transakciji i automatski piše neizmjenjiv `AuditLog`. Poništavanje zapisa je revokacija, ne fizičko brisanje. Kopiranje zahtijeva eksplicitnog izvornog korisnika/ZEV i ciljnog korisnika/ZEV; UI prvo pravi nacrt, zatim korisnik potvrđuje Save.
+
+`Access.Manage` otvara „Uloge i pristupi“ System Administratoru, OrgAdminu i Manageru unutar vlastitog scope-a. Scoped lista korisnika (`GET /api/zevs/{zevId}/access/users`) ne vraća korisnike drugih ZEV-ova/organizacija. Ne-sistemski administrator ne smije mijenjati vlastitu matricu. Reset `Deny` zapisa koji bi dao pravo iz role defaulta tretira se kao novo dodjeljivanje i odbija ako grantor nema isto pravo.
+
+Kolone matrice: Pregled (`View`), Kreiranje (`Create`), Izmjena (`Edit`), Brisanje (`Delete`), Odobravanje (`Approve`), Export (`Export`). Nepodržane kolone se prikazuju kao `—`; one nemaju permission ključ. Siva oznaka je role default, plava eksplicitni `Grant`, crvena eksplicitni `Deny`.
+
+| Modul | Generički ključevi | Posebne akcije |
+|---|---|---|
+| Pregled | `Overview.View` | `Access.Manage` (administriranje matrice) |
+| Finansije | `Finance.View`, `Finance.Create`, `Finance.Edit`, `Finance.Approve`, `Finance.Export` | `Billing.View`, `Billing.Preview`, `Billing.Post`, `Billing.Reverse`; `Funds.View`, `Funds.Create`, `Funds.Edit`; `Invoice.View`, `Invoice.Generate`, `Invoice.Export`; `OwnerLedger.View`, `OwnerLedger.Export` |
+| Uplate i izvodi | `Payments.View`, `Payments.Create`, `Payments.Edit`, `Payments.Approve`, `Payments.Export` | `BankAccounts.View`, `BankAccounts.Create`, `BankAccounts.Edit`, `BankAccounts.Deactivate`; `BankStatements.View`, `BankStatements.Preview`, `BankStatements.Import`, `BankStatements.Post`; `Payments.ReconcileAutomatic`, `Payments.ReconcileManual`, `Payments.Reverse` |
+| Rashodi i dugovanja | `Expenses.View`, `Expenses.Create`, `Expenses.Edit`, `Expenses.Approve`, `Expenses.Export` | `Expenses.Submit`, `Expenses.Post`, `Expenses.Reverse` |
+| Izvještaji | `Reports.View`, `Reports.Export` | `Reports.Finance`, `Reports.Debtors`, `Reports.Maintenance`, `Reports.Registry` |
+| Pravni predmeti | `Legal.View`, `Legal.Create`, `Legal.Edit`, `Legal.Export` | `Legal.ChangeStatus`, `Legal.Documents` |
+| Vlasnici i nekretnine | `Registry.View`, `Registry.Create`, `Registry.Edit`, `Registry.Export` | `Buildings.Create`, `Buildings.Edit`; `Entrances.Create`, `Entrances.Edit`; `PropertyUnits.View`, `PropertyUnits.Create`, `PropertyUnits.Edit`; `Persons.View`, `Persons.Create`, `Persons.Edit`; `Ownership.View`, `Ownership.Create`, `Ownership.Close` |
+| Održavanje | `Maintenance.View`, `Maintenance.Create`, `Maintenance.Edit`, `Maintenance.Approve`, `Maintenance.Export` | `Maintenance.Assign`, `Maintenance.Complete` |
+| Zajednica | `Community.View`, `Community.Create`, `Community.Edit`, `Community.Approve`, `Community.Export` | `Announcements.Create`, `Announcements.Edit`; `Documents.View`, `Documents.Upload`, `Documents.Edit`, `Documents.Download`, `Documents.Archive`; `Voting.View`, `Voting.Create`, `Voting.Manage` |
+
+`SYSTEM_ADMIN` je implicitno pun, bez stotina redova. `ORG_ADMIN` i `MANAGER` nasljeđuju pun katalog unutar svojeg scope-a; `Accountant` finansijske ključeve; `BuildingRepresentative` pregled održavanja/zajednice i potvrđivanje održavanja; `Owner` samo funkcije portala. Bivši vlasnik sa privremenim `zev.read` izuzetkom zadržava samo pregled eksplicitno zajedničkog sadržaja, ne privatnih ili owner-role dokumenata.
+
+Kod bankarskog importa trenutni workflow istovremeno uvozi, knjiži i automatski sravnjuje; zato endpoint zahtijeva **sva tri** ključa: `BankStatements.Import`, `BankStatements.Post` i `Payments.ReconcileAutomatic`. `Payments.Export` izvoz je tenant-scoped CSV (najviše 5000 uplata po zahtjevu). Pregled računa, preview, import, ručno sravnjenje i storno imaju zasebne server provjere; sakriveno dugme nije sigurnosni mehanizam.
+
+Vlasnička prava ne otvaraju tenant-wide API-je: čak i eksplicitni `Grant` Owneru ne pretvara ga u osoblje. Vlasnički finansijski endpointi dodatno provjeravaju verifikovanu osobu, aktivno vlasništvo i konkretan resurs; dokumenti imaju `ZevMembers`/`PersonOnly`/`PropertyUnit`/`Role`/`ManagersOnly` filter. Historijski self-access je i dalje opt-in. Ne tvrditi pravnu GDPR usklađenost bez poslovnog odobrenja.
+
+Granularni katalog koristi postojeći `AccessOverride`/`AuditLog` schema; **nema nove EF migracije ni reseta baze**. Postojeće coarse `RolePermission` sjeme i dalje podržava naslijeđene guardove. Neaktivne/nedostupne akcije u katalogu nisu automatski dostupni API endpointi; npr. zaseban bank-account edit/deactivate ili samostalni bank statement post nije implementiran. I dalje postoje stari System Admin endpointi s globalnom sistemskom autorizacijom. Potpun granularni UX za sve postojeće poslovne forme ostaje dodatni UI posao; backend provjere su primarni sigurnosni sloj.
+
+## Manager/Payments UAT
+
+U „Uloge i pristupi“ izabrati `e2e.manager@test.local` i `TEST ZEV A`. Ostaviti `Payments.View`, `BankAccounts.View`, `BankStatements.View`, `BankStatements.Preview`, `Payments.Export` kao dozvoljene; postaviti `Deny` za `BankAccounts.Create`, `BankAccounts.Edit`, `BankStatements.Import`, `BankStatements.Post`, `Payments.ReconcileManual`, `Payments.Reverse`. Snimiti uz razlog. Kao Manager, meni „Uplate i izvodi“ i pregled računa/preview/export ostaju, a „Dodaj račun“, „Uvezi izvod“, ručno sravnjenje i storno se ne prikazuju. Direktni API pozivi za zabranjene akcije vraćaju 404; isti URL sa ID-em drugog ZEV-a takođe vraća 404. Ovaj scenarij pokrivaju `ManagerPaymentOverridesEnforceActionsAndZevBoundary`, `MatrixSaveAppliesDenyThenResetWithoutChangingRoleDefault` i web permission UI test. Stvarni browser UAT na lokalno migriranoj SQL bazi još treba ručno potvrditi.

@@ -1,0 +1,25 @@
+# Finansije V2 — Faza 3.1: payment integrity
+
+Datum: 01.10.2026. Nadograđen je postojeći `Payment → PaymentAllocation → Charge` tok; nisu resetovani baza ni Docker volume. Ovo je pregled implementacije, a ne potvrda produkcijskog UAT-a.
+
+## Šta je implementirano
+
+- `POST /api/zevs/{zevId}/payments/{paymentId}/change-payer` zahtijeva `Payments.ChangePayer`, novog uplatioca i razlog. SQL tok uz `Serializable`, ZEV i Payment update-lock nalazi aktivne alokacije, dodaje negativne reverzije, mijenja `PersonId`, opciono stvara nove alokacije i upisuje `PaymentIdentificationHistory`. Originalni Payment i alokacije ostaju. Neuspjela validacija vraća tracker na prethodnog uplatioca; greška upisa vraća SQL transakciju. Default pravo imaju SystemAdmin i OrganizationAdministrator, ne Manager/Accountant samo na osnovu ručnog sravnjenja. Read-only detalj uplate vraća istoriju identifikacije, imena i aktera; UI upozorava i traži potvrdu poništavanja postojećih raspodjela.
+- `PaymentIdentificationHistory` je append-only, s prethodnim/novim `PersonId`, razlogom, akterom i UTC vremenom. Bilježe se početna ručna, automatska i ispravljena identifikacija. EF audit i dalje bilježi operaciju; history nije zamjena za njega.
+- `GET /payments/owner-card/{personId}` sada računa `TotalCharges`, `TotalPayments`, `Open`, `Credit`, `NetBalance` SQL agregacijama nad cijelim dozvoljenim skupom, odvojeno po `CurrencyCode`. Događaji imaju `page`, `pageSize`, `totalCount` i SQL `Skip/Take`. `to` je as-of po UTC vremenu stvarnog nastanka `Charge`, `Payment`, `PaymentAllocation` i njegove reverzije; istorija identifikacije vraća tadašnjeg uplatioca. `from` ograničava listu događaja, dok summary ostaje stanje do `to`. `PaymentAllocation.CreatedUtc` i `Charge.CreatedUtc` već su postojali; nije potrebna nova kolona. Reversal uplate i dalje ima samo datum `ReversedOn`, bez tačnog UTC trenutka.
+- `MonthlyBillingEngine` koristi jedan `PlanCreditAsync` za preview i post. Pregled vraća `creditPlanHash` i konkretne `creditAllocations`; web ga šalje pri knjiženju. Pod `Serializable` lockom se plan ponovo gradi i stale hash odbija jasnim `409` razlogom prije izdavanja. Stvarne alokacije iz tog plana knjiže se zajedno s `BillingRun`/`Invoice`/`Charge`. Prioritet je dospijeće, period, postojeće zaduženje pa stabilni ključ; ostaje granica osobe, fonda i valute. Izdani PDF čita snapshot i ne mijenja se nakon primjene kredita.
+- Automatsko raspoređivanje filtrira neto otvorene `Charge` u SQL-u **prije** limita kandidata. Izvedeni API status razlikuje `FULLY_ALLOCATED`, `PARTIALLY_ALLOCATED_CREDIT_REMAINS`, `IDENTIFIED_UNALLOCATED`, `MANUAL_REVIEW` i `REVERSED`; web više ne naziva djelimično raspoređenu uplatu potpuno raspoređenom. Valuta u payment, bank, owner-card i invoice detaljima dolazi iz zapisa, bez prisilnog `KM` za EUR.
+- Invoice timeline razlikuje ukupni Payment od dijela koji je vezan za konkretni Invoice (`appliedToInvoice`). Ručna negativna alokacija dobija zaseban `ManualAllocationReversal` događaj s razlogom, akterom i vremenom, bez miješanja sa stornom računa.
+
+## Migracija i provjera
+
+- Nova `20261001110000_PaymentIntegrity` **samo dodaje** `PaymentIdentificationHistories`, FKs, CHECK i indekse. Ranija `20261001100000_PaymentsV2` nije mijenjana. Rollback koji bi obrisao finansijsku istoriju je blokiran. Test generiše inkrementalni SQL od PaymentsV2 do PaymentIntegrity i provjerava da nema `DROP TABLE`, `DROP COLUMN` ni `DELETE FROM`; EF model odgovara snapshotu.
+- Backend build: PASS, 0 upozorenja. Backend testovi: 159/159 PASS u završnom prolazu, ali opt-in SQL testovi rano izlaze bez `ZEV_TEST_SQL_CONNECTION`; njihov prolaz u broju nije SQL dokaz. Frontend build/typecheck: PASS. Frontend unit/static testovi: 53/53 PASS; nisu browser E2E.
+- `SQL INTEGRATION TESTS: NOT EXECUTED`. Nije dostavljena testna SQL konekcija. Opt-in test priprema migraciju, concurrent allocation/credit reuse/change-payer, owner summary >1000 i as-of scenarij, ali ga treba stvarno izvršiti na izolovanom SQL Serveru. Migracija nije primijenjena na korisničku bazu u ovom prolazu.
+
+## Poznata ograničenja / naredni UAT
+
+- Za legacy `Charge` bez `Invoice.Currency` valuta se izvodi iz aktivnog bankovnog računa fonda, zatim iz `Finance:DefaultCurrency`; istorijska promjena ili više valuta računa fonda nije rekonstruisana. Ne postoji FX konverzija.
+- Puni povrat koristi `Payment.ReversedOn` (`DateOnly`); intradnevni as-of oko tačnog vremena povrata nije rekonstruisan. Owner-card lista je paginirana bez per-row running balance, a summary je potpun. `from` ne mijenja lifetime summary.
+- Automatski kredit je ograničen na istu osobu, fond i valutu; post bez prethodnog previewa je i dalje dozvoljen postojećim API ugovorom, dok post uz `creditPlanHash` odbija zastarjeli pregled. Ne postoji browser E2E ni UAT sa stvarnim bankarskim fajlovima.
+- Prije produkcije: backup; na **izolovanoj testnoj bazi** primijeniti migracije i izvršiti opt-in SQL testove, provjeriti SQL prevod owner agregacija, performanse i serijalizaciju konkurentnih korekcija; zatim odobriti poslovne odluke u `OPEN_BUSINESS_DECISIONS.md`.

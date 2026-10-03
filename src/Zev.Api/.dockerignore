@@ -1,0 +1,8 @@
+bin/
+obj/
+**/bin/
+**/obj/
+TestResults/
+**/TestResults/
+.vs/
+.git/

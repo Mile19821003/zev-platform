@@ -1,0 +1,30 @@
+.admin-form .billing-item-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #d8e2e0;
+  border-radius: 9px;
+  margin: 8px 0;
+  background: #fbfdfc;
+  color: #17233a;
+}
+
+.admin-form .billing-item-label input {
+  width: auto;
+  min-height: auto;
+  margin: 3px 0 0;
+  flex: none;
+}
+
+.billing-item-label > span { display: grid; gap: 5px; }
+.billing-item-label small { font-size: .78rem; font-weight: 500; color: #526572; }
+.uat-badge { display: inline-block; margin-right: 7px; padding: 2px 5px; border-radius: 4px; background: #e5e8ff; color: #39449c; font-size: .65rem; font-weight: 800; }
+.billing-warning { padding: 10px 12px; border-left: 4px solid #bf7b11; background: #fff7e8; color: #714909; }
+.billing-issues { padding: 12px 16px; border: 1px solid #db9c9c; border-radius: 8px; background: #fff6f6; color: #802626; }
+.billing-issues ul { margin: 8px 0 0; padding-left: 22px; }
+.billing-summary { font-weight: 700; color: #176d50; }
+.table-scroll .billing-line-cell { white-space: normal; min-width: 290px; }
+.billing-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.billing-lines li { display: grid; gap: 3px; padding-bottom: 8px; border-bottom: 1px solid #e9edef; }
+.billing-lines small { color: #60717b; }
