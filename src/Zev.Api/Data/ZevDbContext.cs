@@ -165,6 +165,7 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
             entity.HasAlternateKey(unit => new { unit.OrganizationId, unit.ZevId, unit.Id });
             entity.HasIndex(unit => new { unit.OrganizationId, unit.ZevId, unit.EntranceId, unit.Code }).IsUnique();
             entity.HasIndex(unit => new { unit.ZevId, unit.IsActive });
+            entity.HasIndex(unit => new { unit.ZevId, unit.EntranceId, unit.Code, unit.Id });
         });
 
         modelBuilder.Entity<Person>(entity =>

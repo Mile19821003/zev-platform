@@ -2091,6 +2091,8 @@ namespace Zev.Api.Data.Migrations
 
                     b.HasIndex("ZevId", "IsActive");
 
+                    b.HasIndex("ZevId", "EntranceId", "Code", "Id");
+
                     b.HasIndex("OrganizationId", "ZevId", "BuildingId", "EntranceId");
 
                     b.HasIndex("OrganizationId", "ZevId", "EntranceId", "Code")

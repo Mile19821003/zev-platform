@@ -107,6 +107,29 @@ public static class ReportingEndpoints
             return Results.File(SimplePdfWriter.Write(lines), "application/pdf", $"godisnji-izvjestaj-{year}.pdf");
         });
 
+        reports.MapGet("/annual/{year:int}.xlsx", async (Guid zevId, int year, TenantAccess access,
+            ZevDbContext database, HttpContext httpContext, CancellationToken cancellationToken) =>
+        {
+            if (!await access.HasPermissionAsync(zevId, "Reports.Export", cancellationToken)) return Results.NotFound();
+            if (year is < 2000 or > 2100) return Results.BadRequest();
+            if (await HasUnverifiedOrMixedCurrencyAsync(database, zevId, cancellationToken))
+                return Results.Conflict(new { error = "Annual combined totals are unavailable for multiple currencies." });
+            var report = await BuildAnnualAsync(database, zevId, year, cancellationToken);
+            var rows = new List<IReadOnlyList<object?>>
+            {
+                new object?[] { "Mjesec", "Zaduženo", "Uplaćeno", "Rashodi", "Neto tok" }
+            };
+            rows.AddRange(report.Months.Select(item => (IReadOnlyList<object?>)new object?[]
+            {
+                item.Month, item.Billed, item.Received, item.Spent, item.NetCash
+            }));
+            await AuditExportAsync(database, httpContext, access.CurrentUserId, zevId,
+                "AnnualReportXlsx", year.ToString(), new { year }, cancellationToken);
+            return Results.File(XlsxWriter.Write(rows),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                $"godisnji-izvjestaj-{year}.xlsx");
+        });
+
         reports.MapGet("/open-items", async (Guid zevId, DateOnly? asOf, Guid? personId, Guid? buildingId,
             Guid? propertyUnitId, Guid? fundId, int? page, int? pageSize, TenantAccess access,
             ZevDbContext database, CancellationToken cancellationToken) =>

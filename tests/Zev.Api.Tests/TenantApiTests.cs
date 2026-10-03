@@ -112,6 +112,8 @@ public sealed class TenantApiTests
           }
           Assert.Equal(HttpStatusCode.Conflict, (await client.GetAsync(
               $"/api/zevs/{zevId}/reports/annual/2026")).StatusCode);
+          Assert.Equal(HttpStatusCode.Conflict, (await client.GetAsync(
+              $"/api/zevs/{zevId}/reports/annual/2026.xlsx")).StatusCode);
           async Task<System.Text.Json.JsonDocument[]> ReadAllAsync(string suffix)
         {
             var admin = System.Text.Json.JsonDocument.Parse(await client.GetStringAsync(
@@ -1970,6 +1972,60 @@ public sealed class TenantApiTests
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"{path}/documents")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync(
             $"/api/zevs/{zevId}/finance/documents/{documentId}.pdf")).StatusCode);
+    }
+
+    [Fact]
+    public async Task AnnualXlsxExportRequiresSafeCurrencyAndAuditsSuccessfulExport()
+    {
+        using var factory = new TestFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+            { BaseAddress = new Uri("https://localhost") });
+        Guid zevId;
+        Guid userId;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var database = scope.ServiceProvider.GetRequiredService<ZevDbContext>();
+            database.Database.EnsureCreated();
+            var organization = new Organization { Code = "ANNUAL", Name = "Annual" };
+            var zev = new ZevEntity { Organization = organization, Code = "ANNUAL", Name = "Annual ZEV" };
+            var user = new AppUser { Email = "annual@example.invalid",
+                NormalizedEmail = "ANNUAL@EXAMPLE.INVALID", IsSystemAdministrator = true };
+            var building = new Building { OrganizationId = organization.Id, Zev = zev, Code = "B", Name = "Building" };
+            var entrance = new Entrance { OrganizationId = organization.Id, ZevId = zev.Id,
+                Building = building, Code = "E", Name = "Entrance" };
+            var unit = new PropertyUnit { OrganizationId = organization.Id, ZevId = zev.Id,
+                BuildingId = building.Id, Entrance = entrance, Code = "U", AreaSquareMeters = 40m };
+            var person = new Person { Organization = organization, DisplayName = "Owner" };
+            var fund = new Fund { OrganizationId = organization.Id, ZevId = zev.Id, Name = "Regular" };
+            var charge = new Charge { OrganizationId = organization.Id, ZevId = zev.Id,
+                PropertyUnit = unit, Person = person, Fund = fund, Amount = 50m,
+                Period = new DateOnly(2026, 1, 1), DueDate = new DateOnly(2026, 1, 31),
+                Reference = "ANNUAL-CHARGE" };
+            var payment = new Payment { OrganizationId = organization.Id, ZevId = zev.Id,
+                FundId = fund.Id, PersonId = person.Id, Amount = 50m, CurrencyCode = "BAM",
+                PaidOn = new DateOnly(2026, 1, 15), SourceType = PaymentSourceType.Manual,
+                RequestId = Guid.NewGuid(), ManualMethod = "Migration", ManualReason = "Annual export test" };
+            database.AddRange(organization, zev, user, building, entrance, unit, person, fund, charge, payment,
+                new PaymentAllocation { OrganizationId = organization.Id, ZevId = zev.Id,
+                    Payment = payment, Charge = charge, Amount = 50m });
+            await database.SaveChangesAsync();
+            zevId = zev.Id;
+            userId = user.Id;
+        }
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer",
+            factory.Services.GetRequiredService<TokenService>().CreateAccessToken(new AppUser { Id = userId }).AccessToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync(
+            $"/api/zevs/{zevId}/reports/annual/1999.xlsx")).StatusCode);
+        var response = await client.GetAsync($"/api/zevs/{zevId}/reports/annual/2026.xlsx");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            response.Content.Headers.ContentType?.MediaType);
+        Assert.StartsWith("PK", System.Text.Encoding.ASCII.GetString((await response.Content.ReadAsByteArrayAsync())[..2]));
+        using var verifyScope = factory.Services.CreateScope();
+        var verifyDatabase = verifyScope.ServiceProvider.GetRequiredService<ZevDbContext>();
+        Assert.Single(verifyDatabase.AuditLogs.Where(item => item.ZevId == zevId
+            && item.Action == "Export" && item.EntityType == "AnnualReportXlsx"));
     }
 
     private sealed class TestFactory(bool historicalSelfAccess = false) : WebApplicationFactory<Program>

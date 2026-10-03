@@ -25,6 +25,21 @@ public sealed class BillingMigrationTests
         Assert.DoesNotContain("DROP COLUMN", script);
         Assert.DoesNotContain("DELETE FROM", script);
     }
+
+    [Fact]
+    public void RegistryListIndexMigrationIsAdditive()
+    {
+        var options = new DbContextOptionsBuilder<ZevDbContext>()
+            .UseSqlServer("Server=localhost;Database=ZevSnapshotCheck;User Id=unused;Password=unused;TrustServerCertificate=True")
+            .Options;
+        using var database = new ZevDbContext(options, new HttpContextAccessor());
+        var script = database.GetService<IMigrator>().GenerateScript(
+            "20261001110000_PaymentIntegrity", "20261003100000_RegistryListIndex");
+        Assert.Contains("CREATE INDEX [IX_PropertyUnits_ZevId_EntranceId_Code_Id]", script);
+        Assert.DoesNotContain("DROP TABLE", script);
+        Assert.DoesNotContain("DROP COLUMN", script);
+        Assert.DoesNotContain("DELETE FROM", script);
+    }
     [Fact]
     public void CurrentSqlServerModelMatchesMigrationSnapshot()
     {
