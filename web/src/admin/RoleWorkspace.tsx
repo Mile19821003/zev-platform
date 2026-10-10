@@ -13,6 +13,9 @@ import OwnerFinancePage from "./OwnerFinancePage";
 import ManagerRegistryPage from "./ManagerRegistryPage";
 import { hasStaffPermission } from "../permissionUi.ts";
 import ZevPermissionPage from "./ZevPermissionPage";
+import WorkspaceNav, { useSidebarState } from "./WorkspaceNav";
+import ModuleDashboard from "./ModuleDashboard";
+import { moduleLabel } from "../navigationModel.ts";
 
 type ZevOption = Zev;
 type PageKey = "overview" | "finance" | "payments" | "bank-transactions" | "expenses" | "legal" | "maintenance"
@@ -22,6 +25,7 @@ export default function RoleWorkspace({ token, profile, zevs, onLogout, onProfil
   token: string; profile: Profile; zevs: ZevOption[]; onLogout: () => void; onProfile: () => void;
 }) {
   const [active, setActive] = useState<PageKey>("overview");
+  const [sidebar, setSidebar] = useSidebarState();
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [selectedZevId, setSelectedZevId] = useState(() => sessionStorage.getItem("activeZevId") ?? "");
   const [permissionContext, setPermissionContext] = useState<{ zevId: string; isStaff: boolean;
@@ -100,12 +104,11 @@ export default function RoleWorkspace({ token, profile, zevs, onLogout, onProfil
 
   useEffect(() => { permissionRequestId.current++; setPermissionContext(null); }, [zevs]);
 
-  return <div className="app-shell"><aside className="sidebar">
-    <div className="brand"><span className="brand-mark small">Z</span><span>ZEV platforma</span></div>
-    <nav aria-label="Radni meni">{navigation.map((item) => <button type="button" key={item.key}
-      className={active === item.key ? "active" : ""} onClick={() => setActive(item.key)}>{item.label}</button>)}</nav>
-    <div className="sidebar-note">Radni prostor</div>
-  </aside><div className="content-shell"><header className="topbar"><span>{navigation.find((item) => item.key === active)?.label}</span>
+  const activeItem = navigation.find((item) => item.key === active);
+  return <div className={`app-shell${sidebar.collapsed ? " nav-collapsed" : ""}`}>
+    <WorkspaceNav label="Radni meni" items={navigation} active={active} onSelect={(key) => setActive(key as PageKey)}
+      note="Radni prostor" state={sidebar} onState={setSidebar} />
+  <div className="content-shell"><header className="topbar"><span>{activeItem && moduleLabel(activeItem)}</span>
     <div><label>Trenutni ZEV: <select aria-label="Trenutni ZEV" value={activeZev?.id ?? ""}
       onChange={(event) => selectZev(event.target.value)}>{zevs.map((item) =>
         <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
@@ -115,6 +118,8 @@ export default function RoleWorkspace({ token, profile, zevs, onLogout, onProfil
     {active === "overview" && workspaceOpen && activeZev && <section className="panel"><p className="eyebrow">RADNI PROSTOR</p>
       <h1>{activeZev.name}</h1><p>{activeZev.addressLine}</p><p>Trenutni ZEV: {activeZev.name}</p>
       <button type="button" onClick={() => setWorkspaceOpen(false)}>Sve zajednice</button></section>}
+    {active === "overview" && workspaceOpen && activeZev && <ModuleDashboard key={activeZev.id} items={navigation}
+      onSelect={(key) => setActive(key as PageKey)} />}
     {active === "overview" && !workspaceOpen && <><p className="eyebrow">RADNI PROSTOR</p><h1>Vaše zajednice</h1>
       <p className="lead">Podaci i funkcije su ograničeni na dodijeljene uloge i ZEV-ove.</p>
       <div className="zev-grid">{zevs.map((zev) => <article className="zev-card" key={zev.id}>

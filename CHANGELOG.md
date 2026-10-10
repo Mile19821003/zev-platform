@@ -2,6 +2,32 @@
 
 Sve značajne izmjene ZEV Platforme. Ranija historija (faze do 4) je u `CLOUD_HANDOFF_STATUS.md` i git logu.
 
+## [v2.7] - 2026-10-10
+
+### Dodano (Added)
+- Nova navigacija radnog prostora (radni prostor uloga i sistemska administracija):
+  - Moduli grupisani u 4 kategorije: **Finansije i računi**, **Registar i nekretnine**, **Zajednica i održavanje**,
+    **Administracija i sistem** (`web/src/navigationModel.ts`).
+  - Kontrolna ploča (`ModuleDashboard.tsx`) na stranici Pregled: velike kartice kategorija s ikonicom, opisom i
+    brojem modula; klik otvara kartice modula s putanjom `← Nazad · Meni › Kategorija`.
+  - Lijevi meni (`WorkspaceNav.tsx`): rašireni način (240 px) s grupama na harmoniku `+` / `−` i sažeti način
+    samo s ikonicama (56 px) s tooltipom; dugme `‹` / `›` u zaglavlju menija. Izbor načina i otvorene grupe se
+    pamte u `localStorage` (`zev.nav.collapsed`, `zev.nav.expanded`); grupa otvorenog modula je uvijek razvijena.
+  - Prikaz kartica i stavki menija prati efektivna prava: kategorija bez dozvoljenog modula se ne prikazuje
+    (npr. vlasnik vidi samo Finansije i računi te Zajednica i održavanje).
+  - Nazivi prema novoj strukturi: „Obračun i računi“, „Uloge i matrica prava“, „Korisnici“, „Veze naloga“.
+- Testovi: `web/tests/navigation.test.mjs` (4); provjera u pregledniku (simulirani API): 22/22 za radni prostor
+  uloga (kartice, putanja, harmonika, sažimanje i pamćenje nakon reloada, prava vlasnika, overflow na 1440 i
+  390 px) i 5/5 za sistemsku administraciju.
+
+### Ispravljeno (Fixed)
+- Mobilni prikaz (390 px): bočni meni se više ne razvlači preko širine ekrana — na mobilnom je harmonika
+  (vertikalno) ili red ikonica koji se prelama; nema horizontalnog scrolla (zatvorena stavka iz backloga v2.6).
+
+### Otvorene odluke (Open Decisions)
+- Vizuelni predložak nije bio priložen; raspored je urađen prema tekstualnom opisu i može se uskladiti po
+  pregledu (boje, ikonice, redoslijed modula unutar kategorija).
+
 ## [v2.6] - 2026-10-10
 
 ### Dodano (Added)
