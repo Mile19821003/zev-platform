@@ -6,3 +6,5 @@
 .npm-cache/
 *.tsbuildinfo
 *.user
+.env.prod
+logs/

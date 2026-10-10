@@ -41,6 +41,22 @@ cloud okruženje su zaključeni.
 - **UI:** meni „Hodogram“ u sistemskoj administraciji (izbor organizacije) i u radnom prostoru administratora organizacije.
 - **Van opsega ove verzije:** globalni šabloni (bez organizacije) i vezivanje hodograma za pojedinačni ZEV.
 
+## Faza 2 — Produkcijski Docker stack i operativni backup/restore: VERIFIED (10.10.2026.)
+
+Detalji, procedure i mjerenja: `OPERATIONAL_BACKUP_RESTORE.md`.
+
+| Oblast | Status | Dokaz |
+|---|---|---|
+| `compose.prod.yaml` (db healthcheck, `migrate` jednokratno, API nakon `service_healthy` + `service_completed_successfully`, Caddy TLS) | **VERIFIED** | 0 restartova; 3× `docker kill` + 3× čisti restart, svaki `up --wait` uspješan; HTTPS, HSTS, secure refresh cookie kroz proxy |
+| Najmanje privilegovan SQL nalog | **VERIFIED** | API sesije samo kao `zev_app` (`db_datareader`, `db_datawriter`) |
+| Backup (`scripts/backup.sh`) | **VERIFIED** | `CHECKSUM` + `COMPRESSION` + `VERIFYONLY` + SHA-256, arhiva priloga, rotacija 7/4/12, off-host kopija |
+| Restore drill (`scripts/run-restore-drill.sh`) | **VERIFIED** | PASS iz volumena i off-host kopije (`Zev_Drill`, `DBCC CHECKDB`, šema); FAIL za oštećen/odsječen backup |
+| Oporavak na novom hostu (`scripts/restore-database.sh`) | **VERIFIED** | 61 s do zdravog stacka (izgrađeni image-i); podaci, prilozi i prijava vraćeni |
+
+Ispravljeno tokom verifikacije: prerano „healthy“ stanje dok je `Zev` u recoveryju, i `SIGKILL` pri svakom gašenju SQL Servera
+(startna skripta slike ne prosljeđuje `SIGTERM`). Verifikacija je rađena na Docker Desktopu; prije produkcije jednom proći
+proceduru na ciljnom Linux hostu. Licenca: `MSSQL_PID` Standard/Enterprise za produkciju, Developer/Express za staging.
+
 ## Tehnički dug — Faza 1 (riješeno 10.10.2026.)
 
 - **Maskiranje `DbUpdateException`** u `ExpensePostingService` i `InvoiceLifecycleService`: uveden `Data/DbUpdateErrors.cs`

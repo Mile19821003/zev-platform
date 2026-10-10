@@ -1,0 +1,21 @@
+{$ZEV_DOMAIN} {
+	tls {$ZEV_TLS}
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	# API and health checks go to the backend; everything else is the SPA.
+	@backend path /api/* /health/*
+	handle @backend {
+		reverse_proxy api:8080
+	}
+	handle {
+		reverse_proxy web:80
+	}
+}

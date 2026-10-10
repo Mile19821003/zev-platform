@@ -16,3 +16,6 @@ Trenutni status je Functional Beta, ne produkcijsko odobrenje. `compose.yaml` sl
 Zaustaviti upise, sačuvati incident log i verziju migracije. Vratiti staru API/web verziju samo ako je kompatibilna s novom shemom. Inače uz odobren plan restore-a vratiti verifikovani backup u **novu** bazu, provjeriti konzistentnost i tek onda preusmjeriti saobraćaj. Ne koristiti `docker compose down -v`, ad hoc brisanje volumena ni restore preko postojeće baze.
 
 Detalji lokalnog pokretanja: `LOCAL_DEVELOPMENT.md`; oporavak baze: `BACKUP_RESTORE.md`.
+
+Produkcijski stack (`compose.prod.yaml`, TLS proxy, migracije, najmanje privilegovan SQL nalog) i operativna backup/restore
+procedura sa skriptama: `OPERATIONAL_BACKUP_RESTORE.md`.
