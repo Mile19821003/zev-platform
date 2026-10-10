@@ -58,7 +58,7 @@ try {
     } else { Write-Output 'SKIPPED: registry/report; no accessible ZEV.' }
     if ($env:ZEV_E2E_FORBIDDEN_ZEV_ID -and -not $profile.isSystemAdministrator) {
         try {
-            $null = Invoke-WebRequest -Uri "$api/api/zevs/$($env:ZEV_E2E_FORBIDDEN_ZEV_ID)/registry/units" `
+            $null = Invoke-WebRequest -UseBasicParsing -Uri "$api/api/zevs/$($env:ZEV_E2E_FORBIDDEN_ZEV_ID)/registry/units" `
                 -Headers $headers -TimeoutSec 10
             throw 'Forbidden ZEV was accessible'
         } catch {

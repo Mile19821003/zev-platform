@@ -18,6 +18,7 @@ using Zev.Api.Finance;
 using Zev.Api.Payments;
 using Zev.Api.Storage;
 using Zev.Api.Maintenance;
+using Zev.Api.Hodograms;
 using Zev.Api.Community;
 using ZevEntity = global::Zev.Api.Domain.Zev;
 
@@ -56,6 +57,7 @@ builder.Services.AddSingleton<IPaymentSlipProvider, GenericPdfPaymentSlipProvide
 builder.Services.AddScoped<ExpensePostingService>();
 builder.Services.AddSingleton<IFileStorage, LocalFileStorage>();
 builder.Services.AddScoped<MaintenanceScheduleService>();
+builder.Services.AddScoped<HodogramService>();
 builder.Services.AddScoped<VotingService>();
 builder.Services.AddSingleton<IBankStatementParser>(new DelimitedStatementParser("CSV", ','));
 builder.Services.AddSingleton<IBankStatementParser>(new DelimitedStatementParser("TXT", ';'));
@@ -262,6 +264,7 @@ api.MapStoredFileEndpoints();
 api.MapExpenseEndpoints();
 api.MapLegalEndpoints();
 api.MapMaintenanceEndpoints();
+api.MapHodogramEndpoints();
 api.MapCommunityEndpoints();
 api.MapVotingEndpoints();
 api.MapReportingEndpoints();

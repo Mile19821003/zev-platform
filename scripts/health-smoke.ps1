@@ -9,8 +9,8 @@ $ErrorActionPreference = 'Stop'
 $base = $BaseUrl.TrimEnd('/')
 for ($attempt = 1; $attempt -le $Attempts; $attempt++) {
     try {
-        $live = Invoke-WebRequest -Uri "$base/health/live" -TimeoutSec $TimeoutSeconds
-        $ready = Invoke-WebRequest -Uri "$base/health/ready" -TimeoutSec $TimeoutSeconds
+        $live = Invoke-WebRequest -Uri "$base/health/live" -UseBasicParsing -TimeoutSec $TimeoutSeconds
+        $ready = Invoke-WebRequest -Uri "$base/health/ready" -UseBasicParsing -TimeoutSec $TimeoutSeconds
         $readyBody = $ready.Content | ConvertFrom-Json
         if ($live.StatusCode -eq 200 -and $ready.StatusCode -eq 200 -and $readyBody.database -eq 'up') {
             Write-Output 'PASS: /health/live=200; /health/ready=200; database=up'

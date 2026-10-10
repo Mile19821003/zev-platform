@@ -48,6 +48,10 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
     public DbSet<MaintenanceStatusEvent> MaintenanceStatusEvents => Set<MaintenanceStatusEvent>();
     public DbSet<MaintenancePlan> MaintenancePlans => Set<MaintenancePlan>();
     public DbSet<ScheduledMaintenance> ScheduledMaintenances => Set<ScheduledMaintenance>();
+    public DbSet<Hodogram> Hodograms => Set<Hodogram>();
+    public DbSet<HodogramPhase> HodogramPhases => Set<HodogramPhase>();
+    public DbSet<HodogramStep> HodogramSteps => Set<HodogramStep>();
+    public DbSet<HodogramAssignment> HodogramAssignments => Set<HodogramAssignment>();
     public DbSet<Announcement> Announcements => Set<Announcement>();
     public DbSet<AnnouncementFile> AnnouncementFiles => Set<AnnouncementFile>();
     public DbSet<ManagedDocument> ManagedDocuments => Set<ManagedDocument>();
@@ -844,6 +848,56 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
                 .HasPrincipalKey(order => new { order.OrganizationId, order.ZevId, order.Id }).OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(schedule => new { schedule.PlanId, schedule.DueOn }).IsUnique();
             entity.HasIndex(schedule => new { schedule.ZevId, schedule.Status, schedule.DueOn });
+        });
+
+        modelBuilder.Entity<Hodogram>(entity =>
+        {
+            entity.ToTable("Hodograms");
+            entity.HasKey(hodogram => hodogram.Id);
+            entity.Property(hodogram => hodogram.Name).HasMaxLength(200).IsRequired();
+            entity.Property(hodogram => hodogram.Description).HasMaxLength(2000);
+            entity.Property(hodogram => hodogram.Revision).IsConcurrencyToken();
+            entity.HasOne<Organization>().WithMany().HasForeignKey(hodogram => hodogram.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasAlternateKey(hodogram => new { hodogram.OrganizationId, hodogram.Id });
+            entity.HasIndex(hodogram => new { hodogram.OrganizationId, hodogram.Name }).IsUnique();
+        });
+
+        modelBuilder.Entity<HodogramPhase>(entity =>
+        {
+            entity.ToTable("HodogramPhases", table => table.HasCheckConstraint("CK_HodogramPhases_SortOrder", "[SortOrder] >= 0"));
+            entity.HasKey(phase => phase.Id);
+            entity.Property(phase => phase.Name).HasMaxLength(200).IsRequired();
+            entity.HasOne<Hodogram>().WithMany().HasForeignKey(phase => new { phase.OrganizationId, phase.HodogramId })
+                .HasPrincipalKey(hodogram => new { hodogram.OrganizationId, hodogram.Id }).OnDelete(DeleteBehavior.Restrict);
+            entity.HasAlternateKey(phase => new { phase.OrganizationId, phase.HodogramId, phase.Id });
+            entity.HasIndex(phase => new { phase.HodogramId, phase.SortOrder });
+        });
+
+        modelBuilder.Entity<HodogramStep>(entity =>
+        {
+            entity.ToTable("HodogramSteps", table => table.HasCheckConstraint("CK_HodogramSteps_SortOrder", "[SortOrder] >= 0"));
+            entity.HasKey(step => step.Id);
+            entity.Property(step => step.Name).HasMaxLength(300).IsRequired();
+            entity.Property(step => step.Description).HasMaxLength(2000);
+            entity.HasOne<HodogramPhase>().WithMany()
+                .HasForeignKey(step => new { step.OrganizationId, step.HodogramId, step.PhaseId })
+                .HasPrincipalKey(phase => new { phase.OrganizationId, phase.HodogramId, phase.Id }).OnDelete(DeleteBehavior.Restrict);
+            entity.HasAlternateKey(step => new { step.OrganizationId, step.HodogramId, step.Id });
+            entity.HasIndex(step => new { step.PhaseId, step.SortOrder });
+        });
+
+        modelBuilder.Entity<HodogramAssignment>(entity =>
+        {
+            entity.ToTable("HodogramAssignments");
+            entity.HasKey(assignment => assignment.Id);
+            entity.Property(assignment => assignment.Role).HasConversion<string>().HasMaxLength(40);
+            entity.Property(assignment => assignment.Value).HasConversion<string>().HasMaxLength(1);
+            entity.HasOne<HodogramStep>().WithMany()
+                .HasForeignKey(assignment => new { assignment.OrganizationId, assignment.HodogramId, assignment.StepId })
+                .HasPrincipalKey(step => new { step.OrganizationId, step.HodogramId, step.Id }).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(assignment => new { assignment.StepId, assignment.Role }).IsUnique();
+            entity.HasIndex(assignment => assignment.HodogramId);
         });
 
         modelBuilder.Entity<Announcement>(entity =>

@@ -7,6 +7,7 @@ import PaymentsPage from "./PaymentsPage";
 import ExpensesPage from "./ExpensesPage";
 import LegalPage from "./LegalPage";
 import MaintenancePage from "./MaintenancePage";
+import HodogramPage from "./HodogramPage";
 import CommunityPage from "./CommunityPage";
 import ReportsPage from "./ReportsPage";
 import ResourcePage, { ResourceConfig } from "./ResourcePage";
@@ -14,7 +15,7 @@ import AccessControlPage from "./AccessControlPage";
 import { useChangeRevision } from "../useChangeRevision.ts";
 
 type MenuKey = "overview" | "organizations" | "zevs" | "buildings" | "entrances" | "units"
-  | "people" | "ownership" | "users" | "memberships" | "finance" | "payments" | "expenses" | "legal" | "maintenance" | "community" | "reports";
+  | "people" | "ownership" | "users" | "memberships" | "finance" | "payments" | "expenses" | "legal" | "maintenance" | "hodogram" | "community" | "reports";
 
 const menu: { key: MenuKey; label: string }[] = [
   { key: "overview", label: "Pregled" },
@@ -32,6 +33,7 @@ const menu: { key: MenuKey; label: string }[] = [
   { key: "expenses", label: "Rashodi i dugovanja" },
   { key: "legal", label: "Opomene i pravni predmeti" },
   { key: "maintenance", label: "Održavanje" },
+  { key: "hodogram", label: "Hodogram" },
   { key: "community", label: "Zajednica i glasanje" },
   { key: "reports", label: "Izvještaji" },
 ];
@@ -212,6 +214,7 @@ export default function Workspace({ token, profile, zevs, onLogout, onProfile }:
         {active === "expenses" && <ExpensesPage token={token} zevs={scopedZevs} />}
         {active === "legal" && <LegalPage token={token} zevs={scopedZevs} />}
         {active === "maintenance" && <MaintenancePage token={token} zevs={scopedZevs} role="manager" />}
+        {active === "hodogram" && <HodogramPage token={token} organizations={null} />}
         {active === "community" && <CommunityPage token={token} zevs={scopedZevs} role="manager" />}
         {active === "reports" && <ReportsPage token={token} zevs={scopedZevs} />}
         {resources[active] && <ResourcePage key={active} config={resources[active]} token={token}

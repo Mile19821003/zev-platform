@@ -40,6 +40,24 @@ public sealed class BillingMigrationTests
         Assert.DoesNotContain("DROP COLUMN", script);
         Assert.DoesNotContain("DELETE FROM", script);
     }
+
+    [Fact]
+    public void HodogramRaciMigrationIsAdditive()
+    {
+        var options = new DbContextOptionsBuilder<ZevDbContext>()
+            .UseSqlServer("Server=localhost;Database=ZevSnapshotCheck;User Id=unused;Password=unused;TrustServerCertificate=True")
+            .Options;
+        using var database = new ZevDbContext(options, new HttpContextAccessor());
+        var script = database.GetService<IMigrator>().GenerateScript(
+            "20261003100000_RegistryListIndex", "20261010063920_HodogramRaci");
+        Assert.Contains("CREATE TABLE [Hodograms]", script);
+        Assert.Contains("CREATE TABLE [HodogramAssignments]", script);
+        Assert.Contains("CREATE UNIQUE INDEX [IX_HodogramAssignments_StepId_Role]", script);
+        Assert.DoesNotContain("DROP TABLE", script);
+        Assert.DoesNotContain("DROP COLUMN", script);
+        Assert.DoesNotContain("DELETE FROM", script);
+        Assert.DoesNotContain("ALTER TABLE [PropertyUnits]", script);
+    }
     [Fact]
     public void CurrentSqlServerModelMatchesMigrationSnapshot()
     {

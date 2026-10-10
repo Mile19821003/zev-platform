@@ -1038,6 +1038,151 @@ namespace Zev.Api.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Zev.Api.Domain.Hodogram", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset>("UpdatedUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("Hodograms", (string)null);
+                });
+
+            modelBuilder.Entity("Zev.Api.Domain.HodogramAssignment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("HodogramId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<Guid>("StepId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(1)
+                        .HasColumnType("nvarchar(1)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HodogramId");
+
+                    b.HasIndex("StepId", "Role")
+                        .IsUnique();
+
+                    b.HasIndex("OrganizationId", "HodogramId", "StepId");
+
+                    b.ToTable("HodogramAssignments", (string)null);
+                });
+
+            modelBuilder.Entity("Zev.Api.Domain.HodogramPhase", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("HodogramId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HodogramId", "SortOrder");
+
+                    b.ToTable("HodogramPhases", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_HodogramPhases_SortOrder", "[SortOrder] >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Zev.Api.Domain.HodogramStep", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<Guid>("HodogramId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("PhaseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PhaseId", "SortOrder");
+
+                    b.HasIndex("OrganizationId", "HodogramId", "PhaseId");
+
+                    b.ToTable("HodogramSteps", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_HodogramSteps_SortOrder", "[SortOrder] >= 0");
+                        });
+                });
+
             modelBuilder.Entity("Zev.Api.Domain.Invoice", b =>
                 {
                     b.Property<Guid>("Id").ValueGeneratedOnAdd().HasColumnType("uniqueidentifier");
@@ -3585,6 +3730,45 @@ namespace Zev.Api.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Organization");
+                });
+
+            modelBuilder.Entity("Zev.Api.Domain.Hodogram", b =>
+                {
+                    b.HasOne("Zev.Api.Domain.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Zev.Api.Domain.HodogramAssignment", b =>
+                {
+                    b.HasOne("Zev.Api.Domain.HodogramStep", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "HodogramId", "StepId")
+                        .HasPrincipalKey("OrganizationId", "HodogramId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Zev.Api.Domain.HodogramPhase", b =>
+                {
+                    b.HasOne("Zev.Api.Domain.Hodogram", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "HodogramId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Zev.Api.Domain.HodogramStep", b =>
+                {
+                    b.HasOne("Zev.Api.Domain.HodogramPhase", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "HodogramId", "PhaseId")
+                        .HasPrincipalKey("OrganizationId", "HodogramId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

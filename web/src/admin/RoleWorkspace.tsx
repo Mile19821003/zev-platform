@@ -6,6 +6,7 @@ import BankTransactionsPage from "./BankTransactionsPage";
 import ExpensesPage from "./ExpensesPage";
 import LegalPage from "./LegalPage";
 import MaintenancePage from "./MaintenancePage";
+import HodogramPage from "./HodogramPage";
 import CommunityPage from "./CommunityPage";
 import ReportsPage from "./ReportsPage";
 import OwnerFinancePage from "./OwnerFinancePage";
@@ -15,7 +16,7 @@ import ZevPermissionPage from "./ZevPermissionPage";
 
 type ZevOption = Zev;
 type PageKey = "overview" | "finance" | "payments" | "bank-transactions" | "expenses" | "legal" | "maintenance"
-  | "representative-maintenance" | "my-maintenance" | "community" | "representative-community" | "owner-community" | "reports" | "owner-finance" | "registry" | "access";
+  | "representative-maintenance" | "my-maintenance" | "community" | "representative-community" | "owner-community" | "reports" | "owner-finance" | "registry" | "access" | "hodogram";
 
 export default function RoleWorkspace({ token, profile, zevs, onLogout, onProfile }: {
   token: string; profile: Profile; zevs: ZevOption[]; onLogout: () => void; onProfile: () => void;
@@ -26,7 +27,10 @@ export default function RoleWorkspace({ token, profile, zevs, onLogout, onProfil
   const [permissionContext, setPermissionContext] = useState<{ zevId: string; isStaff: boolean;
     permissions: string[] } | null>(null);
   const [contextError, setContextError] = useState("");
+  const [administeredOrganizations, setAdministeredOrganizations] = useState<{ id: string; name: string }[]>([]);
   const permissionRequestId = useRef(0);
+  const administeredIds = [...new Set(profile.memberships.filter((item) => item.role === "OrganizationAdministrator"
+    && !item.zevId).map((item) => item.organizationId))].join(",");
   const baseZev = zevs.find((item) => item.id === selectedZevId) ?? zevs[0];
   const activeZev = baseZev && permissionContext?.zevId === baseZev.id
     ? { ...baseZev, isStaff: permissionContext.isStaff, permissions: permissionContext.permissions } : baseZev;
@@ -60,6 +64,16 @@ export default function RoleWorkspace({ token, profile, zevs, onLogout, onProfil
   if (hasRepresentativeCommunity) navigation.push({ key: "representative-community", label: "Oglasna tabla" });
   if (hasOwner || sharedOnly) navigation.push({ key: "owner-community", label: "Dokumenti i glasanje" });
   if (hasOwnerFinance) navigation.splice(1, 0, { key: "owner-finance", label: "Moj portal" });
+  if (administeredOrganizations.length > 0) navigation.push({ key: "hodogram", label: "Hodogram" });
+
+  useEffect(() => {
+    let current = true;
+    const ids = administeredIds.split(",").filter(Boolean);
+    Promise.all(ids.map((id) => callApi<{ id: string; name: string }>(`/api/organizations/${id}`, {}, token)
+      .catch(() => null)))
+      .then((items) => { if (current) setAdministeredOrganizations(items.filter((item) => item !== null)); });
+    return () => { current = false; };
+  }, [administeredIds, token]);
 
   useEffect(() => {
     if (!navigation.some((item) => item.key === active)) setActive("overview");
@@ -119,5 +133,6 @@ export default function RoleWorkspace({ token, profile, zevs, onLogout, onProfil
     {active === "owner-finance" && <OwnerFinancePage token={token} zevs={ownerFinanceZevs} />}
     {active === "registry" && <ManagerRegistryPage key={activeZev?.id} token={token} zevs={managerZevs} permissions={activeZev?.permissions} />}
     {active === "access" && activeZev && <ZevPermissionPage key={activeZev.id} token={token} zevId={activeZev.id} zevs={zevs} />}
+    {active === "hodogram" && <HodogramPage token={token} organizations={administeredOrganizations} />}
   </main></div></div>;
 }
