@@ -2,6 +2,29 @@
 
 Sve značajne izmjene ZEV Platforme. Ranija historija (faze do 4) je u `CLOUD_HANDOFF_STATUS.md` i git logu.
 
+## [v2.4] - 2026-10-10
+
+### Dodano (Added)
+- Matrica prava (`PermissionMatrix.tsx`): ćelije jasno razlikuju izvor prava — `✓` naslijeđeno iz uloge (zeleno),
+  `✓+` ručni GRANT (plavo), `✕` ručni DENY (crveno), `□` nije dozvoljeno; tooltip navodi i šta bi uloga dala
+  („uloga bi dozvolila“ / „uloga već dozvoljava“). Legenda iznad tabele.
+- Nesačuvane promjene: isprekidan okvir ćelije, brojač „Nesačuvanih promjena: N“ i dugme „Odbaci nacrt“.
+- Logika matrice izdvojena u `web/src/permissionMatrixUi.ts`; testovi `web/tests/permissionMatrix.test.mjs` (5).
+
+### Ispravljeno (Fixed)
+- Dva dugmeta istog ponašanja („Primijeni default uloge“, „Resetuj na default“) spojena u jedno:
+  „Vrati sve na default uloge“ (u nacrt stavlja samo ključeve koji imaju ručni izuzetak).
+- Kolona „Brisanje“ (nijedan modul nema akciju Delete) se više ne prikazuje; kolone se računaju iz modula,
+  pa se pojavljuje automatski kad modul dobije tu akciju. Detaljni redovi koriste tačan `colSpan`.
+- Klik na ćeliju: default → suprotan ručni izuzetak → nazad na default (ranije DENY → GRANT bez povratka na default).
+- Snimanje šalje samo stvarne promjene (ranije i ključeve bez izmjene, što je moglo izazvati 403 provjere
+  dodjeljivača za prava koja on nema); „Snimi prava“ je onemogućeno bez promjena.
+- Poruka „Prava su sačuvana“ nestaje čim se nacrt ponovo mijenja; detaljni ključevi poravnati lijevo.
+
+### Otvorene odluke (Open Decisions)
+- Na mobilnom (390 px) stranica s 6+ stavki menija ima horizontalni scroll (bočni meni se ne prelama) — globalni
+  raspored, postojao i prije; nije dio ove izmjene.
+
 ## [v2.3] - 2026-10-10
 
 ### Dodano (Added)
