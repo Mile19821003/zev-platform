@@ -13,8 +13,20 @@ i izolovani Docker compose projekat (`mcr.microsoft.com/mssql/server:2022-latest
 | Health | `health-smoke.ps1` padao u neinteraktivnom PowerShell 5.1 (`Invoke-WebRequest` bez `-UseBasicParsing`) | `-UseBasicParsing` u `scripts/health-smoke.ps1` i `LOCAL_DOCKER_E2E.ps1` | Docker: `/health/live` 200, `/health/ready` 200 (`database=up`); kad baza ne radi `/ready` = 503, `/live` = 200; oporavak bez restarta API-ja. | **VERIFIED** |
 | Backup/Restore | — | — | `SqlBackupDrillTests` stvarno izvršen na Docker SQL-u: backup `COPY_ONLY`/`CHECKSUM`, `VERIFYONLY`, restore u zasebnu bazu (17 migracija, 52 tabele); dodatno `DBCC CHECKDB` = 0 grešaka. Baza je bila prazna (mehanizam, ne restore produkcijskih podataka). | **VERIFIED** |
 | RACI/Hodogram | Funkcionalnost nije postojala | Novi modul (vidi ispod), migracija `20261010063920_HodogramRaci` | Unit + API + SQL concurrency testovi, Docker E2E 13/13, UI smoke u pregledniku (Edge) | **VERIFIED** |
-| PWA (5.6) | — | — | U `web/` ne postoji manifest ni service worker; PWA se ne spominje ni u jednom dokumentu zahtjeva. Mobilni pristup pokriva zasebna Expo aplikacija (`mobile/`). | **OPEN** — čeka poslovnu odluku |
+| PWA (5.6) | — | Nije implementirano (poslovna odluka) | U `web/` ne postoji manifest ni service worker; PWA se ne spominje ni u jednom dokumentu zahtjeva. | **NOT APPLICABLE / SKIPPED BY DECISION** (Mobilni pristup pokriven kroz zasebnu Expo aplikaciju u `mobile/`) |
 | Završna regresija (5.7) | — | — | Backend build 0 upozorenja; non-SQL 164/164; SQL paket 12/12 (lokalni `ZEVTEST`); web typecheck, 62/62 testova, build. | **VERIFIED** |
+
+## PWA (5.6)
+
+STATUS: NOT APPLICABLE / SKIPPED BY DECISION (Mobilni pristup pokriven kroz zasebnu Expo aplikaciju u `mobile/`).
+
+Odluka vlasnika projekta od 10.10.2026: PWA se ne implementira jer je puni PWA uz namjensku Expo aplikaciju suvišan.
+
+## Zaključak handoffa
+
+Sve stavke iz sekcije 9 handoff dokumenta su zatvorene: Billing 1.001, Registry 10K, Health, Backup/Restore,
+RACI/Hodogram i završna regresija su VERIFIED, a PWA je NOT APPLICABLE po odluci. Handoff i preuzimanje u
+cloud okruženje su zaključeni.
 
 ## RACI / Hodogram (5.5)
 
