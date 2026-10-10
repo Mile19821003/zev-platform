@@ -1058,11 +1058,16 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
 
         modelBuilder.Entity<AccessOverride>(entity =>
         {
-            entity.ToTable("AccessOverrides", table => table.HasCheckConstraint("CK_AccessOverrides_Dates", "[ValidToUtc] IS NULL OR [ValidToUtc] > [ValidFromUtc]"));
+            entity.ToTable("AccessOverrides", table =>
+            {
+                table.HasCheckConstraint("CK_AccessOverrides_Dates", "[ValidToUtc] IS NULL OR [ValidToUtc] > [ValidFromUtc]");
+                table.HasCheckConstraint("CK_AccessOverrides_RevokeReason", "[RevokeReason] IS NULL OR [RevokedUtc] IS NOT NULL");
+            });
             entity.HasKey(item => item.Id);
             entity.Property(item => item.PermissionKey).HasMaxLength(80).IsRequired();
             entity.Property(item => item.Effect).HasConversion<string>().HasMaxLength(10);
             entity.Property(item => item.Reason).HasMaxLength(500).IsRequired();
+            entity.Property(item => item.RevokeReason).HasMaxLength(500);
             entity.HasOne<AppUser>().WithMany().HasForeignKey(item => item.UserId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<AppUser>().WithMany().HasForeignKey(item => item.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<AppUser>().WithMany().HasForeignKey(item => item.RevokedByUserId).OnDelete(DeleteBehavior.Restrict);
@@ -1200,6 +1205,13 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
                             && history.Entity.PreviousPersonId == entry.Property(payment => payment.PersonId).OriginalValue
                             && history.Entity.NewPersonId == entry.Property(payment => payment.PersonId).CurrentValue
                             && !string.IsNullOrWhiteSpace(history.Entity.Reason))))
+            || ChangeTracker.Entries<AccessOverride>().Any(entry => entry.State == EntityState.Deleted
+                || entry.State == EntityState.Modified && (entry.Properties.Any(property => property.IsModified
+                        && property.Metadata.Name is not nameof(AccessOverride.RevokedUtc)
+                            and not nameof(AccessOverride.RevokedByUserId) and not nameof(AccessOverride.RevokeReason))
+                    || entry.Property(item => item.RevokedUtc).OriginalValue is not null
+                    || entry.Property(item => item.RevokedUtc).CurrentValue is null
+                    || entry.Property(item => item.RevokedByUserId).CurrentValue is null))
             || ChangeTracker.Entries<BankTransaction>().Any(entry => entry.State == EntityState.Deleted)
             || ChangeTracker.Entries<BankStatementImport>().Any(entry => entry.State == EntityState.Deleted)
             || ChangeTracker.Entries<Expense>().Any(entry => entry.State == EntityState.Deleted
@@ -1240,13 +1252,23 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
                 EntityType = entry.Metadata.ClrType.Name,
                 EntityId = string.Join("|", entry.Properties.Where(property => property.Metadata.IsPrimaryKey())
                     .Select(property => property.CurrentValue?.ToString() ?? string.Empty)),
-                Action = entry.State.ToString(),
+                Action = AuditAction(entry),
                 BeforeJson = before,
                 AfterJson = after,
                 CorrelationId = correlationId
             });
         }
     }
+
+    // Permission overrides get business event names so the access history reads without diffing JSON.
+    private static string AuditAction(EntityEntry entry) => entry.Entity switch
+    {
+        AccessOverride item when entry.State == EntityState.Added =>
+            item.Effect == AccessEffect.Deny ? "PermissionDenied" : "PermissionGranted",
+        AccessOverride when entry.State == EntityState.Modified
+            && entry.Property(nameof(AccessOverride.RevokedUtc)).IsModified => "PermissionRevoked",
+        _ => entry.State.ToString()
+    };
 
     private static string Snapshot(EntityEntry entry, bool current)
     {

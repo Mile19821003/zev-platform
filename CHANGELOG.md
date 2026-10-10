@@ -2,6 +2,35 @@
 
 Sve značajne izmjene ZEV Platforme. Ranija historija (faze do 4) je u `CLOUD_HANDOFF_STATUS.md` i git logu.
 
+## [v2.3] - 2026-10-10
+
+### Dodano (Added)
+- Semantički audit promjena prava: `AuditLog.Action` za `AccessOverride` je `PermissionGranted`, `PermissionDenied`
+  ili `PermissionRevoked` (umjesto `Added`/`Modified`), uz autora, vrijeme, korelaciju i razlog u JSON-u.
+- Razlog opoziva (`AccessOverride.RevokeReason`): reset na default u matrici i zamjena postojećeg izuzetka čuvaju
+  razlog iz zahtjeva; `GET /access/overrides` vraća `revokeReason`.
+- Web (lista ručnih izuzetaka u `AccessControlPage`): polje „Razlog opoziva“, razlog prikazan uz status „Opozvano“.
+- Testovi `AccessAuditTests` (5): audit događaji i razlozi, zaštita od eskalacije (403), zaštita vlastitih prava i
+  administratora organizacije na svim rutama, obavezan razlog opoziva, append-only pravilo za izuzetke.
+
+### Ispravljeno (Fixed)
+- `POST /api/zevs/{zevId}/access/overrides` i `POST .../{id}/revoke`: korisnik (osim sistemskog administratora) više ne
+  može mijenjati ni opozivati vlastita prava (404, kao i matrica).
+- `POST .../{id}/revoke` traži razlog (`{ "reason": "..." }`, do 500 znakova, inače 400).
+- Radni prostor sistemskog administratora: nova stavka menija „Pristupi i veze naloga“ ponovo otvara
+  `AccessControlPage` (verifikacija veze nalog–osoba, izvedeni vlasnici, ručni izuzeci i opoziv), koji od `970dd2a`
+  nije bio dostupan; „Uloge i pristupi“ i dalje otvara tabelarnu matricu (`ZevPermissionPage`).
+- `AccessOverride` je append-only: dozvoljen je samo jednokratni opoziv (`RevokedUtc`, `RevokedByUserId`,
+  `RevokeReason`); izmjena ostalih polja, ponovni opoziv ili brisanje se odbijaju.
+
+### Baza / Migracije
+- `20261010182929_AccessOverrideRevokeReason`: kolona `AccessOverrides.RevokeReason` (nvarchar(500)),
+  check `CK_AccessOverrides_RevokeReason` (razlog samo uz opoziv).
+
+### Otvorene odluke (Open Decisions)
+- „Pristupi i veze naloga“ i dalje sadrži i matricu prava (ista kao „Uloge i pristupi“); razdvajanje u PR 5 po potrebi.
+- `/revoke` opoziva samo grube ključeve (`zev.read`, `finance.manage`, …); detaljna prava se vraćaju kroz matricu.
+
 ## [v2.2] - 2026-10-10
 
 ### Dodano (Added)

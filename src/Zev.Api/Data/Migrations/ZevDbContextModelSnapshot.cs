@@ -31,6 +31,7 @@ namespace Zev.Api.Data.Migrations
                     b.Property<Guid>("OrganizationId").HasColumnType("uniqueidentifier");
                     b.Property<string>("PermissionKey").IsRequired().HasMaxLength(80).HasColumnType("nvarchar(80)");
                     b.Property<string>("Reason").IsRequired().HasMaxLength(500).HasColumnType("nvarchar(500)");
+                    b.Property<string>("RevokeReason").HasMaxLength(500).HasColumnType("nvarchar(500)");
                     b.Property<Guid?>("RevokedByUserId").HasColumnType("uniqueidentifier");
                     b.Property<DateTimeOffset?>("RevokedUtc").HasColumnType("datetimeoffset");
                     b.Property<Guid>("UserId").HasColumnType("uniqueidentifier");
@@ -43,7 +44,11 @@ namespace Zev.Api.Data.Migrations
                     b.HasIndex("OrganizationId", "ZevId");
                     b.HasIndex("UserId", "ZevId", "PermissionKey", "ValidFromUtc");
                     b.ToTable("AccessOverrides", null, t =>
-                        t.HasCheckConstraint("CK_AccessOverrides_Dates", "[ValidToUtc] IS NULL OR [ValidToUtc] > [ValidFromUtc]"));
+                        {
+                            t.HasCheckConstraint("CK_AccessOverrides_Dates", "[ValidToUtc] IS NULL OR [ValidToUtc] > [ValidFromUtc]");
+
+                            t.HasCheckConstraint("CK_AccessOverrides_RevokeReason", "[RevokeReason] IS NULL OR [RevokedUtc] IS NOT NULL");
+                        });
                 });
 
             modelBuilder.Entity("Zev.Api.Domain.Announcement", b =>

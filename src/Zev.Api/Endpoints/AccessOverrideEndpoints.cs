@@ -100,7 +100,10 @@ public static class AccessOverrideEndpoints
             {
                 var active = current.Where(item => item.PermissionKey == change.Key).ToList();
                 if (active.Count == 1 && active[0].Effect.ToString() == change.Effect) continue;
-                foreach (var item in active) { item.RevokedUtc = now; item.RevokedByUserId = actorId; }
+                foreach (var item in active)
+                {
+                    item.RevokedUtc = now; item.RevokedByUserId = actorId; item.RevokeReason = request.Reason.Trim();
+                }
                 if (change.Effect is null) continue;
                 database.AccessOverrides.Add(new AccessOverride { UserId = targetUserId,
                     OrganizationId = zev.OrganizationId, ZevId = zevId, PermissionKey = change.Key,
@@ -121,7 +124,7 @@ public static class AccessOverrideEndpoints
                 .OrderByDescending(item => item.CreatedUtc).Take(200)
                 .Select(item => new { item.Id, item.UserId, item.ZevId, item.PermissionKey,
                     effect = item.Effect.ToString(), item.ValidFromUtc, item.ValidToUtc, item.Reason,
-                    item.CreatedByUserId, item.CreatedUtc, item.RevokedByUserId, item.RevokedUtc })
+                    item.CreatedByUserId, item.CreatedUtc, item.RevokedByUserId, item.RevokedUtc, item.RevokeReason })
                 .ToListAsync(cancellationToken);
             return Results.Ok(rows);
         });
@@ -142,7 +145,10 @@ public static class AccessOverrideEndpoints
             if (target is null || target.IsSystemAdministrator) return Results.NotFound();
             var organizationId = await database.Zevs.Where(item => item.Id == zevId)
                 .Select(item => item.OrganizationId).SingleAsync(cancellationToken);
-            if (!await access.IsSystemAdministratorAsync(actorId, cancellationToken)
+            var systemAdministrator = await access.IsSystemAdministratorAsync(actorId, cancellationToken);
+            // Same rules as the matrix: nobody changes their own rights or an organization administrator's.
+            if (!systemAdministrator && actorId == request.UserId) return Results.NotFound();
+            if (!systemAdministrator
                 && await database.Memberships.AnyAsync(item => item.UserId == request.UserId
                     && item.OrganizationId == organizationId && item.Role == MembershipRole.OrganizationAdministrator
                     && item.ZevId == null && item.IsActive, cancellationToken)) return Results.NotFound();
@@ -168,23 +174,28 @@ public static class AccessOverrideEndpoints
         });
 
         group.MapPost("/{overrideId:guid}/revoke", async (Guid zevId, Guid overrideId,
-            TenantAccess access, EffectiveAccessService effectiveAccess, ZevDbContext database,
-            CancellationToken cancellationToken) =>
+            RevokeAccessOverrideRequest? request, TenantAccess access, EffectiveAccessService effectiveAccess,
+            ZevDbContext database, CancellationToken cancellationToken) =>
         {
             if (access.CurrentUserId is not Guid actorId) return Results.NotFound();
+            if (string.IsNullOrWhiteSpace(request?.Reason) || request.Reason.Trim().Length > 500)
+                return Results.BadRequest(new { error = "Razlog opoziva je obavezan (najviše 500 znakova)." });
             var item = await database.AccessOverrides.SingleOrDefaultAsync(value => value.Id == overrideId
                 && value.ZevId == zevId, cancellationToken);
             if (item is null || item.RevokedUtc is not null) return Results.NotFound();
             var rights = await effectiveAccess.GetEffectiveZevAccess(actorId, zevId, cancellationToken);
             if (!await access.HasPermissionAsync(zevId, "Access.Manage", cancellationToken)
                 || !CanDelegate(rights, item.PermissionKey)) return Results.NotFound();
-            if (!await access.IsSystemAdministratorAsync(actorId, cancellationToken)
+            var systemAdministrator = await access.IsSystemAdministratorAsync(actorId, cancellationToken);
+            if (!systemAdministrator && actorId == item.UserId) return Results.NotFound();
+            if (!systemAdministrator
                 && await database.Memberships.AnyAsync(membership => membership.UserId == item.UserId
                     && membership.OrganizationId == item.OrganizationId
                     && membership.Role == MembershipRole.OrganizationAdministrator
                     && membership.ZevId == null && membership.IsActive, cancellationToken)) return Results.NotFound();
             item.RevokedByUserId = actorId;
             item.RevokedUtc = DateTimeOffset.UtcNow;
+            item.RevokeReason = request.Reason.Trim();
             await database.SaveChangesAsync(cancellationToken);
             return Results.NoContent();
         });
@@ -203,5 +214,6 @@ public static class AccessOverrideEndpoints
 
 public sealed record CreateAccessOverrideRequest(Guid UserId, string PermissionKey, string Effect,
     DateTimeOffset ValidFromUtc, DateTimeOffset? ValidToUtc, string Reason);
+public sealed record RevokeAccessOverrideRequest(string? Reason);
 public sealed record PermissionChange(string Key, string? Effect);
 public sealed record SavePermissionMatrixRequest(List<PermissionChange> Changes, string Reason);

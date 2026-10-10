@@ -7,7 +7,7 @@ type DerivedOwner = { zevId: string; propertyUnitId: string; unitCode: string; p
   personName: string; userId: string; userEmail: string; share: number; source: string };
 type AccessOverride = { id: string; userId: string; permissionKey: string; effect: string;
   validFromUtc: string; validToUtc: string | null; reason: string; createdByUserId: string;
-  revokedUtc: string | null };
+  revokedUtc: string | null; revokeReason: string | null };
 
 export default function AccessControlPage({ token, zevId, zevs }: { token: string; zevId: string;
   zevs: { id: string; name: string }[] }) {
@@ -26,6 +26,7 @@ export default function AccessControlPage({ token, zevId, zevs }: { token: strin
   const [validFrom, setValidFrom] = useState(() => new Date().toISOString().slice(0, 16));
   const [validTo, setValidTo] = useState("");
   const [reason, setReason] = useState("");
+  const [revokeReason, setRevokeReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -79,8 +80,10 @@ export default function AccessControlPage({ token, zevId, zevs }: { token: strin
 
   async function revoke(id: string) {
     setBusy(true); setError("");
-    try { await callApi(`/api/zevs/${zevId}/access/overrides/${id}/revoke`, { method: "POST" }, token);
-      setMessage("Izuzetak je opozvan."); }
+    if (!revokeReason.trim()) { setError("Unesite razlog opoziva."); setBusy(false); return; }
+    try { await callApi(`/api/zevs/${zevId}/access/overrides/${id}/revoke`, { method: "POST",
+        body: JSON.stringify({ reason: revokeReason }) }, token);
+      setMessage("Izuzetak je opozvan."); setRevokeReason(""); }
     catch (problem) { setError(errorText(problem)); }
     finally { setBusy(false); }
   }
@@ -131,12 +134,14 @@ export default function AccessControlPage({ token, zevId, zevs }: { token: strin
       <p>Za korisnika bez aktivnog vlasništva, ručno pravo pregleda zahtijeva datum isteka. Ne otvara privatne podatke drugih osoba.</p>
       <button disabled={busy || !reason.trim() || !selectedUser}>Sačuvaj izuzetak</button>
     </form>
+    <label>Razlog opoziva <input maxLength={500} value={revokeReason}
+      onChange={(event) => setRevokeReason(event.target.value)} /></label>
     <div className="table-scroll"><table><thead><tr><th>Korisnik</th><th>Pravo</th><th>Efekat</th>
       <th>Od</th><th>Do</th><th>Razlog</th><th>Status</th><th>Akcija</th></tr></thead>
       <tbody>{overrides.map((item) => <tr key={item.id}><td>{users.find((user) => user.id === item.userId)?.email ?? item.userId}</td>
         <td>{item.permissionKey}</td><td>{item.effect}</td><td>{item.validFromUtc}</td><td>{item.validToUtc ?? "—"}</td>
-        <td>{item.reason}</td><td>{item.revokedUtc ? "Opozvano" : new Date(item.validToUtc ?? "9999-12-31") < new Date() ? "Isteklo" : "Aktivno"}</td>
-        <td>{!item.revokedUtc && <button type="button" disabled={busy} onClick={() => revoke(item.id)}>Opozovi</button>}</td>
+        <td>{item.reason}</td><td>{item.revokedUtc ? `Opozvano${item.revokeReason ? `: ${item.revokeReason}` : ""}` : new Date(item.validToUtc ?? "9999-12-31") < new Date() ? "Isteklo" : "Aktivno"}</td>
+        <td>{!item.revokedUtc && <button type="button" disabled={busy} onClick={() => void revoke(item.id)}>Opozovi</button>}</td>
       </tr>)}</tbody></table></div>
     {!loading && overrides.length === 0 && <p className="empty-inline">Nema ručnih izuzetaka.</p>}
   </section>;

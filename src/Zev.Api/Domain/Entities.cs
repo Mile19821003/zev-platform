@@ -26,6 +26,7 @@ public sealed class AccessOverride : ITenantRecord
     public DateTimeOffset CreatedUtc { get; set; } = DateTimeOffset.UtcNow;
     public Guid? RevokedByUserId { get; set; }
     public DateTimeOffset? RevokedUtc { get; set; }
+    public string? RevokeReason { get; set; }
     Guid? ITenantRecord.OrganizationId => OrganizationId;
     Guid? ITenantRecord.ZevId => ZevId;
 }
