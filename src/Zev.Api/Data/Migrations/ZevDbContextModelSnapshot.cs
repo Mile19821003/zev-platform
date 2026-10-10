@@ -1454,6 +1454,488 @@ namespace Zev.Api.Data.Migrations
                     b.ToTable("LegalCaseFiles", (string)null);
                 });
 
+            modelBuilder.Entity("Zev.Api.Domain.LookupItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<DateTimeOffset>("CreatedUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LookupTypeCode")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("UpdatedUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("ZevId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UpdatedByUserId");
+
+                    b.HasIndex("ZevId");
+
+                    b.HasIndex("LookupTypeCode", "ZevId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_LookupItems_Default")
+                        .HasFilter("[IsDefault] = 1");
+
+                    b.HasIndex("LookupTypeCode", "ZevId", "Code")
+                        .IsUnique()
+                        .HasFilter("[ZevId] IS NOT NULL");
+
+                    b.ToTable("LookupItems", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_LookupItems_DefaultIsActive", "[IsDefault] = 0 OR [IsActive] = 1");
+
+                            t.HasCheckConstraint("CK_LookupItems_SortOrder", "[SortOrder] >= 0");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000001"),
+                            Code = "Apartment",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = true,
+                            LookupTypeCode = "PROPERTY_UNIT_TYPE",
+                            Name = "Stan",
+                            SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000002"),
+                            Code = "Commercial",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "PROPERTY_UNIT_TYPE",
+                            Name = "Poslovni prostor",
+                            SortOrder = 20
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000003"),
+                            Code = "Garage",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "PROPERTY_UNIT_TYPE",
+                            Name = "Garaža",
+                            SortOrder = 30
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000004"),
+                            Code = "ParkingSpace",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "PROPERTY_UNIT_TYPE",
+                            Name = "Parking mjesto",
+                            SortOrder = 40
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000005"),
+                            Code = "Basement",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "PROPERTY_UNIT_TYPE",
+                            Name = "Ostava",
+                            SortOrder = 50
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000006"),
+                            Code = "CURRENT_MAINTENANCE",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "EXPENSE_CATEGORY",
+                            Name = "Tekuće održavanje",
+                            SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000007"),
+                            Code = "CAPITAL_MAINTENANCE",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "EXPENSE_CATEGORY",
+                            Name = "Investiciono održavanje",
+                            SortOrder = 20
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000008"),
+                            Code = "UTILITIES",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "EXPENSE_CATEGORY",
+                            Name = "Komunalne usluge",
+                            SortOrder = 30
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000009"),
+                            Code = "ELEVATOR",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "EXPENSE_CATEGORY",
+                            Name = "Lift",
+                            SortOrder = 40
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000010"),
+                            Code = "MANAGER",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "EXPENSE_CATEGORY",
+                            Name = "Upravnik",
+                            SortOrder = 50
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000011"),
+                            Code = "PLUMBING",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "MAINTENANCE_CATEGORY",
+                            Name = "Vodovod",
+                            SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000012"),
+                            Code = "ELECTRICAL",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "MAINTENANCE_CATEGORY",
+                            Name = "Elektroinstalacije",
+                            SortOrder = 20
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000013"),
+                            Code = "CONSTRUCTION",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "MAINTENANCE_CATEGORY",
+                            Name = "Građevinski radovi",
+                            SortOrder = 30
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000014"),
+                            Code = "ROOF",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "MAINTENANCE_CATEGORY",
+                            Name = "Krov",
+                            SortOrder = 40
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000015"),
+                            Code = "LOCKSMITH",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "MAINTENANCE_CATEGORY",
+                            Name = "Bravarija",
+                            SortOrder = 50
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000016"),
+                            Code = "Urgent",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "MAINTENANCE_PRIORITY",
+                            Name = "Hitno",
+                            SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000017"),
+                            Code = "High",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "MAINTENANCE_PRIORITY",
+                            Name = "Visok",
+                            SortOrder = 20
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000018"),
+                            Code = "Normal",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = true,
+                            LookupTypeCode = "MAINTENANCE_PRIORITY",
+                            Name = "Standardni",
+                            SortOrder = 30
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000019"),
+                            Code = "Low",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "MAINTENANCE_PRIORITY",
+                            Name = "Nizak",
+                            SortOrder = 40
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000020"),
+                            Code = "Minutes",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "DOCUMENT_CATEGORY",
+                            Name = "Zapisnik",
+                            SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000021"),
+                            Code = "Contract",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "DOCUMENT_CATEGORY",
+                            Name = "Ugovor",
+                            SortOrder = 20
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000022"),
+                            Code = "INSURANCE_POLICY",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "DOCUMENT_CATEGORY",
+                            Name = "Polisa osiguranja",
+                            SortOrder = 30
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000023"),
+                            Code = "DECISION",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "DOCUMENT_CATEGORY",
+                            Name = "Odluka",
+                            SortOrder = 40
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000024"),
+                            Code = "Financial",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "DOCUMENT_CATEGORY",
+                            Name = "Finansijski izvještaj",
+                            SortOrder = 50
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000025"),
+                            Code = "Cash",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "PAYMENT_METHOD",
+                            Name = "Gotovina",
+                            SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000026"),
+                            Code = "Transfer",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = true,
+                            LookupTypeCode = "PAYMENT_METHOD",
+                            Name = "Virman",
+                            SortOrder = 20
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000027"),
+                            Code = "PaymentSlip",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "PAYMENT_METHOD",
+                            Name = "Uplatnica",
+                            SortOrder = 30
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000028"),
+                            Code = "WRONG_ENTRY",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "REVERSAL_REASON",
+                            Name = "Pogrešan unos",
+                            SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000029"),
+                            Code = "DUPLICATE",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "REVERSAL_REASON",
+                            Name = "Dvostruka uplata",
+                            SortOrder = 20
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000030"),
+                            Code = "COMPLAINT",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "REVERSAL_REASON",
+                            Name = "Reklamacija",
+                            SortOrder = 30
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000031"),
+                            Code = "AMOUNT_CORRECTION",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "REVERSAL_REASON",
+                            Name = "Ispravak iznosa",
+                            SortOrder = 40
+                        });
+                });
+
+            modelBuilder.Entity("Zev.Api.Domain.LookupType", b =>
+                {
+                    b.Property<string>("Code")
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsSystem")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.HasKey("Code");
+
+                    b.ToTable("LookupTypes", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Code = "PROPERTY_UNIT_TYPE",
+                            Description = "Stan, poslovni prostor, garaža…",
+                            IsSystem = true,
+                            Name = "Vrste posebnih dijelova"
+                        },
+                        new
+                        {
+                            Code = "EXPENSE_CATEGORY",
+                            Description = "Razvrstavanje ulaznih računa i rashoda",
+                            IsSystem = true,
+                            Name = "Kategorije rashoda"
+                        },
+                        new
+                        {
+                            Code = "MAINTENANCE_CATEGORY",
+                            Description = "Vrsta prijave kvara ili radova",
+                            IsSystem = true,
+                            Name = "Kategorije kvarova"
+                        },
+                        new
+                        {
+                            Code = "MAINTENANCE_PRIORITY",
+                            Description = "Hitnost prijave kvara",
+                            IsSystem = true,
+                            Name = "Prioriteti održavanja"
+                        },
+                        new
+                        {
+                            Code = "DOCUMENT_CATEGORY",
+                            Description = "Vrsta dokumenta zajednice",
+                            IsSystem = true,
+                            Name = "Kategorije dokumenata"
+                        },
+                        new
+                        {
+                            Code = "PAYMENT_METHOD",
+                            Description = "Način ručne uplate",
+                            IsSystem = true,
+                            Name = "Načini plaćanja"
+                        },
+                        new
+                        {
+                            Code = "REVERSAL_REASON",
+                            Description = "Ponuđeni razlozi storna i ispravki",
+                            IsSystem = true,
+                            Name = "Razlozi storna"
+                        });
+                });
+
             modelBuilder.Entity("Zev.Api.Domain.MaintenancePlan", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3429,6 +3911,27 @@ namespace Zev.Api.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Zev.Api.Domain.LookupItem", b =>
+                {
+                    b.HasOne("Zev.Api.Domain.LookupType", "LookupType")
+                        .WithMany("Items")
+                        .HasForeignKey("LookupTypeCode")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Zev.Api.Domain.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Zev.Api.Domain.Zev", null)
+                        .WithMany()
+                        .HasForeignKey("ZevId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("LookupType");
+                });
+
             modelBuilder.Entity("Zev.Api.Domain.MaintenancePlan", b =>
                 {
                     b.HasOne("Zev.Api.Domain.Zev", null)
@@ -3883,6 +4386,11 @@ namespace Zev.Api.Data.Migrations
             modelBuilder.Entity("Zev.Api.Domain.FinancialDocument", b =>
                 {
                     b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("Zev.Api.Domain.LookupType", b =>
+                {
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("Zev.Api.Domain.Zev", b =>

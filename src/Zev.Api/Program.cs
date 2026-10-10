@@ -51,6 +51,7 @@ builder.Services.AddScoped<UatFinanceSeed>();
 builder.Services.AddScoped<PaymentReconciliationEngine>();
 builder.Services.AddScoped<PaymentWorkflowService>();
 builder.Services.AddScoped<BankAccountBalanceService>();
+builder.Services.AddScoped<Zev.Api.Lookups.LookupService>();
 builder.Services.AddScoped<OwnerCardService>();
 builder.Services.AddScoped<PaymentReferenceService>();
 builder.Services.AddSingleton<IPaymentQrProvider, UnconfiguredPaymentQrProvider>();
@@ -272,6 +273,7 @@ api.MapReportingEndpoints();
 api.MapManagerRegistryEndpoints();
 api.MapAccessOverrideEndpoints();
 api.MapSystemSettingsEndpoints();
+api.MapLookupEndpoints();
 api.MapGet("/me", async (TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
 {
     if (access.CurrentUserId is not Guid userId)

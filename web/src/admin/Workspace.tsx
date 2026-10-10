@@ -14,13 +14,14 @@ import ResourcePage, { ResourceConfig } from "./ResourcePage";
 import ZevPermissionPage from "./ZevPermissionPage";
 import AccessControlPage from "./AccessControlPage";
 import SystemSettingsPage from "./SystemSettingsPage";
+import LookupsPage from "./LookupsPage";
 import { useChangeRevision } from "../useChangeRevision.ts";
 import WorkspaceNav, { useSidebarState } from "./WorkspaceNav";
 import ModuleDashboard from "./ModuleDashboard";
 import { moduleLabel } from "../navigationModel.ts";
 
 type MenuKey = "overview" | "organizations" | "zevs" | "buildings" | "entrances" | "units"
-  | "people" | "ownership" | "users" | "memberships" | "accountLinks" | "settings" | "finance" | "payments" | "expenses" | "legal" | "maintenance" | "hodogram" | "community" | "reports";
+  | "people" | "ownership" | "users" | "memberships" | "accountLinks" | "settings" | "lookups" | "finance" | "payments" | "expenses" | "legal" | "maintenance" | "hodogram" | "community" | "reports";
 
 const menu: { key: MenuKey; label: string }[] = [
   { key: "overview", label: "Pregled" },
@@ -34,6 +35,7 @@ const menu: { key: MenuKey; label: string }[] = [
   { key: "users", label: "Korisnici sistema" },
   { key: "memberships", label: "Uloge i pristupi" },
   { key: "accountLinks", label: "Pristupi i veze naloga" },
+  { key: "lookups", label: "Šifarnici" },
   { key: "settings", label: "Sistemska podešavanja" },
   { key: "finance", label: "Finansije" },
   { key: "payments", label: "Uplate i izvodi" },
@@ -228,6 +230,7 @@ export default function Workspace({ token, profile, zevs, onLogout, onProfile }:
         {active === "memberships" && activeZev && <ZevPermissionPage token={token} zevId={activeZev.id} zevs={zevs} />}
         {active === "accountLinks" && activeZev && <AccessControlPage token={token} zevId={activeZev.id} zevs={zevs} />}
         {active === "settings" && <SystemSettingsPage token={token} />}
+        {active === "lookups" && <LookupsPage token={token} />}
       </main>
     </div>
   </div>;

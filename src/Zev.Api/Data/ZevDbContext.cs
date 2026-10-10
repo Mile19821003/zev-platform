@@ -66,6 +66,8 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
     public DbSet<RefreshSession> RefreshSessions => Set<RefreshSession>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<SystemSettings> SystemSettings => Set<SystemSettings>();
+    public DbSet<LookupType> LookupTypes => Set<LookupType>();
+    public DbSet<LookupItem> LookupItems => Set<LookupItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -1147,6 +1149,40 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
             entity.Property(item => item.DefaultTheme).HasMaxLength(40).IsRequired();
             entity.HasOne<AppUser>().WithMany().HasForeignKey(item => item.UpdatedByUserId).OnDelete(DeleteBehavior.Restrict);
             entity.HasData(new SystemSettings());
+        });
+
+        modelBuilder.Entity<LookupType>(entity =>
+        {
+            entity.ToTable("LookupTypes");
+            entity.HasKey(item => item.Code);
+            entity.Property(item => item.Code).HasMaxLength(60);
+            entity.Property(item => item.Name).HasMaxLength(120).IsRequired();
+            entity.Property(item => item.Description).HasMaxLength(500);
+            entity.HasData(LookupSeed.Types.Select(item => new { item.Code, item.Name, item.Description, item.IsSystem }));
+        });
+
+        modelBuilder.Entity<LookupItem>(entity =>
+        {
+            entity.ToTable("LookupItems", table =>
+            {
+                table.HasCheckConstraint("CK_LookupItems_SortOrder", "[SortOrder] >= 0");
+                table.HasCheckConstraint("CK_LookupItems_DefaultIsActive", "[IsDefault] = 0 OR [IsActive] = 1");
+            });
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.LookupTypeCode).HasMaxLength(60).IsRequired();
+            entity.Property(item => item.Code).HasMaxLength(60).IsRequired();
+            entity.Property(item => item.Name).HasMaxLength(200).IsRequired();
+            entity.HasOne(item => item.LookupType).WithMany(type => type.Items).HasForeignKey(item => item.LookupTypeCode)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<ZevEntity>().WithMany().HasForeignKey(item => item.ZevId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<AppUser>().WithMany().HasForeignKey(item => item.UpdatedByUserId).OnDelete(DeleteBehavior.Restrict);
+            // One code per list and scope (platform-wide or one ZEV); at most one default per list and scope.
+            entity.HasIndex(item => new { item.LookupTypeCode, item.ZevId, item.Code }).IsUnique();
+            entity.HasIndex(item => new { item.LookupTypeCode, item.ZevId }).IsUnique().HasFilter("[IsDefault] = 1")
+                .HasDatabaseName("IX_LookupItems_Default");
+            entity.HasData(LookupSeed.Items.Select(item => new { item.Id, item.LookupTypeCode, item.Code, item.Name,
+                item.SortOrder, item.IsActive, item.IsDefault, ZevId = (Guid?)null, item.CreatedUtc,
+                UpdatedUtc = (DateTimeOffset?)null, UpdatedByUserId = (Guid?)null }));
         });
 
         modelBuilder.Entity<AuditLog>(entity =>

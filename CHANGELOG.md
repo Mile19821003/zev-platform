@@ -2,6 +2,42 @@
 
 Sve značajne izmjene ZEV Platforme. Ranija historija (faze do 4) je u `CLOUD_HANDOFF_STATUS.md` i git logu.
 
+## [v2.9] - 2026-10-10
+
+### Dodano (Added)
+- Generički šifarnici: `LookupType` (šifra, naziv, opis, `IsSystem`) i `LookupItem` (šifra, naziv, redoslijed,
+  aktivna, zadana, opcionalno `ZevId` za stavku jednog ZEV-a).
+  - Početni sistemski šifarnici: vrste posebnih dijelova, kategorije rashoda, kategorije kvarova, prioriteti
+    održavanja, kategorije dokumenata, načini plaćanja, razlozi storna (31 stavka). Gdje u sistemu već postoji
+    vrijednost, šifra stavke je ista (`Apartment`, `Urgent`, `Minutes`, `Cash`, `Transfer`…), pa se forme kasnije
+    mogu direktno povezati.
+  - `GET /api/lookups/{typeCode}[?zevId=]` — svi prijavljeni: samo aktivne stavke po redoslijedu (platformske +
+    stavke tog ZEV-a; tuđi ZEV → 404).
+  - `GET /api/admin/lookups`, `POST /api/admin/lookups/{typeCode}/items`, `PUT /api/admin/lookups/items/{id}`,
+    `DELETE /api/admin/lookups/items/{id}` — samo sistemski administrator (ostali 403). Šifra se ne mijenja;
+    deaktivacija umjesto brisanja (DELETE na stavci sistemskog šifarnika → 409); jedna zadana stavka po šifarniku
+    (nova zadana uklanja prethodnu); neaktivna stavka ne može biti zadana; duplikat šifre → 409. Svaka izmjena
+    ide u `AuditLog` (`LookupItemCreated` / `Updated` / `Deleted`).
+- Web: Administracija → „Šifarnici“ (`LookupsPage.tsx`, logika u `lookupsUi.ts`): lijevo lista šifarnika s
+  brojačem (aktivne/ukupno) i pretragom bez obzira na dijakritiku, desno tabela stavki (Šifra, Naziv, Redoslijed,
+  Status, Akcije), modal za dodavanje i uređivanje s provjerom prije slanja, aktivacija/deaktivacija.
+  Kartica „Šifarnici“ u kategoriji Administracija i u „Brzi pristup“ na početnom ekranu; stavka u lijevom meniju.
+- Testovi: `LookupApiTests` (3), `SqlLookupTests` (seed i promjena zadane stavke na SQL Serveru),
+  `web/tests/lookups.test.mjs` (5); provjera u pregledniku (simulirani API) 16/16.
+
+### Baza / Migracije
+- `20261010205359_AddGenericLookupSystem`: tabele `LookupTypes` i `LookupItems` (jedinstvena šifra po šifarniku i
+  opsegu, filtrirani jedinstveni indeks za zadanu stavku, provjere), seed 7 šifarnika i 31 stavke.
+
+### Otvorene odluke (Open Decisions)
+- Postojeće forme (vrsta posebnog dijela, prioritet i kategorija kvara, kategorija rashoda, tip dokumenta, način
+  ručne uplate) još koriste dosadašnje fiksne vrijednosti; povezivanje s `GET /api/lookups/...` je sljedeći korak.
+  Za enum polja (npr. `PropertyUnitType`, `MaintenancePriority`) nova stavka u šifarniku traži i proširenje enuma
+  ili prelazak polja na šifru.
+- Upravljanje šifarnicima i stavke po ZEV-u za sada samo za sistemskog administratora (bez prava na nivou
+  organizacije/ZEV-a).
+- Novi šifarnici (tipovi) se dodaju samo migracijom; API ne kreira tipove.
+
 ## [v2.8] - 2026-10-10
 
 ### Dodano (Added)

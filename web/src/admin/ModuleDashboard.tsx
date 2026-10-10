@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { groupNavigation, NavGroupId, NavItem } from "../navigationModel.ts";
+import { featuredModules, groupNavigation, NavGroupId, NavItem } from "../navigationModel.ts";
 import { NavIcon } from "./WorkspaceNav";
 
 // Home grid: one large card per category; a category opens its module cards with a breadcrumb back.
@@ -8,6 +8,7 @@ export default function ModuleDashboard({ items, onSelect }: { items: NavItem[];
   const [category, setCategory] = useState<NavGroupId | null>(null);
   const groups = groupNavigation(items);
   const selected = groups.find((group) => group.id === category);
+  const featured = featuredModules(items);
 
   if (!selected) return <section className="module-dashboard" aria-label="Kontrolna ploča">
     <h2>Moduli</h2>
@@ -19,6 +20,10 @@ export default function ModuleDashboard({ items, onSelect }: { items: NavItem[];
         <span className="module-count">{group.items.length === 1 ? "1 modul" : `${group.items.length} modula`}:
           {" "}{group.items.map((module) => module.label).join(", ")}</span>
       </button>)}</div>}
+    {featured.length > 0 && <><h2 className="module-subheading">Brzi pristup</h2>
+      <div className="module-grid">{featured.map((module) => <button type="button" key={module.key} className="module-card"
+        onClick={() => onSelect(module.key)}><span className="module-icon"><NavIcon name={module.icon} size={28} /></span>
+        <strong>{module.label}</strong></button>)}</div></>}
   </section>;
 
   return <section className="module-dashboard" aria-label={`Kontrolna ploča · ${selected.label}`}>

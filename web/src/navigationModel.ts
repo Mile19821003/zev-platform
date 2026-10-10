@@ -5,7 +5,7 @@ export type NavItem = { key: string; label: string };
 export type NavGroupId = "finance" | "registry" | "community" | "admin";
 export type IconName = "home" | "finance" | "registry" | "community" | "admin" | "invoice" | "wallet" | "bank"
   | "transfer" | "receipt" | "chart" | "scale" | "building" | "door" | "person" | "deed" | "wrench" | "megaphone"
-  | "ballot" | "key" | "users" | "link" | "flow" | "organization" | "settings";
+  | "ballot" | "key" | "users" | "link" | "flow" | "organization" | "settings" | "list";
 export type NavModule = NavItem & { icon: IconName };
 export type NavGroup = { id: NavGroupId; label: string; icon: IconName; description: string; items: NavModule[] };
 
@@ -47,7 +47,18 @@ const modules: Record<string, { group: NavGroupId; icon: IconName; label?: strin
   organizations: { group: "admin", icon: "organization" },
   hodogram: { group: "admin", icon: "flow" },
   settings: { group: "admin", icon: "settings" },
+  lookups: { group: "admin", icon: "list" },
 };
+
+// Modules shown as their own card on the home grid as well (quick access), when the user may open them.
+export const featuredModuleKeys = ["lookups"];
+
+export function featuredModules(items: NavItem[]): NavModule[] {
+  return featuredModuleKeys.flatMap((key) => {
+    const item = items.find((entry) => entry.key === key);
+    return item ? [{ key: item.key, label: moduleLabel(item), icon: modules[key]?.icon ?? "admin" }] : [];
+  });
+}
 
 export function moduleLabel(item: NavItem): string {
   return modules[item.key]?.label ?? item.label;
@@ -115,4 +126,5 @@ export const iconPaths: Record<IconName, string> = {
   flow: "M4 4h6v5H4zM14 15h6v5h-6zM7 9v4h10v2",
   organization: "M9 3h6v5H9zM12 8v4M5 12h14M5 12v4M19 12v4M2 16h6v5H2zM16 16h6v5h-6z",
   settings: "M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0M14 4v4M8 10v4M16 16v4",
+  list: "M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01",
 };
