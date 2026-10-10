@@ -28,8 +28,11 @@ public static class PaymentSlipEndpoints
                 && item.FundId == charge.FundId && item.IsActive).OrderBy(item => item.Id)
                 .Select(item => new { item.AccountNumber, item.CurrencyCode }).FirstOrDefaultAsync(cancellationToken);
             if (account is null) return Results.Conflict();
+            // Credit corrections and storno are separate negative charges that reverse this one.
+            var reversalIds = await database.Charges.AsNoTracking().Where(item => item.ZevId == zevId
+                && item.ReversesChargeId == charge.Id).Select(item => item.Id).ToListAsync(cancellationToken);
             var balances = await FinancialReadModel.ChargeIdsAsync(database, zevId,
-                [charge.Id], null, cancellationToken);
+                [charge.Id, .. reversalIds], null, cancellationToken);
             if (balances.Count != 1 || balances[0].CurrencyCode != account.CurrencyCode)
                 return Results.Conflict(new { error = "Payment slip requires a verified charge currency." });
             var outstanding = balances[0].Open;

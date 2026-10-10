@@ -1785,6 +1785,7 @@ public sealed class TenantApiTests
         Guid invoiceId;
         Guid correctionInvoiceId;
         Guid correctionLineId;
+        Guid correctionChargeId;
         Guid unitId;
         Guid ownerPersonId;
         Guid administratorId;
@@ -1891,7 +1892,8 @@ public sealed class TenantApiTests
                     Reason = "Test denied" });
             await database.SaveChangesAsync();
             zevId = zev.Id; invoiceId = invoice.Id; correctionInvoiceId = correctionInvoice.Id;
-            correctionLineId = correctionLine.Id; unitId = unit.Id; ownerPersonId = person.Id;
+            correctionLineId = correctionLine.Id; correctionChargeId = correctionCharge.Id;
+            unitId = unit.Id; ownerPersonId = person.Id;
             administratorId = administrator.Id; managerId = manager.Id;
             ownerId = owner.Id; outsiderId = outsider.Id;
         }
@@ -1965,6 +1967,10 @@ public sealed class TenantApiTests
             Assert.Equal(40m, openItems.RootElement.GetProperty("items")[0]
                 .GetProperty("outstanding").GetDecimal());
         }
+        // The per-charge slip (owner web card and mobile app) must include the credit correction.
+        var correctionSlip = await client.GetByteArrayAsync(
+            $"/api/zevs/{zevId}/charges/{correctionChargeId}/payment-slip.pdf");
+        Assert.Contains("Iznos: 40,00 BAM", PdfText(correctionSlip));
         var beforeDocumentDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1);
         using (var beforeCorrection = System.Text.Json.JsonDocument.Parse(await client.GetStringAsync(
             $"/api/zevs/{zevId}/reports/open-items?asOf={beforeDocumentDate:yyyy-MM-dd}")))
@@ -2083,6 +2089,11 @@ public sealed class TenantApiTests
         Assert.Single(verifyDatabase.AuditLogs.Where(item => item.ZevId == zevId
             && item.Action == "Export" && item.EntityType == "AnnualReportXlsx"));
     }
+
+    // SimplePdfWriter stores each text line as a UTF-16BE hex string.
+    private static string PdfText(byte[] pdf) => string.Join("\n", System.Text.RegularExpressions.Regex
+        .Matches(System.Text.Encoding.Latin1.GetString(pdf), "<([0-9A-F]+)>\\s*Tj")
+        .Select(match => System.Text.Encoding.BigEndianUnicode.GetString(Convert.FromHexString(match.Groups[1].Value))));
 
     private sealed class TestFactory(bool historicalSelfAccess = false) : WebApplicationFactory<Program>
     {
