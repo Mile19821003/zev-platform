@@ -41,10 +41,26 @@ cloud okruženje su zaključeni.
 - **UI:** meni „Hodogram“ u sistemskoj administraciji (izbor organizacije) i u radnom prostoru administratora organizacije.
 - **Van opsega ove verzije:** globalni šabloni (bez organizacije) i vezivanje hodograma za pojedinačni ZEV.
 
+## Tehnički dug — Faza 1 (riješeno 10.10.2026.)
+
+- **Maskiranje `DbUpdateException`** u `ExpensePostingService` i `InvoiceLifecycleService`: uveden `Data/DbUpdateErrors.cs`
+  koji kao poslovni konflikt priznaje samo konkurentni upis (`DbUpdateConcurrencyException`, SQL 2601/2627, deadlock 1205 —
+  i kad ga `SqlServerExecutionStrategy` umota u `InvalidOperationException`). Ostale greške se propuštaju.
+  Usput ispravljena postojeća greška: istovremeno knjiženje istog rashoda završavalo je s 500 (umotani deadlock nije bio hvatan).
+- **Memorijski grant manager registry upita**: `Type` se čita kao `nvarchar(30)` i formatira nakon materijalizacije;
+  grant 65.208 KB → 10.336 KB, bez `PlanAffectingConvert`/`MemoryGrantWarning`, JSON odgovor nepromijenjen.
+
 ## Tehnički dug (evidentirano, nije rješavano)
 
-- `ExpensePostingService` i `InvoiceLifecycleService` hvataju svaki `DbUpdateException` i time mogu maskirati neočekivane SQL greške.
-- Manager registry upit (`ORDER BY Building.Name, Code`) dobija memorijski grant ~65 MB, a koristi ~2,5 MB (`CAST(Type AS nvarchar(max))` iz `Type.ToString()`).
+- **Široki `catch (DbUpdateException)` na još ~25 mjesta**: `ManagerRegistryWriteEndpoints` (10), `PaymentWorkflowService` (4),
+  `PaymentReconciliationEngine` (3), `OwnershipService` (2), `FinanceEndpoints` (2), te po jedno u `ExpenseEndpoints`,
+  `LegalEndpoints`, `MaintenanceEndpoints`, `PaymentEndpoints` i `VotingService`. Refaktorisati u sklopu redovnog održavanja
+  pomoću `DbUpdateErrors.IsConcurrentWriteConflict`; provjeriti i umotani deadlock (vidi gore) na mjestima sa serializable transakcijom.
+- **`UPDLOCK` za knjiženje rashoda**: `ExpensePostingService` čita rashod u serializable transakciji bez `UPDLOCK`, pa dva istovremena
+  knjiženja završavaju deadlockom koji se sada ispravno prepoznaje kao konflikt (409). Preventivno rješenje je zaključati red rashoda
+  pri čitanju (kao `InvoiceLifecycleService` sa `Zevs WITH (UPDLOCK, HOLDLOCK)`); ishod za korisnika ostaje 409, bez deadlocka na serveru.
+- Jednokratni spike (10,8–25 s) na prvom izvršavanju manager registry upita uočen u lokalnom mjerenju; uzrok neutvrđen
+  (potreban `VIEW SERVER STATE` za analizu čekanja).
 - SQL Server predlaže indeks `(ZevId, BuildingId, EntranceId, IsActive)` za registry count — nije opravdan (upit 4,7 ms).
 - SQL integration testovi bez `ZEV_TEST_SQL_CONNECTION` / `ZEV_BACKUP_DRILL_CONNECTION` završavaju odmah kao PASS; filter `Sql` uključuje i 4 testa bez baze. Rezultat „SQL x/x“ zato treba čitati uz napomenu koje varijable su bile postavljene.
 - `/health/ready` vraća 503 tek nakon ~17 s kad baza ne radi (podrazumijevani connection timeout 15 s).

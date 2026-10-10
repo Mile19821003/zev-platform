@@ -1141,6 +1141,57 @@ public sealed class TenantApiTests
     }
 
     [Fact]
+    public async Task ManagerRegistryUnitsKeepResponseShapeAndStringType()
+    {
+        using var factory = new TestFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost") });
+        Guid managerId;
+        Guid zevId;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var database = scope.ServiceProvider.GetRequiredService<ZevDbContext>();
+            database.Database.EnsureCreated();
+            var organization = new Organization { Code = "REG", Name = "Registry" };
+            var zev = new ZevEntity { Organization = organization, Code = "REG", Name = "Registry ZEV" };
+            var buildingB = new Building { OrganizationId = organization.Id, Zev = zev, Code = "B", Name = "Zgrada B" };
+            var buildingA = new Building { OrganizationId = organization.Id, Zev = zev, Code = "A", Name = "Zgrada A" };
+            var entranceB = new Entrance { OrganizationId = organization.Id, ZevId = zev.Id, Building = buildingB,
+                Code = "EB", Name = "Ulaz B" };
+            var entranceA = new Entrance { OrganizationId = organization.Id, ZevId = zev.Id, Building = buildingA,
+                Code = "EA", Name = "Ulaz A" };
+            var manager = new AppUser { Email = "registry-manager@example.invalid",
+                NormalizedEmail = "REGISTRY-MANAGER@EXAMPLE.INVALID", PasswordHash = "test-only" };
+            database.AddRange(organization, zev, buildingA, buildingB, entranceA, entranceB, manager,
+                new PropertyUnit { OrganizationId = organization.Id, ZevId = zev.Id, BuildingId = buildingB.Id,
+                    Entrance = entranceB, Code = "B-1", Type = PropertyUnitType.Apartment, AreaSquareMeters = 50m },
+                new PropertyUnit { OrganizationId = organization.Id, ZevId = zev.Id, BuildingId = buildingA.Id,
+                    Entrance = entranceA, Code = "A-2", Type = PropertyUnitType.Garage, AreaSquareMeters = 12m },
+                new Membership { User = manager, Organization = organization, Zev = zev, Role = MembershipRole.Manager });
+            await database.SaveChangesAsync();
+            managerId = manager.Id; zevId = zev.Id;
+        }
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer",
+            factory.Services.GetRequiredService<TokenService>().CreateAccessToken(new AppUser { Id = managerId }).AccessToken);
+
+        var response = await client.GetAsync($"/api/zevs/{zevId}/registry/units?pageSize=10");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var body = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal(2, body.RootElement.GetProperty("totalCount").GetInt32());
+        var items = body.RootElement.GetProperty("items").EnumerateArray().ToList();
+        Assert.Equal(new[] { "id", "zevId", "buildingId", "entranceId", "code", "type", "floor", "areaSquareMeters",
+            "coefficient", "registeredMembers", "isActive", "building", "entrance", "entranceName", "rowVersion" },
+            items[0].EnumerateObject().Select(property => property.Name));
+        Assert.Equal(new[] { "A-2", "B-1" }, items.Select(item => item.GetProperty("code").GetString()));
+        Assert.Equal(new[] { "Garage", "Apartment" }, items.Select(item => item.GetProperty("type").GetString()));
+        Assert.Equal(new[] { "Zgrada A", "Zgrada B" }, items.Select(item => item.GetProperty("building").GetString()));
+        Assert.All(items, item =>
+        {
+            Assert.Equal(item.GetProperty("entrance").GetString(), item.GetProperty("entranceName").GetString());
+            Assert.Equal(System.Text.Json.JsonValueKind.String, item.GetProperty("rowVersion").ValueKind);
+        });
+    }
+
+    [Fact]
     public async Task ManagerCannotExportOrPreviewAnotherZevsFinance()
     {
         using var factory = new TestFactory();

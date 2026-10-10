@@ -47,6 +47,51 @@ public sealed class ExpenseTests
     }
 
     [Fact]
+    public async Task PostingTreatsOnlyConcurrentWriteConflictsAsBusinessConflict()
+    {
+        var failures = new FailingSaveInterceptor();
+        var options = new DbContextOptionsBuilder<ZevDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .ConfigureWarnings(warnings => warnings.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+            .AddInterceptors(failures).Options;
+        await using var database = new ZevDbContext(options, new HttpContextAccessor());
+        var organization = new Organization { Code = "ORG", Name = "Organization" };
+        var zev = new global::Zev.Api.Domain.Zev { OrganizationId = organization.Id,
+            Organization = organization, Code = "ZEV", Name = "ZEV" };
+        var fund = new Fund { OrganizationId = organization.Id, ZevId = zev.Id, Kind = FundKind.Regular, Name = "Regular" };
+        var supplier = new Supplier { OrganizationId = organization.Id, Name = "Supplier" };
+        var expense = new Expense { OrganizationId = organization.Id, ZevId = zev.Id, FundId = fund.Id,
+            SupplierId = supplier.Id, InvoiceNumber = "INV-1", Category = "Repair",
+            InvoiceDate = new DateOnly(2026, 9, 1), Amount = 10m };
+        database.AddRange(organization, zev, fund, supplier, expense);
+        await database.SaveChangesAsync();
+        var service = new ExpensePostingService(database);
+
+        failures.Next = new DbUpdateConcurrencyException("Row changed by another writer.");
+        Assert.False(await service.PostAsync(zev.Id, expense.Id, CancellationToken.None));
+        database.ChangeTracker.Clear();
+
+        failures.Next = new DbUpdateException("Unexpected provider failure.", new InvalidOperationException("FK"));
+        var unexpected = await Assert.ThrowsAsync<DbUpdateException>(() =>
+            service.PostAsync(zev.Id, expense.Id, CancellationToken.None));
+        Assert.Equal("FK", unexpected.InnerException?.Message);
+        database.ChangeTracker.Clear();
+
+        failures.Next = new InvalidOperationException("Transient failure.",
+            new DbUpdateException("Timeout.", new TimeoutException()));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.PostAsync(zev.Id, expense.Id, CancellationToken.None));
+        database.ChangeTracker.Clear();
+
+        Assert.True(await service.PostAsync(zev.Id, expense.Id, CancellationToken.None));
+        database.ChangeTracker.Clear();
+        failures.Next = new DbUpdateException("Unexpected provider failure.", new InvalidOperationException("CHECK"));
+        await Assert.ThrowsAsync<DbUpdateException>(() => service.ReverseAsync(zev.Id, expense.Id, CancellationToken.None));
+        database.ChangeTracker.Clear();
+        failures.Next = new DbUpdateConcurrencyException("Row changed by another writer.");
+        Assert.False(await service.ReverseAsync(zev.Id, expense.Id, CancellationToken.None));
+        Assert.Single(database.FundTransactions);
+    }
+
+    [Fact]
     public void InterestRequiresConfiguredCoverageAndDayConvention()
     {
         var start = new DateOnly(2026, 1, 1);

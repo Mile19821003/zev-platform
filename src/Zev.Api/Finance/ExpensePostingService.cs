@@ -26,7 +26,7 @@ public sealed class ExpensePostingService(ZevDbContext database)
             await transaction.CommitAsync(cancellationToken);
             return true;
         }
-        catch (DbUpdateException) { return false; }
+        catch (Exception problem) when (DbUpdateErrors.IsConcurrentWriteConflict(problem)) { return false; }
     }
 
     public async Task<bool> ReverseAsync(Guid zevId, Guid expenseId, CancellationToken cancellationToken)
@@ -53,6 +53,6 @@ public sealed class ExpensePostingService(ZevDbContext database)
             await transaction.CommitAsync(cancellationToken);
             return true;
         }
-        catch (DbUpdateException) { return false; }
+        catch (Exception problem) when (DbUpdateErrors.IsConcurrentWriteConflict(problem)) { return false; }
     }
 }

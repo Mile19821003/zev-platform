@@ -106,6 +106,27 @@ public sealed class InvoiceLifecycleTests
     }
 
     [Fact]
+    public async Task StornoReportsConflictOnlyForConcurrentWritesAndPropagatesUnexpectedFailures()
+    {
+        var failures = new FailingSaveInterceptor();
+        using var fixture = new LifecycleFixture(0, failures: failures);
+
+        failures.Next = new DbUpdateException("Unexpected provider failure.", new InvalidOperationException("FK"));
+        var unexpected = await Assert.ThrowsAsync<DbUpdateException>(() => fixture.Service.StornoAsync(fixture.ZevId,
+            fixture.Invoice.Id, new StornoRequest(Guid.NewGuid(), "Pogreška", null), null, CancellationToken.None));
+        Assert.Equal("FK", unexpected.InnerException?.Message);
+        fixture.Database.ChangeTracker.Clear();
+
+        failures.Next = new DbUpdateConcurrencyException("Invoice changed by another writer.");
+        var conflict = await fixture.Service.StornoAsync(fixture.ZevId, fixture.Invoice.Id,
+            new StornoRequest(Guid.NewGuid(), "Pogreška", null), null, CancellationToken.None);
+        Assert.Null(conflict.Document);
+        Assert.Equal("Document was concurrently posted or conflicts with an existing document.", conflict.Error);
+        fixture.Database.ChangeTracker.Clear();
+        Assert.Empty(fixture.Database.FinancialDocuments);
+    }
+
+    [Fact]
     public async Task RepeatedStornoRequestIsIdempotentAndSecondRequestIsRejected()
     {
         using var fixture = new LifecycleFixture(25);
@@ -239,10 +260,12 @@ public sealed class InvoiceLifecycleTests
         public InvoiceLine? SecondLine { get; }
         public Charge OriginalCharge { get; }
 
-        public LifecycleFixture(int paid, decimal total = 100m, bool splitLines = false)
+        public LifecycleFixture(int paid, decimal total = 100m, bool splitLines = false,
+            FailingSaveInterceptor? failures = null)
         {
             var options = new DbContextOptionsBuilder<ZevDbContext>()
-                .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .AddInterceptors(failures ?? new FailingSaveInterceptor()).Options;
             Database = new ZevDbContext(options, new HttpContextAccessor());
             var organization = new Organization { Code = "LIFECYCLE", Name = "Lifecycle" };
             var zev = new global::Zev.Api.Domain.Zev { Organization = organization,

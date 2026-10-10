@@ -209,7 +209,7 @@ public sealed class InvoiceLifecycleService(ZevDbContext database, IInvoiceNumbe
             if (transaction is not null) await transaction.CommitAsync(cancellationToken);
             return new(document, null);
         }
-        catch (DbUpdateException)
+        catch (Exception problem) when (DbUpdateErrors.IsConcurrentWriteConflict(problem))
         {
             return new(null, "Document was concurrently posted or conflicts with an existing document.");
         }

@@ -22,13 +22,18 @@ public static class ManagerRegistryEndpoints
             if (isActive is bool active) query = query.Where(item => item.IsActive == active);
             if (!string.IsNullOrWhiteSpace(search)) query = query.Where(item => item.Code.Contains(search.Trim()));
             var totalCount = await query.CountAsync(cancellationToken);
-            var items = await query.OrderBy(item => item.Entrance.Building.Name).ThenBy(item => item.Code)
+            // Type is read as its stored nvarchar(30) column and formatted after materialization;
+            // Type.ToString() inside the query becomes CAST(... AS nvarchar(max)) and inflates the sort memory grant.
+            var rows = await query.OrderBy(item => item.Entrance.Building.Name).ThenBy(item => item.Code)
                 .Skip((currentPage - 1) * currentSize).Take(currentSize)
                 .Select(item => new { item.Id, item.ZevId, item.BuildingId, item.EntranceId, item.Code,
-                    type = item.Type.ToString(), item.Floor, item.AreaSquareMeters, item.Coefficient,
+                    item.Type, item.Floor, item.AreaSquareMeters, item.Coefficient,
                     item.RegisteredMembers, item.IsActive, building = item.Entrance.Building.Name,
-                    entrance = item.Entrance.Name, entranceName = item.Entrance.Name,
-                    rowVersion = Convert.ToBase64String(item.RowVersion) }).ToListAsync(cancellationToken);
+                    entrance = item.Entrance.Name, item.RowVersion }).ToListAsync(cancellationToken);
+            var items = rows.Select(item => new { item.Id, item.ZevId, item.BuildingId, item.EntranceId, item.Code,
+                type = item.Type.ToString(), item.Floor, item.AreaSquareMeters, item.Coefficient,
+                item.RegisteredMembers, item.IsActive, item.building, item.entrance, entranceName = item.entrance,
+                rowVersion = Convert.ToBase64String(item.RowVersion) });
             return Results.Ok(new { page = currentPage, pageSize = currentSize, totalCount, items });
         });
         group.MapGet("/people", async (Guid zevId, string? search, bool? isActive, int? page, int? pageSize,
