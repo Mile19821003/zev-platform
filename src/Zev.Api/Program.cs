@@ -274,6 +274,7 @@ api.MapManagerRegistryEndpoints();
 api.MapAccessOverrideEndpoints();
 api.MapSystemSettingsEndpoints();
 api.MapLookupEndpoints();
+api.MapModuleIconEndpoints();
 api.MapGet("/me", async (TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
 {
     if (access.CurrentUserId is not Guid userId)

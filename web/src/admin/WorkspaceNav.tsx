@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
-import { groupNavigation, groupOf, homeKey, iconPaths, IconName, loadSidebarState, NavItem, saveSidebarState,
+import { paletteIcon } from "../iconRegistry.ts";
+import { groupNavigation, groupOf, homeKey, iconFor, loadSidebarState, NavItem, saveSidebarState,
   SidebarState } from "../navigationModel.ts";
 
-export function NavIcon({ name, size = 20 }: { name: IconName; size?: number }) {
+// Draws a palette icon by key; unknown keys fall back to the list icon.
+export function NavIcon({ name, size = 20 }: { name: string; size?: number }) {
   return <svg className="nav-icon" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
     strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
-    <path d={iconPaths[name]} /></svg>;
+    <path d={paletteIcon(name).path} /></svg>;
 }
 
 function browserStorage(): Storage | undefined {
@@ -38,7 +40,7 @@ export default function WorkspaceNav({ label, items, active, onSelect, note, sta
       ? state.expanded.filter((item) => item !== id) : [...state.expanded, id] });
   }
 
-  const item = (key: string, text: string, icon: IconName) => <button type="button" key={key}
+  const item = (key: string, text: string, icon: string) => <button type="button" key={key}
     className={`nav-item${active === key ? " active" : ""}`} aria-current={active === key ? "page" : undefined}
     title={state.collapsed ? text : undefined} onClick={() => onSelect(key)}>
     <NavIcon name={icon} /><span className="nav-text">{text}</span></button>;
@@ -50,7 +52,7 @@ export default function WorkspaceNav({ label, items, active, onSelect, note, sta
         title={state.collapsed ? "Raširi meni" : "Sažmi meni"}
         onClick={() => onState({ ...state, collapsed: !state.collapsed })}>{state.collapsed ? "›" : "‹"}</button></div>
     <nav aria-label={label}>
-      {home && item(home.key, home.label, "home")}
+      {home && item(home.key, home.label, iconFor(homeKey))}
       {groups.map((group) => {
         const open = state.collapsed || state.expanded.includes(group.id);
         return <div className={`nav-group${open ? " open" : ""}`} key={group.id}>

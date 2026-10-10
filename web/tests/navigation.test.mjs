@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { groupNavigation, groupOf, iconPaths, loadSidebarState, moduleLabel, navGroups, saveSidebarState }
+import { isIconKey } from "../src/iconRegistry.ts";
+import { groupNavigation, groupOf, loadSidebarState, moduleLabel, navGroups, saveSidebarState }
   from "../src/navigationModel.ts";
 
 // Role workspace menu of a manager (already filtered by effective permissions in RoleWorkspace).
@@ -42,8 +43,8 @@ test("system administrator menu maps every item; unknown keys fall back to admin
   assert.equal(moduleLabel({ key: "accountLinks", label: "Pristupi i veze naloga" }), "Veze naloga");
   assert.equal(groupOf("nepoznato"), "admin");
   assert.equal(groupOf("overview"), null);
-  for (const group of groups) for (const item of group.items) assert.ok(iconPaths[item.icon], item.key);
-  for (const group of navGroups) assert.ok(iconPaths[group.icon]);
+  for (const group of groups) for (const item of group.items) assert.ok(isIconKey(item.icon), item.key);
+  for (const group of navGroups) assert.ok(isIconKey(group.icon));
 });
 
 test("sidebar state is remembered and survives broken storage", () => {

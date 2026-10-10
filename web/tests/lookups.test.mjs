@@ -53,6 +53,6 @@ test("Šifarnici belong to administration and get a quick-access card on the hom
   const menu = [{ key: "overview", label: "Pregled" }, { key: "lookups", label: "Šifarnici" }, { key: "users", label: "Korisnici" }];
   assert.deepEqual(groupNavigation(menu).map((group) => [group.id, group.items.map((entry) => entry.key)]),
     [["admin", ["lookups", "users"]]]);
-  assert.deepEqual(featuredModules(menu), [{ key: "lookups", label: "Šifarnici", icon: "list" }]);
+  assert.deepEqual(featuredModules(menu), [{ key: "lookups", label: "Šifarnici", icon: "barcode" }]);
   assert.deepEqual(featuredModules([{ key: "users", label: "Korisnici" }]), []);
 });

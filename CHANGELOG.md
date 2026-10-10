@@ -2,6 +2,34 @@
 
 Sve značajne izmjene ZEV Platforme. Ranija historija (faze do 4) je u `CLOUD_HANDOFF_STATUS.md` i git logu.
 
+## [v2.10] - 2026-10-10
+
+### Dodano (Added)
+- Paleta poslovnih ikonica (`web/src/iconRegistry.ts`): 40 ikonica (Lucide stil) s ključem, nazivom i oznakama za
+  pretragu — npr. `cog`, `sliders`, `barcode`, `clipboard-check`, `monitor`, `package`, `hard-hat`, `activity`,
+  `shield-check`, `bot`, `file-lock`, `building`, `door`, `key`, `banknote`, `credit-card`, `landmark`, `receipt`,
+  `chart-bar`, `chart-pie`, `workflow`, `palette`…
+- `ModuleIconSetting` (modul → ikonica): migracija `AddModuleIconSettings` sa 34 početna reda (početna, 4 kategorije
+  `category:*`, 29 modula oba radna prostora) — ikonice koje je navigacija koristila do sada.
+  - `GET /api/system/module-icons` — svi prijavljeni: mapa `moduleKey → iconKey` i paleta.
+  - `PUT /api/system/module-icons` — samo sistemski administrator (ostali 403): poznati moduli i ključevi iz palete
+    (inače 400), bez duplikata; upis u `AuditLog` (`ModuleIconsUpdated`, prije/poslije samo za stvarne izmjene).
+- Administracija → „Prikazi i ikone“ (`IconSettingsPage.tsx`): tabela Kategorija / Modul / Trenutna ikonica /
+  Promijeni za sve kategorije i module; **Icon Picker** s mrežom palete i pretragom (bez obzira na dijakritiku);
+  označene nesačuvane izmjene, „Odbaci“ i „Snimi izmjene“.
+- Nadzorna ploča (kartice kategorija i modula, „Brzi pristup“) i lijevi meni (rašireni i sažeti 56 px) crtaju
+  ikonicu iz podešavanja; nakon snimanja se odmah osvježavaju, bez F5 (dataSync ključ `module-icons`).
+- Testovi: `ModuleIconApiTests` (3, uključujući SQL seed), `web/tests/moduleIcons.test.mjs` (5: paleta i početne
+  ikonice identične backendu, pretraga pickera, renderovanje s podešenim ikonicama); provjera u pregledniku 13/13.
+
+### Baza / Migracije
+- `20261010211238_AddModuleIconSettings`: tabela `ModuleIconSettings` (jedinstven `ModuleKey`), seed 34 reda.
+
+### Otvorene odluke (Open Decisions)
+- Ikonice su globalne (cijela platforma); podešavanje po organizaciji ili korisniku nije predviđeno.
+- Novi modul u navigaciji treba i red u `ModuleIconSettings` (migracija); dok ga nema, koristi se zadana ikonica
+  iz `navigationModel.ts`.
+
 ## [v2.9] - 2026-10-10
 
 ### Dodano (Added)

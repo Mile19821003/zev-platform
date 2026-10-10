@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { featuredModules, groupNavigation, NavGroupId, NavItem } from "../navigationModel.ts";
+import { featuredModules, groupNavigation, homeKey, iconFor, NavGroupId, NavItem } from "../navigationModel.ts";
 import { NavIcon } from "./WorkspaceNav";
 
 // Home grid: one large card per category; a category opens its module cards with a breadcrumb back.
@@ -30,7 +30,7 @@ export default function ModuleDashboard({ items, onSelect }: { items: NavItem[];
     <nav className="breadcrumb" aria-label="Putanja">
       <button type="button" className="breadcrumb-back" onClick={() => setCategory(null)}>← Nazad</button>
       <button type="button" className="breadcrumb-home" onClick={() => setCategory(null)}>
-        <NavIcon name="home" size={16} /> Meni</button>
+        <NavIcon name={iconFor(homeKey)} size={16} /> Meni</button>
       <span aria-hidden="true">›</span><span aria-current="page">{selected.label}</span>
     </nav>
     <div className="module-grid">{selected.items.map((module) => <button type="button" key={module.key}

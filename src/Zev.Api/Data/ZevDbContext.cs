@@ -68,6 +68,7 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
     public DbSet<SystemSettings> SystemSettings => Set<SystemSettings>();
     public DbSet<LookupType> LookupTypes => Set<LookupType>();
     public DbSet<LookupItem> LookupItems => Set<LookupItem>();
+    public DbSet<ModuleIconSetting> ModuleIconSettings => Set<ModuleIconSetting>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -1183,6 +1184,18 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
             entity.HasData(LookupSeed.Items.Select(item => new { item.Id, item.LookupTypeCode, item.Code, item.Name,
                 item.SortOrder, item.IsActive, item.IsDefault, ZevId = (Guid?)null, item.CreatedUtc,
                 UpdatedUtc = (DateTimeOffset?)null, UpdatedByUserId = (Guid?)null }));
+        });
+
+        modelBuilder.Entity<ModuleIconSetting>(entity =>
+        {
+            entity.ToTable("ModuleIconSettings");
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.ModuleKey).HasMaxLength(60).IsRequired();
+            entity.Property(item => item.IconKey).HasMaxLength(40).IsRequired();
+            entity.HasIndex(item => item.ModuleKey).IsUnique();
+            entity.HasOne<AppUser>().WithMany().HasForeignKey(item => item.UpdatedByUserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasData(ModuleIcons.Seed.Select(item => new { item.Id, item.ModuleKey, item.IconKey, item.UpdatedAt,
+                UpdatedByUserId = (Guid?)null }));
         });
 
         modelBuilder.Entity<AuditLog>(entity =>

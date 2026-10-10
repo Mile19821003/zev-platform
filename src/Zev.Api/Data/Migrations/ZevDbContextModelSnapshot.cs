@@ -2218,6 +2218,278 @@ namespace Zev.Api.Data.Migrations
                     b.ToTable("Memberships", (string)null);
                 });
 
+            modelBuilder.Entity("Zev.Api.Domain.ModuleIconSetting", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("IconKey")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<string>("ModuleKey")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ModuleKey")
+                        .IsUnique();
+
+                    b.HasIndex("UpdatedByUserId");
+
+                    b.ToTable("ModuleIconSettings", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000001"),
+                            IconKey = "home",
+                            ModuleKey = "overview",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000002"),
+                            IconKey = "banknote",
+                            ModuleKey = "category:finance",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000003"),
+                            IconKey = "building-2",
+                            ModuleKey = "category:registry",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000004"),
+                            IconKey = "users",
+                            ModuleKey = "category:community",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000005"),
+                            IconKey = "shield-check",
+                            ModuleKey = "category:admin",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000006"),
+                            IconKey = "file-text",
+                            ModuleKey = "finance",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000007"),
+                            IconKey = "wallet",
+                            ModuleKey = "owner-finance",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000008"),
+                            IconKey = "landmark",
+                            ModuleKey = "payments",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000009"),
+                            IconKey = "arrow-left-right",
+                            ModuleKey = "bank-transactions",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000010"),
+                            IconKey = "receipt",
+                            ModuleKey = "expenses",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000011"),
+                            IconKey = "chart-bar",
+                            ModuleKey = "reports",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000012"),
+                            IconKey = "scale",
+                            ModuleKey = "legal",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000013"),
+                            IconKey = "building-2",
+                            ModuleKey = "zevs",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000014"),
+                            IconKey = "building",
+                            ModuleKey = "buildings",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000015"),
+                            IconKey = "door",
+                            ModuleKey = "entrances",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000016"),
+                            IconKey = "door",
+                            ModuleKey = "units",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000017"),
+                            IconKey = "user",
+                            ModuleKey = "people",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000018"),
+                            IconKey = "scroll",
+                            ModuleKey = "ownership",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000019"),
+                            IconKey = "building",
+                            ModuleKey = "registry",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000020"),
+                            IconKey = "wrench",
+                            ModuleKey = "maintenance",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000021"),
+                            IconKey = "wrench",
+                            ModuleKey = "representative-maintenance",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000022"),
+                            IconKey = "wrench",
+                            ModuleKey = "my-maintenance",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000023"),
+                            IconKey = "megaphone",
+                            ModuleKey = "community",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000024"),
+                            IconKey = "megaphone",
+                            ModuleKey = "representative-community",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000025"),
+                            IconKey = "vote",
+                            ModuleKey = "owner-community",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000026"),
+                            IconKey = "key",
+                            ModuleKey = "access",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000027"),
+                            IconKey = "key",
+                            ModuleKey = "memberships",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000028"),
+                            IconKey = "users",
+                            ModuleKey = "users",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000029"),
+                            IconKey = "link",
+                            ModuleKey = "accountLinks",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000030"),
+                            IconKey = "network",
+                            ModuleKey = "organizations",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000031"),
+                            IconKey = "workflow",
+                            ModuleKey = "hodogram",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000032"),
+                            IconKey = "sliders",
+                            ModuleKey = "settings",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000033"),
+                            IconKey = "barcode",
+                            ModuleKey = "lookups",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000034"),
+                            IconKey = "palette",
+                            ModuleKey = "icons",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        });
+                });
+
             modelBuilder.Entity("Zev.Api.Domain.Occupancy", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4043,6 +4315,14 @@ namespace Zev.Api.Data.Migrations
                     b.Navigation("User");
 
                     b.Navigation("Zev");
+                });
+
+            modelBuilder.Entity("Zev.Api.Domain.ModuleIconSetting", b =>
+                {
+                    b.HasOne("Zev.Api.Domain.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("Zev.Api.Domain.Occupancy", b =>

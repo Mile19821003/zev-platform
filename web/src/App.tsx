@@ -7,6 +7,8 @@ import { useChangeRevision } from "./useChangeRevision.ts";
 import { refreshVisibleData } from "./dataSync.ts";
 import { setDisplaySettings } from "./displaySettings.ts";
 import { useSystemSettings } from "./useSystemSettings.ts";
+import { useModuleIcons } from "./useModuleIcons.ts";
+import { setModuleIcons } from "./navigationModel.ts";
 
 type TokenResponse = { accessToken: string; expiresUtc: string };
 
@@ -31,6 +33,7 @@ export default function App() {
   const revision = useChangeRevision("organizations", "zevs", "access");
   const settings = useSystemSettings(token);
   setDisplaySettings(settings);
+  setModuleIcons(useModuleIcons(token));
 
   useEffect(() => {
     const refetch = () => { if (document.visibilityState === "visible") refreshVisibleData(); };

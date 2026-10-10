@@ -60,3 +60,11 @@
 .modal{width:min(480px,100%);max-height:calc(100vh - 32px);overflow:auto}.admin-form .checkbox{display:flex;align-items:center;gap:8px}
 .admin-form .checkbox input{width:auto;min-height:0}
 @media(max-width:900px){.lookups-layout{grid-template-columns:minmax(0,1fr)}}
+
+.icon-picker{width:min(720px,100%)}
+.icon-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;margin:14px 0}
+.icon-grid button{display:grid;justify-items:center;gap:6px;border:1px solid #e4e9ec;border-radius:10px;background:white;color:#17233a;padding:12px 6px;font-size:.75rem;min-width:0}
+.icon-grid button span{overflow-wrap:anywhere;text-align:center}
+.icon-grid button:hover{border-color:#8cc8ad;background:#f3f8f5}.icon-grid button.selected{border-color:#176d50;background:#e9f5ef;box-shadow:inset 0 0 0 1px #176d50}
+.icon-current{display:inline-flex;align-items:center;gap:8px;color:#176d50}.icon-current span{color:#17233a}.icon-current code{color:#7d8995;font-size:.75rem}
+tr.changed td{background:#fff8e6}.icon-changes{color:#8a5300;font-weight:700;font-size:.85rem;align-self:center}
