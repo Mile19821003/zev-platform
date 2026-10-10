@@ -2,6 +2,35 @@
 
 Sve značajne izmjene ZEV Platforme. Ranija historija (faze do 4) je u `CLOUD_HANDOFF_STATUS.md` i git logu.
 
+## [v2.6] - 2026-10-10
+
+### Dodano (Added)
+- Pravilo „403 ili 404“ za rute unutar ZEV-a, dokumentovano u `ACCESS_CONTROL_AND_PRIVACY.md`; helperi
+  `TenantAccess.RequirePermissionAsync` / `RequireAllPermissionsAsync` / `DeniedAsync`.
+- Web „Uplate i izvodi“ → „Bankovni račun“: dugme „Prikaži“ po računu i sekcija „Stanje računa i usklađivanje“
+  (`BankAccountBalanceCard.tsx`, logika u `bankBalanceUi.ts`): stanje banke iz izvoda (iskazani saldo i datum,
+  prilivi/odlivi, izvedeni saldo i neslaganje), stanje knjige fonda po izvoru, razlaganje razlike, status
+  (usklađeno / razlika objašnjena / prekid u nizu izvoda / neobjašnjena razlika) i upozorenja o prekidima.
+  Vidljivo uz `BankAccounts.View`.
+- Tabela „Uvezeni izvodi“: kolone Period, Početni saldo, Završni saldo; pregled izvoda prikazuje saldo i period.
+- Testovi: `AuthorizationPolicyTests` (2: 403 unutar ZEV-a, 404 za tuđi/nepostojeći ZEV),
+  `web/tests/bankBalance.test.mjs` (3).
+
+### Ispravljeno (Fixed)
+- Rute unutar ZEV-a vraćaju **403** kada korisnik može čitati ZEV, a nema traženo pravo (ranije uglavnom 404,
+  a samo 5 ruta ručnih uplata 403). Tuđi ili nepostojeći ZEV i dalje **404**. Pravo se provjerava prije
+  postojanja resursa. Obuhvaćeno ~110 provjera u 14 endpoint fajlova (plaćanja, finansije, računi, storno/korekcije,
+  rashodi, izvještaji, pravni predmeti, održavanje, registar, zajednica, glasanje, pristupi).
+- `/access/overrides` i `/revoke`: delegiranje grubog prava koje dodjeljivač nema vraća 403 (ranije 404).
+- Bez promjene (namjerno 404): tuđi lični resursi (kartica, račun, uplatnica, `PersonOnly`/`PropertyUnit`
+  dokument, fajl, tuđa prijava kvara), zaštićene mete upravljanja pravima, rute organizacije i `/api/me`.
+- Testovi koji su očekivali 404 za nedostajuće pravo ažurirani na 403 (12 provjera u 4 test fajla).
+
+### Otvorene odluke (Open Decisions)
+- Web `formatMoney` koristi `Intl` s lokalom `bs-BA`; preglednici bez tog lokala (npr. Edge u testnom okruženju)
+  prikazuju `145.00 KM` umjesto `145,00 KM`. Postojeće ponašanje cijelog weba — za frontend polish (ručno
+  formatiranje kao u mobilnoj aplikaciji).
+
 ## [v2.5] - 2026-10-10
 
 ### Dodano (Added)

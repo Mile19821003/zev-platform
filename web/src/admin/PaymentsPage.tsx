@@ -5,16 +5,20 @@ import { useChangeRevision } from "../useChangeRevision.ts";
 import { canShowPaymentAction } from "../permissionUi.ts";
 import PaymentWorkspace from "./PaymentWorkspace";
 import { formatMoney } from "../currency.ts";
+import { formatDate } from "../bankBalanceUi.ts";
+import BankAccountBalanceCard from "./BankAccountBalanceCard";
 
 type ZevOption = { id: string; code: string; name: string };
 type Fund = { id: string; name: string };
 type Account = { id: string; fundId: string; accountNumber: string; currencyCode: string };
 type QueueItem = { id: string; bookingDate: string; amount: number; reference: string | null;
   counterparty: string | null; description: string | null; status: string; currencyCode: string };
-type Statement = { id: string; originalFileName: string; format: string; transactionCount: number;
-  status: string; importedByUserId: string | null; importedUtc: string };
+type Statement = { id: string; bankAccountId: string; originalFileName: string; format: string; transactionCount: number;
+  status: string; importedByUserId: string | null; importedUtc: string; openingBalance: number | null;
+  closingBalance: number | null; statementFrom: string | null; statementTo: string | null };
 type Preview = { transactionCount: number; isDuplicate: boolean; truncated: boolean;
-  currencyCode: string;
+  currencyCode: string; openingBalance: number | null; closingBalance: number | null;
+  statementFrom: string | null; statementTo: string | null;
   items: { bookingDate: string; amount: number; reference: string | null; counterparty: string | null }[] };
 type Payment = { id: string; paidOn: string; amount: number; bankTransactionId: string | null;
   status: string; currencyCode: string };
@@ -30,6 +34,7 @@ export default function PaymentsPage({ token, zevs, permissions }: { token: stri
   const [bankName, setBankName] = useState("");
   const [currencyCode, setCurrencyCode] = useState("");
   const [bankAccountId, setBankAccountId] = useState("");
+  const [balanceAccountId, setBalanceAccountId] = useState("");
   const [format, setFormat] = useState("CSV");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -62,6 +67,8 @@ export default function PaymentsPage({ token, zevs, permissions }: { token: stri
       if (currentRequest === requestId.current) {
         if (page > 1 && queueData.items.length === 0) { setPage(Math.max(1, Math.ceil(queueData.totalCount / 20))); return; }
         setFunds(fundData); setAccounts(accountData); setQueue(queueData); setStatements(statementData);
+        setBalanceAccountId((current) => accountData.some((account) => account.id === current) ? current
+          : accountData[0]?.id ?? "");
         setPayments(paymentData); setError("");
       }
     } catch (problem) { if (currentRequest === requestId.current) setError(errorText(problem)); }
@@ -142,15 +149,18 @@ export default function PaymentsPage({ token, zevs, permissions }: { token: stri
   return <>
     <SectionTitle title="Uplate i izvodi" description="Uvoz, automatsko i ručno sravnjenje bankovnih transakcija." />
     {allowed("Payments.Export") && <button type="button" onClick={() => void exportPayments()}>Export uplata</button>}
-    <div className="panel finance-selector"><label>ZEV<select value={zevId} onChange={(event) => { setZevId(event.target.value); setPreview(null); setBankAccountId(""); }}>
+    <div className="panel finance-selector"><label>ZEV<select value={zevId} onChange={(event) => { setZevId(event.target.value); setPreview(null); setBankAccountId(""); setBalanceAccountId(""); }}>
       {zevs.map((zev) => <option key={zev.id} value={zev.id}>{zev.name} ({zev.code})</option>)}
     </select></label></div>
     {error && <p className="error" role="alert">{error}</p>}{notice && <p className="notice" role="status">{notice}</p>}
     {zevId && <><PaymentWorkspace zevId={zevId} token={token} permissions={permissions}
       funds={funds} accounts={accounts} /><div className="admin-layout">
       <section className="panel"><h2>Bankovni račun</h2>{allowed("BankAccounts.View") && <div className="table-scroll"><table>
-        <thead><tr><th>Broj računa</th><th>Valuta</th></tr></thead><tbody>{accounts.map((account) =>
-          <tr key={account.id}><td>{account.accountNumber}</td><td>{account.currencyCode}</td></tr>)}</tbody></table></div>}
+        <thead><tr><th>Broj računa</th><th>Valuta</th><th>Stanje</th></tr></thead><tbody>{accounts.map((account) =>
+          <tr key={account.id} className={balanceAccountId === account.id ? "selected" : ""}><td>{account.accountNumber}</td>
+            <td>{account.currencyCode}</td><td><button type="button" aria-pressed={balanceAccountId === account.id}
+              aria-label={`Prikaži stanje računa ${account.accountNumber}`}
+              onClick={() => setBalanceAccountId(account.id)}>Prikaži</button></td></tr>)}</tbody></table></div>}
         {allowed("BankAccounts.Create") && <form className="admin-form" onSubmit={createAccount}>
         <label>Fond<select required value={fundId} onChange={(event) => setFundId(event.target.value)}>
           <option value="">Odaberite</option>{funds.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}</select></label>
@@ -175,12 +185,19 @@ export default function PaymentsPage({ token, zevs, permissions }: { token: stri
           && <button type="submit" disabled={busy || !preview || preview.isDuplicate}>Uvezi izvod</button>}
         </form>
         {preview && <div><p role="status">{preview.transactionCount} transakcija · {preview.isDuplicate ? "Duplikat izvoda" : "Spremno za uvoz"}</p>
+          <p>{preview.openingBalance !== null || preview.closingBalance !== null
+            ? `Saldo izvoda: ${preview.openingBalance !== null ? formatMoney(preview.openingBalance, preview.currencyCode) : "—"} → ${preview.closingBalance !== null ? formatMoney(preview.closingBalance, preview.currencyCode) : "—"}`
+            : "Izvod ne sadrži saldo."}{preview.statementFrom && preview.statementTo
+            ? ` · period ${formatDate(preview.statementFrom)} – ${formatDate(preview.statementTo)}` : ""}</p>
           <div className="table-wrap"><table><thead><tr><th>Datum</th><th>Iznos</th><th>Poziv</th></tr></thead><tbody>
             {preview.items.map((item, index) => <tr key={index}><td>{item.bookingDate}</td>
               <td>{formatMoney(item.amount, preview.currencyCode)}</td>
               <td>{item.reference ?? "—"}</td></tr>)}</tbody></table></div>
           {preview.truncated && <p>Prikazano prvih 50 transakcija.</p>}</div>}</section>}
     </div>
+    {allowed("BankAccounts.View") && balanceAccountId && <section className="panel">
+      <h2>Stanje računa i usklađivanje · {accounts.find((account) => account.id === balanceAccountId)?.accountNumber}</h2>
+      <BankAccountBalanceCard token={token} zevId={zevId} accountId={balanceAccountId} revision={revision} /></section>}
     <section className="panel table-panel"><h2>Povrati za ručnu potvrdu</h2>
       <div className="table-scroll"><table><thead><tr><th>Datum</th><th>Iznos</th><th>Poziv</th><th>Uplatilac</th><th>Status</th><th>Radnja</th></tr></thead>
         <tbody>{queue.items.map((item) => <tr key={item.id}><td>{item.bookingDate}</td>
@@ -202,10 +219,14 @@ export default function PaymentsPage({ token, zevs, permissions }: { token: stri
         {busy ? "Knjiženje u toku..." : "Potvrdi puni povrat"}</button>
     </section>}
     <section className="panel table-panel"><h2>Uvezeni izvodi</h2>
-      <div className="table-scroll"><table><thead><tr><th>Datoteka</th><th>Format</th><th>Transakcije</th><th>Status</th><th>Datum</th><th>Importer ID</th></tr></thead>
-        <tbody>{statements.items.map((item) => <tr key={item.id}><td>{item.originalFileName}</td><td>{item.format}</td>
+      <div className="table-scroll"><table><thead><tr><th>Datoteka</th><th>Format</th><th>Period</th><th>Početni saldo</th><th>Završni saldo</th><th>Transakcije</th><th>Status</th><th>Datum</th><th>Importer ID</th></tr></thead>
+        <tbody>{statements.items.map((item) => { const currency = accounts.find((account) => account.id === item.bankAccountId)?.currencyCode ?? "BAM";
+          return <tr key={item.id}><td>{item.originalFileName}</td><td>{item.format}</td>
+          <td>{item.statementFrom && item.statementTo ? `${formatDate(item.statementFrom)} – ${formatDate(item.statementTo)}` : "—"}</td>
+          <td>{item.openingBalance !== null ? formatMoney(item.openingBalance, currency) : "—"}</td>
+          <td>{item.closingBalance !== null ? formatMoney(item.closingBalance, currency) : "—"}</td>
           <td>{item.transactionCount}</td><td>{item.status}</td><td>{item.importedUtc}</td>
-          <td>{item.importedByUserId ?? "—"}</td></tr>)}</tbody></table></div>
+          <td>{item.importedByUserId ?? "—"}</td></tr>; })}</tbody></table></div>
     </section>
     </>}
   </>;
