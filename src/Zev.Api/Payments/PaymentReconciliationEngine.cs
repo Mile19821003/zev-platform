@@ -193,14 +193,19 @@ public sealed class PaymentReconciliationEngine(ZevDbContext database, IEnumerab
         if (parser is null) return (null, null, "Unsupported statement format.");
         try
         {
-            var decoded = new System.Text.UTF8Encoding(false, true).GetString(content);
+            var decoded = StatementText.Decode(content);
             var rows = parser.Parse(decoded);
             if (rows.Count is 0 or > 10000 || rows.Any(item => item.Amount == 0m || item.Reference?.Length > 120
                 || item.Counterparty?.Length > 250 || item.Description?.Length > 500))
                 return (null, null, "Invalid statement rows.");
             return (rows, parser, null);
         }
-        catch (Exception problem) when (problem is FormatException or XmlException or ArgumentException)
+        catch (FormatException problem)
+        {
+            // Parser messages name the row and the rejected value, which is what the importer needs to fix the file.
+            return (null, null, $"Statement could not be parsed: {problem.Message}");
+        }
+        catch (Exception problem) when (problem is XmlException or ArgumentException)
         {
             return (null, null, "Statement could not be parsed.");
         }

@@ -88,8 +88,14 @@ public static class VotingEndpoints
                 || access.CurrentUserId is not Guid userId) return Results.NotFound();
             if (!Enum.TryParse<VoteChoice>(request.Choice, true, out var choice) || !Enum.IsDefined(choice))
                 return Results.BadRequest();
-            return await service.CastAsync(zevId, ballotId, request.PropertyUnitId, userId, choice, cancellationToken)
-                ? Results.Ok(new { status = "Recorded" }) : Results.Conflict();
+            return await service.CastVoteAsync(zevId, ballotId, request.PropertyUnitId, userId, choice, cancellationToken) switch
+            {
+                VoteResult.Recorded => Results.Ok(new { status = "Recorded" }),
+                // Ballot or unit outside the caller's scope: 404, as everywhere else for resource isolation.
+                VoteResult.BallotNotFound or VoteResult.NotEligible => Results.NotFound(),
+                VoteResult.AlreadyVoted => Results.Conflict(new { error = "Za ovu jedinicu je već glasano." }),
+                _ => Results.Conflict(new { error = "Glasanje nije otvoreno." })
+            };
         });
 
         group.MapPost("/{ballotId:guid}/close", async (Guid zevId, Guid ballotId, TenantAccess access,

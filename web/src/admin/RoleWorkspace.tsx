@@ -64,7 +64,13 @@ export default function RoleWorkspace({ token, profile, zevs, onLogout, onProfil
   if (hasRepresentativeCommunity) navigation.push({ key: "representative-community", label: "Oglasna tabla" });
   if (hasOwner || sharedOnly) navigation.push({ key: "owner-community", label: "Dokumenti i glasanje" });
   if (hasOwnerFinance) navigation.splice(1, 0, { key: "owner-finance", label: "Moj portal" });
-  if (administeredOrganizations.length > 0) navigation.push({ key: "hodogram", label: "Hodogram" });
+  // Building representatives see their organization's hodograms read-only; administration wins if both apply.
+  const representedOrganizations = [...new Set(profile.memberships.filter((item) => item.role === "BuildingRepresentative"
+    && item.zevId).map((item) => item.organizationId))]
+    .filter((id) => !administeredOrganizations.some((item) => item.id === id))
+    .map((id) => ({ id, name: zevs.find((zev) => zev.organizationId === id)?.organizationName ?? "Organizacija", readOnly: true }));
+  const hodogramOrganizations = [...administeredOrganizations, ...representedOrganizations];
+  if (hodogramOrganizations.length > 0) navigation.push({ key: "hodogram", label: "Hodogram" });
 
   useEffect(() => {
     let current = true;
@@ -133,6 +139,6 @@ export default function RoleWorkspace({ token, profile, zevs, onLogout, onProfil
     {active === "owner-finance" && <OwnerFinancePage token={token} zevs={ownerFinanceZevs} />}
     {active === "registry" && <ManagerRegistryPage key={activeZev?.id} token={token} zevs={managerZevs} permissions={activeZev?.permissions} />}
     {active === "access" && activeZev && <ZevPermissionPage key={activeZev.id} token={token} zevId={activeZev.id} zevs={zevs} />}
-    {active === "hodogram" && <HodogramPage token={token} organizations={administeredOrganizations} />}
+    {active === "hodogram" && <HodogramPage token={token} organizations={hodogramOrganizations} />}
   </main></div></div>;
 }

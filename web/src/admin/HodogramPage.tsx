@@ -5,7 +5,7 @@ import { draftFromDetail, draftIssues, HodogramDetail, HodogramStep, HodogramSum
 import { Lookup, SectionTitle, Status } from "./shared";
 import "../hodogram.css";
 
-type OrganizationOption = { id: string; name: string };
+type OrganizationOption = { id: string; name: string; readOnly?: boolean };
 type StepEdit = { id: string; name: string; description: string; phaseId: string; sortOrder: string };
 
 export default function HodogramPage({ token, organizations }: {
@@ -158,6 +158,9 @@ export default function HodogramPage({ token, organizations }: {
 
   const issues = detail ? { ...draftIssues(detail, draft), ...serverIssues } : {};
   const changed = detail ? isDraftChanged(detail, draft) : false;
+  // Building representatives may view their organization's processes but not change them.
+  const readOnly = organizations?.find((item) => item.id === organizationId)?.readOnly ?? false;
+  const extraColumns = readOnly ? 1 : 2;
   const stepCount = detail?.phases.reduce((total, phase) => total + phase.steps.length, 0) ?? 0;
 
   return <div className="hodogram-page">
@@ -179,15 +182,17 @@ export default function HodogramPage({ token, organizations }: {
           <strong>{item.name}</strong><span>{item.phaseCount} faza · {item.stepCount} koraka</span>
           <Status active={item.isActive} /></button>)}
           {items.length === 0 && <p className="empty-inline">Nema hodograma.</p>}</div>
-        <form className="admin-form" onSubmit={create}>
+        {!readOnly && <form className="admin-form" onSubmit={create}>
           <h3>Novi hodogram</h3>
           <label>Naziv<input required maxLength={200} value={newName} onChange={(event) => setNewName(event.target.value)} /></label>
           <label>Opis<input maxLength={2000} value={newDescription} onChange={(event) => setNewDescription(event.target.value)} /></label>
           <button type="submit" disabled={busy}>Kreiraj</button>
-        </form>
+        </form>}
       </section>
       {detail && <section className="panel hodogram-detail">
-        <form className="hodogram-header" onSubmit={saveHeader}>
+        {readOnly ? <div className="hodogram-header"><h2>{detail.name}</h2>{detail.description && <p>{detail.description}</p>}
+          <span className="notice">Pregled (samo čitanje)</span></div>
+        : <form className="hodogram-header" onSubmit={saveHeader}>
           <label>Naziv<input required maxLength={200} value={header.name}
             onChange={(event) => setHeader({ ...header, name: event.target.value })} /></label>
           <label>Opis<input maxLength={2000} value={header.description}
@@ -195,16 +200,16 @@ export default function HodogramPage({ token, organizations }: {
           <label className="checkbox"><input type="checkbox" checked={header.isActive}
             onChange={(event) => setHeader({ ...header, isActive: event.target.checked })} />Aktivan</label>
           <button type="submit" disabled={busy}>Sačuvaj</button>
-        </form>
+        </form>}
         <p className={detail.isValid ? "notice" : "field-error"}>
           {detail.isValid ? "Sačuvana matrica je ispravna." : `Sačuvana matrica ima ${detail.issues.length} problema.`}
           {" "}Pravilo: svaki korak ima najmanje jedan R i tačno jedan A; C i I su opcionalni.</p>
         <p className="hodogram-legend">{raciValues.map((value) => <span key={value}>{raciLabels[value]}</span>)}</p>
         <div className="table-scroll hodogram-matrix"><table>
           <thead><tr><th>Faza / korak</th>{detail.roles.map((role) => <th key={role}>{roleLabel(role)}</th>)}
-            <th>Akcije</th></tr></thead>
+            {!readOnly && <th>Akcije</th>}</tr></thead>
           <tbody>{detail.phases.map((phase) => <Fragment key={phase.id}>
-            <tr className="phase-row"><td colSpan={detail.roles.length + 2}>
+            <tr className="phase-row"><td colSpan={detail.roles.length + extraColumns}>
               {phaseEdit?.id === phase.id
                 ? <form className="inline-form" onSubmit={savePhase}>
                   <input aria-label="Naziv faze" required maxLength={200} value={phaseEdit.name}
@@ -213,25 +218,25 @@ export default function HodogramPage({ token, organizations }: {
                     onChange={(event) => setPhaseEdit({ ...phaseEdit, sortOrder: event.target.value })} />
                   <button type="submit" disabled={busy}>Sačuvaj</button>
                   <button type="button" onClick={() => setPhaseEdit(null)}>Odustani</button></form>
-                : <div className="phase-title"><strong>{phase.name}</strong><span className="actions">
+                : <div className="phase-title"><strong>{phase.name}</strong>{!readOnly && <span className="actions">
                   <button type="button" onClick={() => setPhaseEdit({ id: phase.id, name: phase.name,
                     sortOrder: String(phase.sortOrder) })}>Uredi</button>
                   <button type="button" disabled={busy} onClick={() => deletePhase(phase.id, phase.name)}>Ukloni</button>
-                </span></div>}
+                </span>}</div>}
             </td></tr>
             {phase.steps.map((step) => <Fragment key={step.id}><tr className={issues[step.id] ? "invalid-row" : ""}>
               <th scope="row">{step.name}{step.description && <small>{step.description}</small>}
                 {issues[step.id] && <small className="row-issues" role="status">{issues[step.id].join(" ")}</small>}</th>
               {detail.roles.map((role) => <td key={role}>
                 <select aria-label={`${step.name} – ${roleLabel(role)}`} className={`raci-cell raci-${draft[step.id]?.[role] || "none"}`}
-                  value={draft[step.id]?.[role] ?? ""} disabled={busy}
+                  value={draft[step.id]?.[role] ?? ""} disabled={busy || readOnly}
                   onChange={(event) => setCell(step.id, role, event.target.value as RaciValue | "")}>
                   <option value="">–</option>{raciValues.map((value) => <option key={value} value={value}>{value}</option>)}
                 </select></td>)}
-              <td><span className="actions">
+              {!readOnly && <td><span className="actions">
                 <button type="button" onClick={() => setStepEdit({ id: step.id, name: step.name,
                   description: step.description ?? "", phaseId: phase.id, sortOrder: String(step.sortOrder) })}>Uredi</button>
-                <button type="button" disabled={busy} onClick={() => deleteStep(step)}>Ukloni</button></span></td>
+                <button type="button" disabled={busy} onClick={() => deleteStep(step)}>Ukloni</button></span></td>}
             </tr>
             {stepEdit?.id === step.id && <tr><td colSpan={detail.roles.length + 2}>
               <form className="inline-form" onSubmit={saveStep}>
@@ -247,16 +252,16 @@ export default function HodogramPage({ token, organizations }: {
                 <button type="submit" disabled={busy}>Sačuvaj</button>
                 <button type="button" onClick={() => setStepEdit(null)}>Odustani</button></form></td></tr>}
             </Fragment>)}
-            <tr><td colSpan={detail.roles.length + 2}>
+            {!readOnly && <tr><td colSpan={detail.roles.length + 2}>
               <form className="inline-form" onSubmit={(event) => addStep(event, phase.id)}>
                 <input aria-label={`Novi korak u fazi ${phase.name}`} required maxLength={300} placeholder="Novi korak / operacija"
                   value={stepNames[phase.id] ?? ""}
                   onChange={(event) => setStepNames((current) => ({ ...current, [phase.id]: event.target.value }))} />
-                <button type="submit" disabled={busy}>Dodaj korak</button></form></td></tr>
+                <button type="submit" disabled={busy}>Dodaj korak</button></form></td></tr>}
           </Fragment>)}</tbody>
         </table></div>
-        {detail.phases.length === 0 && <p className="empty-inline">Dodajte prvu fazu procesa.</p>}
-        <form className="inline-form" onSubmit={addPhase}>
+        {detail.phases.length === 0 && <p className="empty-inline">{readOnly ? "Hodogram još nema faza." : "Dodajte prvu fazu procesa."}</p>}
+        {!readOnly && <><form className="inline-form" onSubmit={addPhase}>
           <input aria-label="Nova faza" required maxLength={200} placeholder="Nova faza" value={phaseName}
             onChange={(event) => setPhaseName(event.target.value)} />
           <button type="submit" disabled={busy}>Dodaj fazu</button></form>
@@ -265,7 +270,7 @@ export default function HodogramPage({ token, organizations }: {
             onClick={saveMatrix}>Sačuvaj RACI matricu</button>
           <button type="button" className="secondary" disabled={busy || !changed}
             onClick={() => setDraft(draftFromDetail(detail))}>Poništi izmjene</button>
-        </div>
+        </div></>}
       </section>}
     </div>}
   </div>;

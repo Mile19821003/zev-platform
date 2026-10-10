@@ -18,7 +18,7 @@ public static class HodogramEndpoints
         group.MapGet("", async (Guid organizationId, TenantAccess access, ZevDbContext database,
             CancellationToken cancellationToken) =>
         {
-            if (!await access.CanReadOrganizationAsync(organizationId, cancellationToken)) return Results.NotFound();
+            if (!await access.CanViewOrganizationProcessesAsync(organizationId, cancellationToken)) return Results.NotFound();
             var items = await database.Hodograms.AsNoTracking().Where(item => item.OrganizationId == organizationId)
                 .OrderByDescending(item => item.IsActive).ThenBy(item => item.Name)
                 .Select(item => new { item.Id, item.Name, item.Description, item.IsActive, item.Revision, item.UpdatedUtc,
@@ -49,7 +49,7 @@ public static class HodogramEndpoints
         group.MapGet("/{hodogramId:guid}", async (Guid organizationId, Guid hodogramId, TenantAccess access,
             HodogramService service, CancellationToken cancellationToken) =>
         {
-            if (!await access.CanReadOrganizationAsync(organizationId, cancellationToken)) return Results.NotFound();
+            if (!await access.CanViewOrganizationProcessesAsync(organizationId, cancellationToken)) return Results.NotFound();
             var detail = await service.GetAsync(organizationId, hodogramId, cancellationToken);
             return detail is null ? Results.NotFound() : Results.Ok(detail);
         });

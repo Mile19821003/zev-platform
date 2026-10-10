@@ -135,7 +135,7 @@ public sealed class UatFixesTests
         var titles = seen.GetProperty("items").EnumerateArray().Select(item => item.GetProperty("title").GetString()).ToList();
         Assert.Equal(new[] { "Krečenje" }, titles);
         Assert.NotEqual(draft.GetProperty("id").GetGuid(), seen.GetProperty("items")[0].GetProperty("id").GetGuid());
-        Assert.Equal(HttpStatusCode.Conflict, (await representative.PostAsJsonAsync(
+        Assert.Equal(HttpStatusCode.NotFound, (await representative.PostAsJsonAsync(
             $"{root}/ballots/{open.GetProperty("id").GetGuid()}/votes", new { propertyUnitId = seed.UnitId, choice = "Yes" })).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await owner.PostAsJsonAsync(
             $"{root}/ballots/{open.GetProperty("id").GetGuid()}/votes", new { propertyUnitId = seed.UnitId, choice = "Yes" })).StatusCode);
@@ -150,6 +150,59 @@ public sealed class UatFixesTests
             Ticket(null))).StatusCode);
         Assert.Equal(HttpStatusCode.Created, (await owner.PostAsJsonAsync($"{root}/maintenance/tickets",
             Ticket(seed.UnitId))).StatusCode);
+    }
+
+    [Fact]
+    public async Task VoteOutcomesUseNotFoundForForeignUnitsAndConflictForStateProblems()
+    {
+        using var factory = new TestFactory();
+        var seed = await SeedAsync(factory);
+        using var manager = Client(factory, seed.ManagerId);
+        using var owner = Client(factory, seed.OwnerUserId);
+        var root = $"/api/zevs/{seed.ZevId}";
+        var draft = await ReadAsync(await manager.PostAsJsonAsync($"{root}/ballots", Ballot("Nacrt")), HttpStatusCode.Created);
+        var open = await ReadAsync(await manager.PostAsJsonAsync($"{root}/ballots", Ballot("Otvoreno")), HttpStatusCode.Created);
+        var openId = open.GetProperty("id").GetGuid();
+        Assert.Equal(HttpStatusCode.OK, (await manager.PostAsync($"{root}/ballots/{openId}/open", null)).StatusCode);
+        object Vote(Guid unit) => new { propertyUnitId = unit, choice = "Yes" };
+
+        Assert.Equal(HttpStatusCode.NotFound, (await owner.PostAsJsonAsync($"{root}/ballots/{openId}/votes", Vote(Guid.NewGuid()))).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await owner.PostAsJsonAsync($"{root}/ballots/{Guid.NewGuid()}/votes", Vote(seed.UnitId))).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await owner.PostAsJsonAsync(
+            $"{root}/ballots/{draft.GetProperty("id").GetGuid()}/votes", Vote(seed.UnitId))).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await owner.PostAsJsonAsync($"{root}/ballots/{openId}/votes", Vote(seed.UnitId))).StatusCode);
+        var again = await owner.PostAsJsonAsync($"{root}/ballots/{openId}/votes", Vote(seed.UnitId));
+        Assert.Equal(HttpStatusCode.Conflict, again.StatusCode);
+        Assert.Contains("već glasano", await again.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task RepresentativeReadsOrganizationHodogramsButCannotChangeThem()
+    {
+        using var factory = new TestFactory();
+        var seed = await SeedAsync(factory);
+        using var orgAdmin = Client(factory, seed.OrgAdminId);
+        using var representative = Client(factory, seed.RepresentativeId);
+        using var manager = Client(factory, seed.ManagerId);
+        var root = $"/api/organizations/{seed.OrganizationId}/hodograms";
+        var created = await ReadAsync(await orgAdmin.PostAsJsonAsync(root, new { name = "Godišnji ciklus" }), HttpStatusCode.Created);
+        var id = created.GetProperty("id").GetGuid();
+        var revision = created.GetProperty("revision").GetInt32();
+
+        // The UI names the organization from the representative's ZEV list (no organization endpoint access).
+        var zevs = await ReadAsync(await representative.GetAsync("/api/me/zevs"), HttpStatusCode.OK);
+        Assert.Equal("UAT", zevs.GetProperty("items")[0].GetProperty("organizationName").GetString());
+        var list = await ReadAsync(await representative.GetAsync(root), HttpStatusCode.OK);
+        Assert.Equal("Godišnji ciklus", Assert.Single(list.EnumerateArray()).GetProperty("name").GetString());
+        Assert.Equal(HttpStatusCode.OK, (await representative.GetAsync($"{root}/{id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await representative.PostAsJsonAsync(root, new { name = "Novi" })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await representative.PostAsJsonAsync($"{root}/{id}/phases",
+            new { name = "Faza", revision })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await representative.PutAsJsonAsync($"{root}/{id}/matrix",
+            new { revision, cells = Array.Empty<object>() })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await representative.GetAsync($"/api/organizations/{Guid.NewGuid()}/hodograms")).StatusCode);
+        // Unchanged: a ZEV manager without the organization role still has no hodogram access.
+        Assert.Equal(HttpStatusCode.NotFound, (await manager.GetAsync(root)).StatusCode);
     }
 
     private static object Ballot(string title) => new { title, question = "?", kind = "Survey", mode = "OneUnitOneVote",
@@ -185,7 +238,7 @@ public sealed class UatFixesTests
     }
 
     private sealed record Seed(Guid ZevId, Guid FundId, Guid UnitId, Guid ManagerId, Guid AccountantId,
-        Guid RepresentativeId, Guid OwnerUserId);
+        Guid RepresentativeId, Guid OwnerUserId, Guid OrganizationId, Guid OrgAdminId);
 
     private static async Task<Seed> SeedAsync(TestFactory factory)
     {
@@ -209,8 +262,12 @@ public sealed class UatFixesTests
             new Membership { User = manager, Organization = organization, Zev = zev, Role = MembershipRole.Manager },
             new Membership { User = accountant, Organization = organization, Zev = zev, Role = MembershipRole.Accountant },
             new Membership { User = representative, Organization = organization, Zev = zev, Role = MembershipRole.BuildingRepresentative });
+        var orgAdmin = User("orgadmin");
+        database.AddRange(orgAdmin, new Membership { User = orgAdmin, Organization = organization,
+            Role = MembershipRole.OrganizationAdministrator });
         await database.SaveChangesAsync();
-        return new(zev.Id, fund.Id, unit.Id, manager.Id, accountant.Id, representative.Id, ownerUser.Id);
+        return new(zev.Id, fund.Id, unit.Id, manager.Id, accountant.Id, representative.Id, ownerUser.Id,
+            organization.Id, orgAdmin.Id);
     }
 
     private sealed class TestFactory : WebApplicationFactory<Program>

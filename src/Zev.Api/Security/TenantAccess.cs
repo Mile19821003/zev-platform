@@ -24,6 +24,21 @@ public sealed class TenantAccess(ZevDbContext database, IHttpContextAccessor htt
             cancellationToken);
     }
 
+    // Read-only access to organization processes (hodogram/RACI): organization readers, plus building
+    // representatives of a ZEV in that organization they can currently read.
+    public async Task<bool> CanViewOrganizationProcessesAsync(Guid organizationId, CancellationToken cancellationToken)
+    {
+        if (await CanReadOrganizationAsync(organizationId, cancellationToken)) return true;
+        if (CurrentUserId is not Guid userId) return false;
+        var zevIds = await database.Memberships.AsNoTracking().Where(item => item.UserId == userId && item.IsActive
+                && item.OrganizationId == organizationId && item.Role == MembershipRole.BuildingRepresentative
+                && item.ZevId != null)
+            .Select(item => item.ZevId!.Value).Distinct().ToListAsync(cancellationToken);
+        foreach (var zevId in zevIds)
+            if (await CanReadZevAsync(zevId, cancellationToken)) return true;
+        return false;
+    }
+
     public async Task<bool> CanReadZevAsync(Guid zevId, CancellationToken cancellationToken) =>
         CurrentUserId is Guid userId && (await effectiveAccess.GetEffectiveZevAccess(userId, zevId, cancellationToken)).CanRead;
 

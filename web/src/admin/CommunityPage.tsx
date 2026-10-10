@@ -1,6 +1,8 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { callApi, errorText, Page } from "../api";
 import { Pager, SectionTitle } from "./shared";
+import { announcementScopeLabels, ballotKindLabels, ballotModeLabels, ballotStatusLabels, documentTypeLabels, label,
+  membershipRoleLabels, visibilityLabels } from "../uiLabels.ts";
 import { useChangeRevision } from "../useChangeRevision.ts";
 
 type ZevOption = { id: string; code: string; name: string };
@@ -137,7 +139,7 @@ export default function CommunityPage({ token, zevs, role, permissions }: {
   }
 
   return <>
-    <SectionTitle title="Zajednica" description="Oglasna tabla, dokumenti, ankete i formalna glasanja." />
+    <SectionTitle eyebrow={role === "owner" ? null : undefined} title="Zajednica" description="Oglasna tabla, dokumenti, ankete i formalna glasanja." />
     <div className="panel finance-selector"><label>ZEV<select value={zevId} onChange={(event) => setZevId(event.target.value)}>
       {zevs.map((zev) => <option key={zev.id} value={zev.id}>{zev.name} ({zev.code})</option>)}
     </select></label></div>
@@ -152,7 +154,7 @@ export default function CommunityPage({ token, zevs, role, permissions }: {
         {(scope === "Building" || scope === "Entrance") && <label>ID zgrade<input required value={buildingId} onChange={(event) => setBuildingId(event.target.value)} /></label>}
         {scope === "Entrance" && <label>ID ulaza<input required value={entranceId} onChange={(event) => setEntranceId(event.target.value)} /></label>}
         {scope === "Role" && <label>Uloga<select value={targetRole} onChange={(event) => setTargetRole(event.target.value)}>
-          {['Owner', 'Manager', 'Accountant', 'BuildingRepresentative'].map((item) => <option key={item}>{item}</option>)}</select></label>}
+          {['Owner', 'Manager', 'Accountant', 'BuildingRepresentative'].map((item) => <option key={item} value={item}>{label(membershipRoleLabels, item)}</option>)}</select></label>}
         <label>Objava od<input required type="datetime-local" value={publishedFrom} onChange={(event) => setPublishedFrom(event.target.value)} /></label>
         <label>Ističe<input type="datetime-local" value={expires} onChange={(event) => setExpires(event.target.value)} /></label>
         <button disabled={busy}>Objavi</button></form></section>}
@@ -160,7 +162,7 @@ export default function CommunityPage({ token, zevs, role, permissions }: {
         <form className="admin-form" onSubmit={addDocument}>
           <label>Naslov<input required maxLength={200} value={documentTitle} onChange={(event) => setDocumentTitle(event.target.value)} /></label>
           <label>Tip<select value={documentType} onChange={(event) => setDocumentType(event.target.value)}>
-            {['Contract', 'Policy', 'Statute', 'Minutes', 'Financial', 'Legal', 'Other'].map((item) => <option key={item}>{item}</option>)}</select></label>
+            {['Contract', 'Policy', 'Statute', 'Minutes', 'Financial', 'Legal', 'Other'].map((item) => <option key={item} value={item}>{label(documentTypeLabels, item)}</option>)}</select></label>
           <label>Pristup<select value={visibility} onChange={(event) => setVisibility(event.target.value)}>
             <option value="ZevMembers">Članovi ZEV-a</option><option value="ManagersOnly">Samo upravnik</option></select></label>
           <label>Datoteka<input required type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></label>
@@ -180,13 +182,13 @@ export default function CommunityPage({ token, zevs, role, permissions }: {
     </div>}
     <section className="panel table-panel"><h2>Oglasna tabla</h2>{announcements.items.map((item) =>
       <article className="announcement-card" key={item.id}><h3>{item.title}</h3><p>{item.content}</p>
-        <small>{item.publishedFromUtc.slice(0, 10)} · {item.scope}</small></article>)}
+        <small>{item.publishedFromUtc.slice(0, 10)} · {label(announcementScopeLabels, item.scope)}</small></article>)}
       {announcements.items.length === 0 && <p className="empty-inline">Nema objava.</p>}
       <Pager {...announcements} onPage={setPage} /></section>
     <section className="panel table-panel"><h2>Dokumenti</h2><div className="table-scroll"><table><thead><tr>
       <th>Naslov</th><th>Tip</th><th>Pristup</th><th>Radnja</th></tr></thead><tbody>
-      {documents.items.map((item) => <tr key={item.id}><td>{item.title}</td><td>{item.type}</td>
-        <td>{item.visibility}</td><td className="actions">{allowed("Documents.Download") && <button type="button" onClick={() => download(item)}>Otvori</button>}</td></tr>)}
+      {documents.items.map((item) => <tr key={item.id}><td>{item.title}</td><td>{label(documentTypeLabels, item.type)}</td>
+        <td>{label(visibilityLabels, item.visibility)}</td><td className="actions">{allowed("Documents.Download") && <button type="button" onClick={() => download(item)}>Otvori</button>}</td></tr>)}
       </tbody></table></div></section>
     <section className="panel table-panel"><h2>Glasanja</h2>{role === "owner" && <div className="vote-picker">
       <label>Nekretnina<select value={voteUnitId} onChange={(event) => setVoteUnitId(event.target.value)}>
@@ -194,7 +196,7 @@ export default function CommunityPage({ token, zevs, role, permissions }: {
       <label>Glas<select value={choice} onChange={(event) => setChoice(event.target.value)}>
         <option value="Yes">Za</option><option value="No">Protiv</option><option value="Abstain">Suzdržan</option></select></label></div>}
       {ballots.items.map((item) => <article className="announcement-card" key={item.id}>
-        <h3>{item.title}</h3><p>{item.question}</p><small>{item.kind} · {item.mode} · {item.status}</small>
+        <h3>{item.title}</h3><p>{item.question}</p><small>{label(ballotKindLabels, item.kind)} · {label(ballotModeLabels, item.mode)} · {label(ballotStatusLabels, item.status)}</small>
         {item.status === "Closed" && <p>Za: {item.yesWeight} · Protiv: {item.noWeight} · Kvorum: {item.quorumMet ? "da" : "ne"} · Usvojeno: {item.approved ? "da" : "ne"}</p>}
         {role === "manager" && allowed("Voting.Manage") && item.status === "Draft" && <button onClick={() => submit(`ballots/${item.id}/open`, {}, "Glasanje je otvoreno.")}>Otvori</button>}
         {role === "manager" && allowed("Voting.Manage") && item.status === "Open" && <button onClick={() => submit(`ballots/${item.id}/close`, {}, "Glasanje je zaključano.")}>Zaključi</button>}

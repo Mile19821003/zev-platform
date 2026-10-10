@@ -76,6 +76,9 @@ export function Status({ active }: { active: boolean }) {
   return <span className={`status ${active ? "active" : "inactive"}`}>{active ? "Aktivan" : "Neaktivan"}</span>;
 }
 
-export function SectionTitle({ title, description }: { title: string; description: string }) {
-  return <div className="admin-heading"><p className="eyebrow">ADMINISTRACIJA</p><h1>{title}</h1><p>{description}</p></div>;
+// eyebrow={null} hides the caption, e.g. on owner-facing pages that are not administration.
+export function SectionTitle({ title, description, eyebrow = "ADMINISTRACIJA" }: {
+  title: string; description: string; eyebrow?: string | null;
+}) {
+  return <div className="admin-heading">{eyebrow && <p className="eyebrow">{eyebrow}</p>}<h1>{title}</h1><p>{description}</p></div>;
 }

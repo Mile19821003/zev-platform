@@ -41,6 +41,24 @@ cloud okruženje su zaključeni.
 - **UI:** meni „Hodogram“ u sistemskoj administraciji (izbor organizacije) i u radnom prostoru administratora organizacije.
 - **Van opsega ove verzije:** globalni šabloni (bez organizacije) i vezivanje hodograma za pojedinačni ZEV.
 
+## Faza 3B — Sravnjenje izvoda i završno poliranje UAT nalaza: VERIFIED (10.10.2026.)
+
+API UAT kroz produkcijski stack: **82/82 PASS**; browser smoke 5/5 persona. Backend non-SQL 187/187, SQL 13/13
+(5/5 pokretanja bez paralelnog Docker SQL-a), web 64/64.
+
+| Oblast | Ispravka | Status |
+|---|---|---|
+| Uvoz izvoda (CSV/TXT) | Bosanska i engleska zaglavlja (bez obzira na dijakritiku), automatski separator `;`/`,`/tab, iznosi `30,00`, `1.234,56`, `1,234.56`, kolone Duguje/Potražuje, UTF-8 s BOM-om i Windows-1250; greška navodi red i vrijednost | **VERIFIED** |
+| Sravnjenje | Novi 12-cifreni poziv na broj (MOD 97-10, i s razmacima) i stari format oba se uparuju; FIFO unutar fonda računa; pogrešna kontrolna cifra / tuđi ZEV se ne uparuju; duplikat izvoda 409 | **VERIFIED** |
+| R5 hodogram | Predstavnik vidi hodograme organizacije svog ZEV-a samo za čitanje (izmjene 404); `/api/me/zevs` vraća naziv organizacije | **VERIFIED** |
+| O19 glasanje | Tuđi stan / nepostojeće glasanje 404; neotvoreno ili ponovljeno glasanje 409 s porukom | **VERIFIED** |
+| UI lokalizacija | Bez „ADMINISTRACIJA“ na vlasničkim stranicama; prevedeni tip/pristup dokumenta, opseg objave, glasanja, status/prioritet kvarova | **VERIFIED** |
+
+**Operativna preporuka — lokalni SQL integracijski testovi:** pokretati ih bez paralelno pokrenutog Docker SQL stacka
+(`compose.prod.yaml`) na istom disku/CPU-u, ili im dati zaseban SQL Server. Uz oba servera aktivna, paket je u 3 od 5
+pokretanja imao timeoute u različitim testovima (i u netaknutom registry testu); bez Docker SQL-a 5/5 i ranije 10/10 čisto.
+Uzrok nije dokazan (nema pristupa statistici čekanja na serveru), ali obrazac upućuje na dijeljene resurse, ne na kod.
+
 ## Faza 3A — Persona UAT, bankarska pravila i godišnji izvještaj: VERIFIED (10.10.2026.)
 
 HTTP UAT runner kroz produkcijski stack (Caddy/HTTPS, sintetički podaci) + browser smoke po ulogama (Edge).
@@ -61,8 +79,8 @@ SQL grešku, a računi plaćanja se kreiraju prije serializable billing transakc
 
 **Minorne otvorene stavke**
 - Uplatnica je i dalje informativna: bez QR koda i dijakritika (odluke #18/#25).
-- R5: predstavnik nema uvid u hodogram (hodogram je na nivou organizacije, SysAdmin/OrgAdmin).
-- O19: glasanje za tuđi stan vraća 409 (kao svaki neuspjeh glasanja) umjesto 404; bez curenja podataka.
+- ~~R5: predstavnik nema uvid u hodogram~~ — riješeno u Fazi 3B.
+- ~~O19: glasanje za tuđi stan vraća 409~~ — riješeno u Fazi 3B (404).
 
 ## Faza 2 — Produkcijski Docker stack i operativni backup/restore: VERIFIED (10.10.2026.)
 

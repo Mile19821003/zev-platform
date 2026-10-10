@@ -5,6 +5,8 @@ using Zev.Api.Domain;
 
 namespace Zev.Api.Community;
 
+public enum VoteResult { Recorded, BallotNotFound, NotOpen, NotEligible, AlreadyVoted }
+
 public sealed class VotingService(ZevDbContext database)
 {
     public async Task<bool> OpenAsync(Guid zevId, Guid ballotId, CancellationToken cancellationToken)
@@ -41,6 +43,10 @@ public sealed class VotingService(ZevDbContext database)
     }
 
     public async Task<bool> CastAsync(Guid zevId, Guid ballotId, Guid unitId, Guid userId,
+        VoteChoice choice, CancellationToken cancellationToken) =>
+        await CastVoteAsync(zevId, ballotId, unitId, userId, choice, cancellationToken) == VoteResult.Recorded;
+
+    public async Task<VoteResult> CastVoteAsync(Guid zevId, Guid ballotId, Guid unitId, Guid userId,
         VoteChoice choice, CancellationToken cancellationToken)
     {
         await using var transaction = await database.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
@@ -49,9 +55,11 @@ public sealed class VotingService(ZevDbContext database)
                 $"SELECT [Id] FROM [BallotEligibilities] WITH (UPDLOCK, HOLDLOCK) WHERE [BallotId] = {ballotId} AND [PropertyUnitId] = {unitId}",
                 cancellationToken);
         var ballot = await database.Ballots.AsNoTracking().SingleOrDefaultAsync(item => item.Id == ballotId
-            && item.ZevId == zevId && item.Status == BallotStatus.Open, cancellationToken);
+            && item.ZevId == zevId, cancellationToken);
+        if (ballot is null) return VoteResult.BallotNotFound;
         var now = DateTimeOffset.UtcNow;
-        if (ballot is null || now < ballot.OpensUtc || now >= ballot.ClosesUtc) return false;
+        if (ballot.Status != BallotStatus.Open || now < ballot.OpensUtc || now >= ballot.ClosesUtc)
+            return VoteResult.NotOpen;
         var asOf = DateOnly.FromDateTime(now.UtcDateTime);
         var eligibility = await database.BallotEligibilities.AsNoTracking().SingleOrDefaultAsync(item => item.BallotId == ballotId
             && item.PropertyUnitId == unitId && database.People.Any(person => person.Id == item.PersonId
@@ -62,8 +70,10 @@ public sealed class VotingService(ZevDbContext database)
                 && ownership.ValidFrom <= asOf
                 && (ownership.ValidTo == null || ownership.ValidTo > asOf)),
             cancellationToken);
-        if (eligibility is null || await database.Votes.AnyAsync(item => item.BallotId == ballotId
-            && item.PropertyUnitId == unitId, cancellationToken)) return false;
+        // Not the caller's eligible unit: indistinguishable from a unit that does not exist (404 at the API).
+        if (eligibility is null) return VoteResult.NotEligible;
+        if (await database.Votes.AnyAsync(item => item.BallotId == ballotId
+            && item.PropertyUnitId == unitId, cancellationToken)) return VoteResult.AlreadyVoted;
         database.Votes.Add(new Vote
         {
             OrganizationId = ballot.OrganizationId, ZevId = zevId, BallotId = ballotId,
@@ -74,9 +84,10 @@ public sealed class VotingService(ZevDbContext database)
         {
             await database.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
-            return true;
+            return VoteResult.Recorded;
         }
-        catch (DbUpdateException) { return false; }
+        // A concurrent vote for the same unit won (unique index / deadlock); anything else propagates.
+        catch (Exception problem) when (DbUpdateErrors.IsConcurrentWriteConflict(problem)) { return VoteResult.AlreadyVoted; }
     }
 
     public async Task<VotingOutcome?> CloseAsync(Guid zevId, Guid ballotId, CancellationToken cancellationToken)

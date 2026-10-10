@@ -81,7 +81,7 @@ export default function OwnerFinancePage({ token, zevs }: { token: string; zevs:
     finally { downloadPending.current = false; setDownloading(false); }
   }
   return <>
-    <SectionTitle title="Moj portal" description="Vaše nekretnine, zaduženja, uplate i saldo. Tuđi finansijski podaci nisu dostupni." />
+    <SectionTitle eyebrow={null} title="Moj portal" description="Vaše nekretnine, zaduženja, uplate i saldo. Tuđi finansijski podaci nisu dostupni." />
     {historical && <p className="panel">Istorijski pristup: samo vaši finansijski zapisi iz perioda vlasništva. Novi ZEV sadržaj nije dostupan.</p>}
     <div className="panel finance-selector"><label>ZEV<select value={zevId} onChange={(event) => { setZevId(event.target.value); setPage(1); setOpenedInvoice(null); setInvoiceDetail(null); }}>
       {zevs.map((zev) => <option key={zev.id} value={zev.id}>{zev.name} ({zev.code})</option>)}</select></label></div>

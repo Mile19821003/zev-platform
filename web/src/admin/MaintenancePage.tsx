@@ -1,6 +1,7 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { callApi, errorText, Page } from "../api";
 import { Pager, SectionTitle } from "./shared";
+import { label, maintenanceStatusLabels, priorityLabels } from "../uiLabels.ts";
 import { useChangeRevision } from "../useChangeRevision.ts";
 
 type ZevOption = { id: string; code: string; name: string };
@@ -134,7 +135,7 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
   }
 
   return <>
-    <SectionTitle title="Održavanje" description="Prijave kvarova, radni nalozi i buduće servisne obaveze." />
+    <SectionTitle eyebrow={role === "owner" ? null : undefined} title="Održavanje" description="Prijave kvarova, radni nalozi i buduće servisne obaveze." />
     <div className="panel finance-selector"><label>ZEV<select value={zevId} onChange={(event) => { setZevId(event.target.value); setUnitId(""); }}>
       {zevs.map((zev) => <option key={zev.id} value={zev.id}>{zev.name} ({zev.code})</option>)}
     </select></label></div>
@@ -147,7 +148,7 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
         <label>Opis<textarea required maxLength={4000} value={description} onChange={(event) => setDescription(event.target.value)} /></label>
         <label>Lokacija<input required maxLength={250} value={location} onChange={(event) => setLocation(event.target.value)} /></label>
         <label>Prioritet<select value={priority} onChange={(event) => setPriority(event.target.value)}>
-          {['Low', 'Normal', 'High', 'Urgent'].map((item) => <option key={item}>{item}</option>)}</select></label>
+          {['Low', 'Normal', 'High', 'Urgent'].map((item) => <option key={item} value={item}>{label(priorityLabels, item)}</option>)}</select></label>
         <label>Fotografija<input type="file" accept="image/png,image/jpeg" onChange={(event) => setPhoto(event.target.files?.[0] ?? null)} /></label>
         <button disabled={busy || (role === "owner" && !unitId)}>Pošalji prijavu</button>
       </form></section>}
@@ -171,7 +172,7 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
     <section className="panel table-panel"><h2>Prijave kvarova</h2><div className="table-scroll"><table><thead><tr>
       <th>Kategorija</th><th>Lokacija</th><th>Opis</th><th>Prioritet</th><th>Status</th><th>Radnja</th>
     </tr></thead><tbody>{tickets.items.map((item) => <tr key={item.id}><td>{item.category}</td><td>{item.location}</td>
-      <td>{item.description}</td><td>{item.priority}</td><td>{item.status}</td><td className="actions">
+      <td>{item.description}</td><td>{label(priorityLabels, item.priority)}</td><td>{label(maintenanceStatusLabels, item.status)}</td><td className="actions">
         {role !== "owner" && (allowed("Maintenance.Edit") || allowed("Maintenance.Approve")) && item.status === "Open" && <button onClick={() => changeStatus("tickets", item, "InProgress")}>Započni</button>}
         {role !== "owner" && (allowed("Maintenance.Edit") || allowed("Maintenance.Approve")) && item.status === "InProgress" && <button onClick={() => changeStatus("tickets", item, "Completed")}>Završi</button>}
         {item.status === "Completed" && (role === "owner" || allowed("Maintenance.Approve")) && <button onClick={() => changeStatus("tickets", item, "Verified")}>Potvrdi</button>}
@@ -179,13 +180,13 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
     {role !== "owner" && <><section className="panel table-panel"><h2>Radni nalozi</h2><div className="table-scroll"><table><thead><tr>
       <th>Naslov</th><th>Rok</th><th>Trošak</th><th>Status</th><th>Radnja</th>
     </tr></thead><tbody>{orders.items.map((item) => <tr key={item.id}><td>{item.title}</td><td>{item.dueOn ?? "—"}</td>
-      <td>{item.costAmount?.toFixed(2) ?? "—"}</td><td>{item.status}</td><td className="actions">
+      <td>{item.costAmount?.toFixed(2) ?? "—"}</td><td>{label(maintenanceStatusLabels, item.status)}</td><td className="actions">
         {role === "manager" && allowed("Maintenance.Edit") && item.status === "Open" && <button onClick={() => changeStatus("work-orders", item, "InProgress")}>Započni</button>}
         {role === "manager" && allowed("Maintenance.Edit") && item.status === "InProgress" && <button onClick={() => changeStatus("work-orders", item, "Completed")}>Završi</button>}
       </td></tr>)}</tbody></table></div></section>
       <section className="panel table-panel"><h2>Kalendar održavanja</h2>
         <div className="table-scroll"><table><thead><tr><th>Obaveza</th><th>Datum</th><th>Status</th></tr></thead><tbody>
-          {calendar.map((item) => <tr key={item.id}><td>{item.title}</td><td>{item.dueOn}</td><td>{item.status}</td></tr>)}
+          {calendar.map((item) => <tr key={item.id}><td>{item.title}</td><td>{item.dueOn}</td><td>{label(maintenanceStatusLabels, item.status)}</td></tr>)}
         </tbody></table></div><p className="empty-inline">Aktivnih planova: {plans.length}</p></section></>}
     </>}
   </>;
