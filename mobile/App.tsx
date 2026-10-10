@@ -1,20 +1,21 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Button, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
-import * as SecureStore from "expo-secure-store";
+import { createApiClient, NetworkError, type MobileTokens } from "./src/api";
+import { createOfflineCache } from "./src/cache";
+import { loadOwnerCards, toFinanceView, type InvoiceView, type OwnerCard } from "./src/finance";
+import { ballotStatusLabels, documentTypeLabels, formatTimestamp, label, maintenanceStatusLabels } from "./src/format";
+import { secureTokenStore, snapshotFileStorage } from "./src/storage";
 
 type Page<T> = { items: T[] };
 type Zev = { id: string; code: string; name: string };
-type Card = { personId: string; balance: number; charges: { id: string; period: string; amount: number; open: number; reference: string }[];
-  payments: { id: string; paidOn: string; amount: number }[] };
 type Ticket = { id: string; category: string; description: string; status: string };
 type Announcement = { id: string; title: string; content: string };
 type Document = { id: string; title: string; type: string };
 type Ballot = { id: string; title: string; question: string; status: string };
 type Unit = { id: string; zevId: string; code: string };
-type MobileTokens = { accessToken: string; refreshToken: string };
 type MobileProfile = { email: string; mustChangePassword: boolean };
 
 const apiBase = process.env.EXPO_PUBLIC_API_URL;
@@ -28,9 +29,12 @@ export default function App() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [token, setToken] = useState("");
+  // Timestamp of the cached data shown while the API is unreachable; empty when online.
+  const [offlineSince, setOfflineSince] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
   const [zevs, setZevs] = useState<Zev[]>([]);
   const [zevId, setZevId] = useState("");
-  const [cards, setCards] = useState<Card[]>([]);
+  const [cards, setCards] = useState<OwnerCard[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -43,83 +47,71 @@ export default function App() {
   const [photo, setPhoto] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const refreshInFlight = useRef<Promise<string | null> | null>(null);
+  const client = useMemo(() => createApiClient({ baseUrl: apiBase, allowInsecure: __DEV__,
+    tokens: secureTokenStore, onAccessToken: setToken }), []);
+  const cache = useMemo(() => createOfflineCache(snapshotFileStorage), []);
+  const request = client.request;
+  const finance = useMemo(() => toFinanceView(zevId, cards), [zevId, cards]);
+  const offline = Boolean(offlineSince);
 
-  async function renewAccessToken(): Promise<string | null> {
-    if (refreshInFlight.current) return refreshInFlight.current;
-    refreshInFlight.current = (async () => {
-      const refreshToken = await SecureStore.getItemAsync("zev-refresh");
-      if (!refreshToken || !apiBase) return null;
-      const response = await fetch(`${apiBase}/api/auth/mobile/refresh`, { method: "POST",
-        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ refreshToken }) });
-      if (!response.ok) { await SecureStore.deleteItemAsync("zev-refresh"); return null; }
-      const next = await response.json() as MobileTokens;
-      await SecureStore.setItemAsync("zev-refresh", next.refreshToken);
-      setToken(next.accessToken);
-      return next.accessToken;
-    })().finally(() => { refreshInFlight.current = null; });
-    return refreshInFlight.current;
+  function showZevs(items: Zev[]) {
+    setZevs(items);
+    setZevId((current) => items.some((zev) => zev.id === current) ? current : items[0]?.id ?? "");
   }
 
-  async function request<T>(path: string, accessToken: string, body?: object): Promise<T> {
-    if (!apiBase?.startsWith("https://") && !__DEV__) throw new Error("Produkcijski API mora koristiti HTTPS.");
-    if (!apiBase) throw new Error("Postavite EXPO_PUBLIC_API_URL na adresu API-ja dostupnu telefonu.");
-    const headers = { ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      ...(body ? { "Content-Type": "application/json" } : {}) };
-    let response = await fetch(`${apiBase}${path}`, { method: body ? "POST" : "GET",
-      headers, body: body ? JSON.stringify(body) : undefined });
-    if (response.status === 401 && accessToken) {
-      const nextToken = await renewAccessToken();
-      if (nextToken) response = await fetch(`${apiBase}${path}`, { method: body ? "POST" : "GET",
-        headers: { ...headers, Authorization: `Bearer ${nextToken}` },
-        body: body ? JSON.stringify(body) : undefined });
-    }
-    if (!response.ok) {
-      const problem = await response.json().catch(() => null) as { error?: string } | null;
-      throw new Error(problem?.error ?? `API greška (${response.status})`);
-    }
-    if (response.status === 204) return undefined as T;
-    return response.json() as Promise<T>;
+  async function loadSession(accessToken: string) {
+    const profile = await request<MobileProfile>("/api/me", accessToken);
+    setEmail(profile.email); setMustChangePassword(profile.mustChangePassword);
+    if (profile.mustChangePassword) { setZevs([]); setZevId(""); return; }
+    const accessible = await request<Page<Zev>>("/api/me/zevs?pageSize=100", accessToken);
+    showZevs(accessible.items); setOfflineSince("");
+    await cache.saveProfile(profile.email, accessible.items.map(({ id, code, name }) => ({ id, code, name })));
+  }
+
+  // Without a connection the last saved profile and ZEV list are shown read-only, if this device has a session.
+  async function showOfflineSnapshot(): Promise<boolean> {
+    const snapshot = await cache.load();
+    if (!snapshot?.email || !await secureTokenStore.get()) return false;
+    setEmail(snapshot.email); setMustChangePassword(false); showZevs(snapshot.zevs);
+    setOfflineSince(snapshot.savedAt);
+    return true;
   }
 
   async function login() {
     setBusy(true); setError("");
     try {
       const result = await request<MobileTokens>("/api/auth/mobile/login", "", { email, password });
-      await SecureStore.setItemAsync("zev-refresh", result.refreshToken);
-      const profile = await request<MobileProfile>("/api/me", result.accessToken);
-      setToken(result.accessToken); setEmail(profile.email); setPassword("");
-      if (profile.mustChangePassword) {
-        setMustChangePassword(true); setZevs([]); setZevId("");
-        return;
-      }
-      const accessible = await request<Page<Zev>>("/api/me/zevs?pageSize=100", result.accessToken);
-      setMustChangePassword(false); setZevs(accessible.items); setZevId(accessible.items[0]?.id ?? "");
-    } catch (problem) { setError(String(problem)); }
+      await secureTokenStore.set(result.refreshToken);
+      setPassword("");
+      await loadSession(result.accessToken);
+      setToken(result.accessToken);
+    } catch (problem) { setError(message(problem)); }
     finally { setBusy(false); }
   }
 
-  useEffect(() => {
-    let mounted = true;
-    renewAccessToken().then(async (accessToken) => {
-      if (!accessToken || !mounted) return;
-      const profile = await request<MobileProfile>("/api/me", accessToken);
-      if (mounted) { setEmail(profile.email); setMustChangePassword(profile.mustChangePassword); }
-      if (profile.mustChangePassword) return;
-      const accessible = await request<Page<Zev>>("/api/me/zevs?pageSize=100", accessToken);
-      if (mounted) { setZevs(accessible.items); setZevId(accessible.items[0]?.id ?? ""); }
-    }).catch((problem) => { if (mounted) setError(String(problem)); });
-    return () => { mounted = false; };
-  }, []);
+  async function resume() {
+    setBusy(true);
+    try {
+      const accessToken = await client.renewAccessToken();
+      if (!accessToken) { setOfflineSince(""); setToken(""); return; }
+      await loadSession(accessToken);
+      setReloadKey((key) => key + 1); setError("");
+    } catch (problem) {
+      if (!(problem instanceof NetworkError && await showOfflineSnapshot())) setError(message(problem));
+    } finally { setBusy(false); }
+  }
+
+  useEffect(() => { void resume(); }, []);
 
   async function logout() {
-    const refreshToken = await SecureStore.getItemAsync("zev-refresh");
-    if (refreshToken) {
+    const refreshToken = await secureTokenStore.get();
+    if (refreshToken && !offline) {
       try { await request("/api/auth/mobile/logout", "", { refreshToken }); }
       catch { setError("Odjava na serveru nije potvrđena."); }
     }
-    await SecureStore.deleteItemAsync("zev-refresh");
-    setToken(""); setZevs([]); setZevId(""); setCards([]);
+    await secureTokenStore.remove();
+    await cache.clear();
+    setToken(""); setOfflineSince(""); setZevs([]); setZevId(""); setCards([]);
     setMustChangePassword(false); setProfileOpen(false);
     setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
   }
@@ -133,37 +125,51 @@ export default function App() {
       const result = await request<MobileTokens>("/api/me/password/mobile", token,
         { currentPassword: mustChangePassword ? null : currentPassword,
           newPassword, confirmPassword });
-      await SecureStore.setItemAsync("zev-refresh", result.refreshToken);
+      await secureTokenStore.set(result.refreshToken);
       setToken(result.accessToken); setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
-      setMustChangePassword(false); setProfileOpen(false);
-      const accessible = await request<Page<Zev>>("/api/me/zevs?pageSize=100", result.accessToken);
-      setZevs(accessible.items); setZevId(accessible.items[0]?.id ?? "");
+      setProfileOpen(false);
+      await loadSession(result.accessToken);
       Alert.alert("Lozinka je promijenjena.");
-    } catch (problem) { setError(String(problem)); }
+    } catch (problem) { setError(message(problem)); }
     finally { setBusy(false); }
   }
 
   useEffect(() => {
-    if (!token || !zevId) return;
+    if (!zevId || (!token && !offline)) return;
     let mounted = true;
+    async function showCachedFinance() {
+      const cached = (await cache.load())?.finance[zevId];
+      if (!mounted) return;
+      setCards(cached?.cards ?? []);
+      setTickets([]); setAnnouncements([]); setDocuments([]); setBallots([]); setUnits([]);
+      if (cached) setOfflineSince(cached.savedAt);
+    }
+    if (offline) { void showCachedFinance(); return () => { mounted = false; }; }
     setBusy(true);
     Promise.all([
-      request<Card[]>(`/api/me/finance/${zevId}`, token),
+      loadOwnerCards((path) => request<unknown>(path, token), zevId),
       request<Page<Ticket>>(`/api/zevs/${zevId}/maintenance/tickets`, token),
       request<Page<Announcement>>(`/api/zevs/${zevId}/community/announcements`, token),
       request<Page<Document>>(`/api/zevs/${zevId}/community/documents`, token),
       request<Page<Ballot>>(`/api/zevs/${zevId}/ballots`, token),
       request<Unit[]>("/api/me/property-units", token),
-    ]).then(([finance, ticketPage, announcementPage, documentPage, ballotPage, propertyUnits]) => {
+    ]).then(async ([ownerCards, ticketPage, announcementPage, documentPage, ballotPage, propertyUnits]) => {
       if (!mounted) return;
-      setCards(finance); setTickets(ticketPage.items); setAnnouncements(announcementPage.items);
+      setCards(ownerCards); setTickets(ticketPage.items); setAnnouncements(announcementPage.items);
       setDocuments(documentPage.items); setBallots(ballotPage.items);
       const availableUnits = propertyUnits.filter((unit) => unit.zevId === zevId);
       setUnits(availableUnits); setSelectedUnitId(availableUnits[0]?.id ?? ""); setError("");
-    }).catch((problem) => { if (mounted) setError(String(problem)); })
-      .finally(() => { if (mounted) setBusy(false); });
+      await cache.saveFinance(zevId, ownerCards);
+    }).catch(async (problem) => {
+      if (!mounted) return;
+      if (problem instanceof NetworkError && (await cache.load())?.finance[zevId]) {
+        setOfflineSince(new Date().toISOString());
+        return;
+      }
+      setError(message(problem));
+    }).finally(() => { if (mounted) setBusy(false); });
     return () => { mounted = false; };
-  }, [token, zevId]);
+  }, [token, zevId, offline, reloadKey]);
 
   async function choosePhoto() {
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], base64: true,
@@ -189,7 +195,7 @@ export default function App() {
       setCategory(""); setDescription(""); setLocation(""); setPhoto(null);
       const result = await request<Page<Ticket>>(`/api/zevs/${zevId}/maintenance/tickets`, token);
       setTickets(result.items); Alert.alert("Prijava je sačuvana.");
-    } catch (problem) { setError(String(problem)); }
+    } catch (problem) { setError(message(problem)); }
     finally { setBusy(false); }
   }
 
@@ -199,39 +205,43 @@ export default function App() {
       await request(`/api/zevs/${zevId}/ballots/${ballotId}/votes`, token,
         { propertyUnitId: selectedUnitId, choice });
       Alert.alert("Glas je evidentiran.");
-    } catch (problem) { setError(String(problem)); }
+    } catch (problem) { setError(message(problem)); }
   }
 
   async function shareFile(path: string, fileName: string) {
-    if (!apiBase) return;
     let file: File | null = null;
+    setError("");
     try {
-      let response = await fetch(`${apiBase}${path}`, { headers: { Authorization: `Bearer ${token}` } });
-      if (response.status === 401) {
-        const nextToken = await renewAccessToken();
-        if (nextToken) response = await fetch(`${apiBase}${path}`,
-          { headers: { Authorization: `Bearer ${nextToken}` } });
-      }
-      if (!response.ok) throw new Error(`Datoteka nije dostupna (${response.status}).`);
+      const response = await client.download(path, token);
       const mimeType = response.headers.get("Content-Type")?.split(";", 1)[0] ?? "application/pdf";
       const extension = mimeType === "image/png" ? ".png" : mimeType === "image/jpeg" ? ".jpg" : ".pdf";
       file = new File(Paths.cache, `${Date.now()}-${fileName}${extension}`);
       file.write(new Uint8Array(await response.arrayBuffer()));
       if (!await Sharing.isAvailableAsync()) throw new Error("Dijeljenje datoteke nije dostupno na uređaju.");
       await Sharing.shareAsync(file.uri, { mimeType });
-    } catch (problem) { setError(String(problem)); }
+    } catch (problem) { setError(message(problem)); }
     finally { if (file?.exists) file.delete(); }
   }
 
-  if (!token) return <SafeAreaView style={styles.root}><View style={styles.section}>
+  function renderInvoice(item: InvoiceView) {
+    return <View key={item.id} style={styles.card}>
+      <Text style={styles.strong}>{item.title}</Text>
+      <Text>{item.detail}</Text>
+      <Text style={item.open ? styles.warning : styles.muted}>{item.status}</Text>
+      {!offline && item.slips.map((slip) => <Button key={slip.chargeId} title={slip.label}
+        onPress={() => void shareFile(slip.path, `uplatnica-${item.number}`)} />)}
+    </View>;
+  }
+
+  if (!token && !offline) return <SafeAreaView style={styles.root}><View style={styles.section}>
     <Text style={styles.title}>ZEV Platforma</Text><Text>Prijava etažnog vlasnika</Text>
     <TextInput style={styles.input} value={email} onChangeText={setEmail} placeholder="Email" autoCapitalize="none" />
     <TextInput style={styles.input} value={password} onChangeText={setPassword} placeholder="Lozinka" secureTextEntry />
     <Button title="Prijavi se" onPress={() => void login()} disabled={busy} />
-    {error ? <Text style={styles.error}>{error}</Text> : null}
+    {busy && <ActivityIndicator />}{error ? <Text style={styles.error}>{error}</Text> : null}
   </View></SafeAreaView>;
 
-  if (mustChangePassword || profileOpen) return <SafeAreaView style={styles.root}>
+  if (!offline && (mustChangePassword || profileOpen)) return <SafeAreaView style={styles.root}>
     <ScrollView contentContainerStyle={styles.section}>
       <Text style={styles.title}>{mustChangePassword ? "Obavezna promjena lozinke" : "Moj profil"}</Text>
       <Text>{email}</Text>
@@ -251,43 +261,60 @@ export default function App() {
 
   return <SafeAreaView style={styles.root}><ScrollView contentContainerStyle={styles.section}>
     <Text style={styles.title}>Moj ZEV</Text>
+    <Text style={styles.muted}>{email}</Text>
+    {offline && <View style={styles.offline}>
+      <Text style={styles.strong}>Bez veze sa serverom</Text>
+      <Text>Prikazani su sačuvani podaci od {formatTimestamp(offlineSince)} (samo za čitanje).</Text>
+      <Button title="Pokušaj ponovo" onPress={() => void resume()} disabled={busy} />
+    </View>}
     {zevs.map((zev) => <Button key={zev.id} title={`${zevId === zev.id ? "✓ " : ""}${zev.name}`}
       onPress={() => setZevId(zev.id)} />)}
     <Button title="Odjavi se" onPress={() => void logout()} />
-    <Button title="Moj profil · Promijeni lozinku" onPress={() => setProfileOpen(true)} />
+    {!offline && <Button title="Moj profil · Promijeni lozinku" onPress={() => setProfileOpen(true)} />}
     {busy && <ActivityIndicator />}{error ? <Text style={styles.error}>{error}</Text> : null}
-    <Text style={styles.heading}>Saldo i zaduženja</Text>
-    {cards.map((card) => <View key={card.personId}>
-      <Text>Saldo: {card.balance.toFixed(2)}</Text>
-      {card.charges.map((charge) => <View key={charge.id}><Text>{charge.period} · {charge.amount.toFixed(2)} ·
-        otvoreno {charge.open.toFixed(2)} · {charge.reference}</Text>
-        <Button title="PDF uplatnica" onPress={() => void shareFile(
-          `/api/zevs/${zevId}/charges/${charge.id}/payment-slip.pdf`, `uplatnica-${charge.id}`)} /></View>)}
-      <Text style={styles.heading}>Uplate</Text>
-      {card.payments.map((payment) => <Text key={payment.id}>{payment.paidOn} · {payment.amount.toFixed(2)}</Text>)}
-    </View>)}
-    <Text style={styles.heading}>Prijava kvara</Text>
-    <Text>Nekretnina</Text>
-    {units.map((unit) => <Button key={unit.id} title={`${selectedUnitId === unit.id ? "✓ " : ""}${unit.code}`}
-      onPress={() => setSelectedUnitId(unit.id)} />)}
-    <TextInput style={styles.input} value={category} onChangeText={setCategory} placeholder="Kategorija" />
-    <TextInput style={styles.input} value={description} onChangeText={setDescription} placeholder="Opis" multiline />
-    <TextInput style={styles.input} value={location} onChangeText={setLocation} placeholder="Lokacija" />
-    <Button title={photo ? "Fotografija odabrana" : "Dodaj fotografiju"} onPress={() => void choosePhoto()} />
-    <Button title="Pošalji prijavu" onPress={() => void reportTicket()} disabled={busy || !selectedUnitId} />
-    <Text style={styles.heading}>Moje prijave</Text>
-    {tickets.map((ticket) => <Text key={ticket.id}>{ticket.category} · {ticket.status}: {ticket.description}</Text>)}
-    <Text style={styles.heading}>Obavještenja</Text>
-    {announcements.map((item) => <Text key={item.id}>{item.title}: {item.content}</Text>)}
-    <Text style={styles.heading}>Dokumenti</Text>
-    {documents.map((item) => <View key={item.id}><Text>{item.title} · {item.type}</Text>
-      <Button title="Otvori dokument" onPress={() => void shareFile(
-        `/api/zevs/${zevId}/community/documents/${item.id}/download`, `dokument-${item.id}`)} /></View>)}
-    <Text style={styles.heading}>Glasanja</Text>
-    {ballots.map((item) => <View key={item.id}><Text>{item.title}: {item.question} ({item.status})</Text>
-      {item.status === "Open" && <View style={styles.buttons}><Button title="Za" onPress={() => void vote(item.id, "Yes")} />
-        <Button title="Protiv" onPress={() => void vote(item.id, "No")} /></View>}</View>)}
+
+    <Text style={styles.heading}>Saldo</Text>
+    {finance.balances.length === 0 && <Text style={styles.muted}>Nema finansijskih podataka.</Text>}
+    {finance.balances.map((balance) => <View key={balance.key} style={styles.card}>
+      <Text style={styles.strong}>{balance.title}</Text><Text>{balance.detail}</Text></View>)}
+    <Text style={styles.heading}>Računi</Text>
+    {finance.invoices.length === 0 && finance.legacyCharges.length === 0
+      && <Text style={styles.muted}>Nema izdatih računa.</Text>}
+    {finance.invoices.map(renderInvoice)}
+    {finance.legacyCharges.map(renderInvoice)}
+    <Text style={styles.heading}>Uplate</Text>
+    {finance.payments.length === 0 && <Text style={styles.muted}>Nema evidentiranih uplata.</Text>}
+    {finance.payments.map((payment) => <Text key={payment.key}>{payment.text}</Text>)}
+    {finance.partial && <Text style={styles.muted}>Prikazane su najnovije stavke kartice.</Text>}
+
+    {!offline && <>
+      <Text style={styles.heading}>Prijava kvara</Text>
+      <Text>Nekretnina</Text>
+      {units.map((unit) => <Button key={unit.id} title={`${selectedUnitId === unit.id ? "✓ " : ""}${unit.code}`}
+        onPress={() => setSelectedUnitId(unit.id)} />)}
+      <TextInput style={styles.input} value={category} onChangeText={setCategory} placeholder="Kategorija" />
+      <TextInput style={styles.input} value={description} onChangeText={setDescription} placeholder="Opis" multiline />
+      <TextInput style={styles.input} value={location} onChangeText={setLocation} placeholder="Lokacija" />
+      <Button title={photo ? "Fotografija odabrana" : "Dodaj fotografiju"} onPress={() => void choosePhoto()} />
+      <Button title="Pošalji prijavu" onPress={() => void reportTicket()} disabled={busy || !selectedUnitId} />
+      <Text style={styles.heading}>Moje prijave</Text>
+      {tickets.map((ticket) => <Text key={ticket.id}>{ticket.category} · {label(maintenanceStatusLabels, ticket.status)}: {ticket.description}</Text>)}
+      <Text style={styles.heading}>Obavještenja</Text>
+      {announcements.map((item) => <Text key={item.id}>{item.title}: {item.content}</Text>)}
+      <Text style={styles.heading}>Dokumenti</Text>
+      {documents.map((item) => <View key={item.id}><Text>{item.title} · {label(documentTypeLabels, item.type)}</Text>
+        <Button title="Otvori dokument" onPress={() => void shareFile(
+          `/api/zevs/${zevId}/community/documents/${item.id}/download`, `dokument-${item.id}`)} /></View>)}
+      <Text style={styles.heading}>Glasanja</Text>
+      {ballots.map((item) => <View key={item.id}><Text>{item.title}: {item.question} ({label(ballotStatusLabels, item.status)})</Text>
+        {item.status === "Open" && <View style={styles.buttons}><Button title="Za" onPress={() => void vote(item.id, "Yes")} />
+          <Button title="Protiv" onPress={() => void vote(item.id, "No")} /></View>}</View>)}
+    </>}
   </ScrollView></SafeAreaView>;
+}
+
+function message(problem: unknown): string {
+  return problem instanceof Error ? problem.message : String(problem);
 }
 
 const styles = StyleSheet.create({
@@ -296,6 +323,11 @@ const styles = StyleSheet.create({
   title: { fontSize: 28, fontWeight: "700", color: "#172b4d" },
   heading: { fontSize: 20, fontWeight: "600", marginTop: 18, color: "#172b4d" },
   input: { backgroundColor: "white", borderWidth: 1, borderColor: "#cbd5e1", borderRadius: 8, padding: 12 },
+  card: { backgroundColor: "white", borderRadius: 8, padding: 12, gap: 4, borderWidth: 1, borderColor: "#e2e8f0" },
+  offline: { backgroundColor: "#fff7e6", borderRadius: 8, padding: 12, gap: 6, borderWidth: 1, borderColor: "#f0c36d" },
+  strong: { fontWeight: "600", color: "#172b4d" },
+  muted: { color: "#5e6c84" },
+  warning: { color: "#9a5b00" },
   error: { color: "#a61b1b" },
   buttons: { flexDirection: "row", gap: 16 },
 });

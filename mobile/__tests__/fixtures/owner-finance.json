@@ -1,0 +1,165 @@
+{
+  "capturedFrom": "GET /api/me/finance/{zevId}?page=1&pageSize=100 (lokalni prod stack, UAT ownerA, 2026-10-10; ID-jevi anonimizirani)",
+  "zevId": "00000000-0000-4000-8000-000000000001",
+  "cards": [
+    {
+      "personId": "00000000-0000-4000-8000-000000000002",
+      "balances": [
+        {
+          "currencyCode": "BAM",
+          "totalCharges": 25,
+          "totalPayments": 15,
+          "open": 10,
+          "credit": 0,
+          "netBalance": 10
+        }
+      ],
+      "groupedByCurrency": [
+        {
+          "currencyCode": "BAM",
+          "totalCharges": 25,
+          "totalPayments": 15,
+          "open": 10,
+          "credit": 0,
+          "netBalance": 10
+        }
+      ],
+      "events": [
+        {
+          "date": "2026-10-10",
+          "kind": "Invoice",
+          "document": "INV-2026-000001",
+          "description": "Održavanje po m²",
+          "currencyCode": "BAM",
+          "debt": 30,
+          "payment": 0,
+          "creditDelta": 0,
+          "chargeId": "00000000-0000-4000-8000-000000000003",
+          "paymentId": null,
+          "runningBalance": 30,
+          "personId": "00000000-0000-4000-8000-000000000002",
+          "propertyUnitId": "00000000-0000-4000-8000-000000000004",
+          "period": "2026-10-01"
+        },
+        {
+          "date": "2026-10-10",
+          "kind": "Correction",
+          "document": "COR-2026-000001",
+          "description": "Umanjenje",
+          "currencyCode": "BAM",
+          "debt": -5,
+          "payment": 0,
+          "creditDelta": 0,
+          "chargeId": "00000000-0000-4000-8000-000000000005",
+          "paymentId": null,
+          "runningBalance": 25,
+          "personId": "00000000-0000-4000-8000-000000000002",
+          "propertyUnitId": "00000000-0000-4000-8000-000000000004",
+          "period": "2026-10-01"
+        },
+        {
+          "date": "2026-10-10",
+          "kind": "Payment",
+          "document": "00000000-0000-4000-8000-000000000006",
+          "description": "Uplata",
+          "currencyCode": "BAM",
+          "debt": 0,
+          "payment": 10,
+          "creditDelta": 10,
+          "chargeId": null,
+          "paymentId": "00000000-0000-4000-8000-000000000006",
+          "runningBalance": 15,
+          "personId": "00000000-0000-4000-8000-000000000002",
+          "propertyUnitId": null,
+          "period": null
+        },
+        {
+          "date": "2026-10-10",
+          "kind": "Allocation",
+          "document": "00000000-0000-4000-8000-000000000007",
+          "description": "Raspoređeno",
+          "currencyCode": "BAM",
+          "debt": 0,
+          "payment": 0,
+          "creditDelta": -10,
+          "chargeId": "00000000-0000-4000-8000-000000000003",
+          "paymentId": "00000000-0000-4000-8000-000000000006",
+          "runningBalance": 15,
+          "personId": "00000000-0000-4000-8000-000000000002",
+          "propertyUnitId": "00000000-0000-4000-8000-000000000004",
+          "period": "2026-10-01"
+        },
+        {
+          "date": "2026-10-10",
+          "kind": "Payment",
+          "document": "00000000-0000-4000-8000-000000000008",
+          "description": "Uplata",
+          "currencyCode": "BAM",
+          "debt": 0,
+          "payment": 5,
+          "creditDelta": 5,
+          "chargeId": null,
+          "paymentId": "00000000-0000-4000-8000-000000000008",
+          "runningBalance": 10,
+          "personId": "00000000-0000-4000-8000-000000000002",
+          "propertyUnitId": null,
+          "period": null
+        },
+        {
+          "date": "2026-10-10",
+          "kind": "Allocation",
+          "document": "00000000-0000-4000-8000-000000000009",
+          "description": "Raspoređeno",
+          "currencyCode": "BAM",
+          "debt": 0,
+          "payment": 0,
+          "creditDelta": -5,
+          "chargeId": "00000000-0000-4000-8000-000000000003",
+          "paymentId": "00000000-0000-4000-8000-000000000008",
+          "runningBalance": 10,
+          "personId": "00000000-0000-4000-8000-000000000002",
+          "propertyUnitId": "00000000-0000-4000-8000-000000000004",
+          "period": "2026-10-01"
+        }
+      ],
+      "page": 1,
+      "pageSize": 100,
+      "totalCount": 6,
+      "invoices": [
+        {
+          "id": "00000000-0000-4000-8000-000000000010",
+          "propertyUnitId": "00000000-0000-4000-8000-000000000004",
+          "invoiceNumber": "INV-2026-000001",
+          "period": "2026-10-01",
+          "issueDate": "2026-10-10",
+          "dueDate": "2026-10-30",
+          "amount": 30,
+          "paid": 15,
+          "currency": "BAM",
+          "paidBeforeStorno": 15,
+          "stornoCredit": 0,
+          "correctionAmount": -5,
+          "effectiveAmount": 25,
+          "open": 10,
+          "documentStatus": "Corrected",
+          "paymentStatus": "PartiallyPaid"
+        }
+      ],
+      "documents": [
+        {
+          "id": "00000000-0000-4000-8000-000000000011",
+          "originalInvoiceId": "00000000-0000-4000-8000-000000000010",
+          "documentNumber": "COR-2026-000001",
+          "type": "Credit",
+          "issueDate": "2026-10-10",
+          "signedAmount": -5,
+          "currency": "BAM",
+          "reason": "UAT umanjenje"
+        }
+      ],
+      "totalCharged": 25,
+      "totalPaid": 15,
+      "balance": 10
+    }
+  ]
+}

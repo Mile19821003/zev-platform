@@ -41,6 +41,24 @@ cloud okruženje su zaključeni.
 - **UI:** meni „Hodogram“ u sistemskoj administraciji (izbor organizacije) i u radnom prostoru administratora organizacije.
 - **Van opsega ove verzije:** globalni šabloni (bez organizacije) i vezivanje hodograma za pojedinačni ZEV.
 
+## Faza 4 — Mobilna aplikacija (`mobile/`): VERIFIED na nivou koda (10.10.2026.)
+
+Mobile Jest **33/33**, typecheck PASS, `npx expo export` Android/iOS PASS (611/613 modula, Hermes 1,6 MB),
+expo-doctor 21/21. Backend build 0/0, non-SQL 187/187, SQL 13/13 (bez paralelnog Docker SQL-a).
+UAT na fizičkom telefonu preko Expo Go: **NOT EXECUTED** — upute i tokovi u `MOBILE_UAT_CHECKLIST.md`.
+
+| Oblast | Ispravka | Status |
+|---|---|---|
+| Finansijski ekran (P0) | Ekran je očekivao `charges`/`payments` kojih u API-ju nema (pad pri prikazu). Sada koristi `balances`, `events`, `invoices`: saldo po valuti (`Za uplatu: 10,00 KM`), računi sa statusom, uplate; neočekivan oblik odgovora daje poruku umjesto pada. Duga kartica: čita se posljednja stranica (najnovije stavke). | **VERIFIED** |
+| Uplatnica | Po zaduženju (`/charges/{id}/payment-slip.pdf`) samo za otvorene, nestornirane račune; 12-cifreni poziv na broj; 409 preveden. | **VERIFIED** |
+| Bekend: iznos uplatnice | Uplatnica po zaduženju nije oduzimala kreditne korekcije/storno (`ReversesChargeId`) — za račun otvoren 10,00 KM štampano 15,00 BAM. Ispravljeno (`c050cc5`), regresioni test, potvrđeno na lokalnom stacku. Utiče i na web karticu vlasnika. | **VERIFIED** |
+| Testovi | `jest-expo` 57: formatiranje, mapiranje kartice, API klijent (refresh rotacija, jedan zajednički refresh, mrežna greška ne briše token), offline keš; test oblika odgovora na snimljenom (anonimiziranom) odgovoru `/api/me/finance`. | **VERIFIED** |
+| Offline keš (odluka #28) | Read-only snimak profila, ZEV liste i kartice s vremenom snimka; baner „Bez veze sa serverom“, akcije skrivene; briše se pri odjavi / promjeni korisnika. Tokeni u `expo-secure-store`. Dodatno šifrovanje snimka nije potrebno u ovoj fazi (odluka 10.10.2026.: dovoljan OS sandbox); biometrija kasnije. | **VERIFIED** |
+| Zavisnosti i higijena | expo 57.0.27, react-native 0.86.3 (Hermes regresija), `.expo/` u `.gitignore`, iznosi `1.234,50 KM`, statusi kvarova/glasanja/dokumenata/računa na bosanskom. TypeScript ostaje 5.9 (`expo.install.exclude`; TS 6 odgođen). | **VERIFIED** |
+
+Poznato: `npm audit` u `mobile/` prijavljuje ranjivosti u Expo/Metro build alatima (node-forge, braces,
+shell-quote, uuid …), ne u kodu aplikacije; prate se uz nadogradnje Expo SDK-a.
+
 ## Faza 3B — Sravnjenje izvoda i završno poliranje UAT nalaza: VERIFIED (10.10.2026.)
 
 API UAT kroz produkcijski stack: **82/82 PASS**; browser smoke 5/5 persona. Backend non-SQL 187/187, SQL 13/13

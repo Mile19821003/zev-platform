@@ -8,3 +8,4 @@
 *.user
 .env.prod
 logs/
+.expo/
