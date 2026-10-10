@@ -13,6 +13,8 @@ Sve značajne izmjene ZEV Platforme. Ranija historija (faze do 4) je u `CLOUD_HA
   (usklađeno / razlika objašnjena / prekid u nizu izvoda / neobjašnjena razlika) i upozorenja o prekidima.
   Vidljivo uz `BankAccounts.View`.
 - Tabela „Uvezeni izvodi“: kolone Period, Početni saldo, Završni saldo; pregled izvoda prikazuje saldo i period.
+- `zev-platform.slnx` u korijenu (API + testovi): `dotnet build` / `dotnet test` rade iz korijena (ranije MSB1003).
+- `MILESTONE_STATUS_v2.6.md`: stanje specifikacije, otvorene odluke i backlog za tim.
 - Testovi: `AuthorizationPolicyTests` (2: 403 unutar ZEV-a, 404 za tuđi/nepostojeći ZEV),
   `web/tests/bankBalance.test.mjs` (3).
 
