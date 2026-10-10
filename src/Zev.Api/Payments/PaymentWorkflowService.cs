@@ -10,6 +10,8 @@ public sealed record PaymentAllocationInput(Guid ChargeId, decimal Amount);
 public sealed record ManualPaymentInput(Guid RequestId, Guid PersonId, Guid? PropertyUnitId, Guid FundId,
     DateOnly PaidOn, decimal Amount, string CurrencyCode, string Method, string Reason,
     string? Reference, string? Description, IReadOnlyList<PaymentAllocationInput>? Allocations);
+public enum ManualPaymentReversalStatus { Reversed, AlreadyReversed, Invalid, NotFound, Conflict }
+public sealed record ManualPaymentReversalResult(ManualPaymentReversalStatus Status, string? Error);
 public sealed record PaymentWorkflowResult(Guid? PaymentId, string? Error, bool AlreadyExists = false)
 {
     public bool Success => PaymentId is not null;
@@ -430,6 +432,67 @@ public sealed class PaymentWorkflowService(ZevDbContext database, IConfiguration
             return new(original.PaymentId, null);
         }
         catch (DbUpdateException) { return new(null, "Allocation reversal conflict; refresh and retry."); }
+    }
+
+    // Storno of a manual payment: the payment becomes Reversed, its active allocations are released with
+    // negative rows (charges reopen) and the fund ledger gets a Reversal entry. Nothing is deleted.
+    // Bank payments are reversed only by a matching bank return (PaymentReconciliationEngine).
+    public async Task<ManualPaymentReversalResult> ReverseManualAsync(Guid zevId, Guid paymentId, string reason,
+        Guid? actorId, CancellationToken cancellationToken)
+    {
+        var trimmed = reason?.Trim() ?? string.Empty;
+        if (trimmed.Length is 0 or > 500)
+            return new(ManualPaymentReversalStatus.Invalid, "Reason is required (max 500 characters).");
+        await using var transaction = database.Database.IsRelational()
+            ? await database.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken) : null;
+        await LockZevAsync(zevId, cancellationToken);
+        var payment = await database.Payments.SingleOrDefaultAsync(item => item.ZevId == zevId
+            && item.Id == paymentId, cancellationToken);
+        if (payment is null) return new(ManualPaymentReversalStatus.NotFound, "Payment was not found.");
+        if (payment.SourceType != PaymentSourceType.Manual)
+            return new(ManualPaymentReversalStatus.Conflict,
+                "Bank payments are reversed with a matching bank return transaction.");
+        if (payment.Status == PaymentStatus.Reversed)
+            return payment.ReversalReason == trimmed
+                ? new(ManualPaymentReversalStatus.AlreadyReversed, null)
+                : new(ManualPaymentReversalStatus.Conflict, "Payment is already reversed.");
+        var originalMovement = await database.FundTransactions.SingleOrDefaultAsync(item => item.ZevId == zevId
+            && item.Kind == FundTransactionKind.Payment && item.SourceId == payment.Id, cancellationToken);
+        if (originalMovement is null)
+            return new(ManualPaymentReversalStatus.Conflict, "Original fund movement was not found.");
+        var allocations = await database.PaymentAllocations.AsNoTracking().Where(item => item.PaymentId == payment.Id)
+            .Select(item => new { item.Id, item.ChargeId, item.Amount, item.ReversesAllocationId })
+            .ToListAsync(cancellationToken);
+        var released = allocations.Where(item => item.ReversesAllocationId is not null)
+            .Select(item => item.ReversesAllocationId!.Value).ToHashSet();
+        foreach (var active in allocations.Where(item => item.Amount > 0m && !released.Contains(item.Id)))
+            database.PaymentAllocations.Add(new PaymentAllocation
+            {
+                OrganizationId = payment.OrganizationId, ZevId = zevId, PaymentId = payment.Id,
+                ChargeId = active.ChargeId, Amount = -active.Amount, ReversesAllocationId = active.Id,
+                ReversalReason = trimmed
+            });
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        payment.Status = PaymentStatus.Reversed;
+        payment.ReversedOn = today;
+        payment.ReversalReason = trimmed;
+        payment.ReversedByUserId = actorId;
+        database.FundTransactions.Add(new FundTransaction
+        {
+            OrganizationId = payment.OrganizationId, ZevId = zevId, FundId = payment.FundId,
+            Kind = FundTransactionKind.Reversal, SignedAmount = -payment.Amount, SourceId = payment.Id,
+            ReversesTransactionId = originalMovement.Id, EffectiveOn = today
+        });
+        try
+        {
+            await database.SaveChangesAsync(cancellationToken);
+            if (transaction is not null) await transaction.CommitAsync(cancellationToken);
+            return new(ManualPaymentReversalStatus.Reversed, null);
+        }
+        catch (Exception problem) when (DbUpdateErrors.IsConcurrentWriteConflict(problem))
+        {
+            return new(ManualPaymentReversalStatus.Conflict, "Payment reversal conflict; refresh and retry.");
+        }
     }
 
     private async Task<string?> ValidateAndStageAsync(Payment payment,

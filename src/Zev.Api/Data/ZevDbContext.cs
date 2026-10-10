@@ -522,6 +522,7 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
             {
                 table.HasCheckConstraint("CK_Payments_Amount", "[Amount] > 0");
                 table.HasCheckConstraint("CK_Payments_Source", "([SourceType] = 'BankTransaction' AND [BankTransactionId] IS NOT NULL AND [ManualReason] IS NULL AND [ManualMethod] IS NULL) OR ([SourceType] = 'Manual' AND [BankTransactionId] IS NULL AND [ManualReason] IS NOT NULL AND LEN(LTRIM(RTRIM([ManualReason]))) > 0 AND [ManualMethod] IS NOT NULL AND LEN(LTRIM(RTRIM([ManualMethod]))) > 0 AND [RequestId] IS NOT NULL)");
+                table.HasCheckConstraint("CK_Payments_Reversal", "[ReversalReason] IS NULL OR ([Status] = 'Reversed' AND LEN(LTRIM(RTRIM([ReversalReason]))) > 0)");
             });
             entity.HasKey(payment => payment.Id);
             entity.Property(payment => payment.Amount).HasPrecision(18, 2);
@@ -532,6 +533,7 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
             entity.Property(payment => payment.ManualMethod).HasMaxLength(50);
             entity.Property(payment => payment.ManualReference).HasMaxLength(120);
             entity.Property(payment => payment.ManualDescription).HasMaxLength(500);
+            entity.Property(payment => payment.ReversalReason).HasMaxLength(500);
             entity.HasOne<PropertyUnit>().WithMany()
                 .HasForeignKey(payment => new { payment.OrganizationId, payment.ZevId, payment.ManualUnitId })
                 .HasPrincipalKey(unit => new { unit.OrganizationId, unit.ZevId, unit.Id })
@@ -1178,7 +1180,13 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
             || ChangeTracker.Entries<Payment>().Any(entry => entry.State == EntityState.Modified
                 && (entry.Properties.Any(property => property.IsModified
                         && property.Metadata.Name is not nameof(Payment.PersonId) and not nameof(Payment.Status)
-                            and not nameof(Payment.ReversedOn))
+                            and not nameof(Payment.ReversedOn) and not nameof(Payment.ReversalReason)
+                            and not nameof(Payment.ReversedByUserId))
+                    || (entry.Property(payment => payment.ReversalReason).IsModified
+                        || entry.Property(payment => payment.ReversedByUserId).IsModified)
+                        && (!entry.Property(payment => payment.Status).IsModified
+                            || entry.Property(payment => payment.ReversalReason).OriginalValue is not null
+                            || entry.Property(payment => payment.ReversedByUserId).OriginalValue is not null)
                     || entry.Property(payment => payment.Status).IsModified
                         && (entry.Property(payment => payment.Status).OriginalValue != PaymentStatus.Posted
                             || entry.Property(payment => payment.Status).CurrentValue != PaymentStatus.Reversed

@@ -1006,6 +1006,137 @@ public sealed class PaymentTests
                 Amount = group.Sum(item => item.Amount) }).ToQueryString());
     }
 
+    [Fact]
+    public async Task ManualPaymentReversalReleasesAllocationsAndBalancesFundWithAuditedReason()
+    {
+        var actorId = Guid.NewGuid();
+        using var fixture = new PaymentFixture(1, actorId: actorId);
+        var charge = fixture.Charges[0];
+        var workflow = new PaymentWorkflowService(fixture.Database);
+        var created = await workflow.CreateManualAsync(fixture.Zev.Id,
+            new ManualPaymentInput(Guid.NewGuid(), charge.PersonId, null, charge.FundId,
+                new DateOnly(2026, 9, 1), 120m, "BAM", "Transfer", "Uplata na blagajni banke", null, null,
+                [new PaymentAllocationInput(charge.Id, 100m)]), actorId, CancellationToken.None);
+        Assert.True(created.Success, created.Error);
+        var paymentId = created.PaymentId!.Value;
+
+        var reversed = await workflow.ReverseManualAsync(fixture.Zev.Id, paymentId, "  Pogrešno evidentirana uplata ",
+            actorId, CancellationToken.None);
+
+        Assert.Equal(ManualPaymentReversalStatus.Reversed, reversed.Status);
+        var payment = fixture.Database.Payments.Single();
+        Assert.Equal(PaymentStatus.Reversed, payment.Status);
+        Assert.Equal(DateOnly.FromDateTime(DateTime.UtcNow), payment.ReversedOn);
+        Assert.Equal("Pogrešno evidentirana uplata", payment.ReversalReason);
+        Assert.Equal(actorId, payment.ReversedByUserId);
+        // The original allocation stays; a negative row releases it and the charge is open again.
+        var release = Assert.Single(fixture.Database.PaymentAllocations, item => item.Amount < 0m);
+        Assert.Equal(-100m, release.Amount);
+        Assert.Equal("Pogrešno evidentirana uplata", release.ReversalReason);
+        Assert.Equal(2, fixture.Database.PaymentAllocations.Count());
+        Assert.Equal(0m, await FinancialReadModel.ActiveAllocations(fixture.Database, fixture.Zev.Id, null)
+            .Where(item => item.ChargeId == charge.Id).SumAsync(item => item.Amount));
+        // Fund ledger: payment +120 and reversal -120 in the payment currency.
+        var reversal = Assert.Single(fixture.Database.FundTransactions, item => item.Kind == FundTransactionKind.Reversal);
+        Assert.Equal(-120m, reversal.SignedAmount);
+        Assert.Equal(paymentId, reversal.SourceId);
+        var movements = await FinancialReadModel.FundMovements(fixture.Database, fixture.Zev.Id).ToListAsync();
+        Assert.All(movements, item => Assert.Equal("BAM", item.CurrencyCode));
+        Assert.Equal(0m, movements.Sum(item => item.Amount));
+        Assert.Contains(fixture.Database.AuditLogs, item => item.EntityType == nameof(Payment)
+            && item.Action == "Modified" && item.ActorUserId == actorId && item.OccurredUtc != default
+            && item.AfterJson!.Contains("evidentirana uplata") && item.AfterJson.Contains(actorId.ToString())
+            && item.BeforeJson!.Contains("\"ReversalReason\":null"));
+
+        // Repeating the same request is idempotent; a different one is a conflict; nothing new is written.
+        Assert.Equal(ManualPaymentReversalStatus.AlreadyReversed, (await workflow.ReverseManualAsync(fixture.Zev.Id,
+            paymentId, "Pogrešno evidentirana uplata", actorId, CancellationToken.None)).Status);
+        Assert.Equal(ManualPaymentReversalStatus.Conflict, (await workflow.ReverseManualAsync(fixture.Zev.Id,
+            paymentId, "Drugi razlog", actorId, CancellationToken.None)).Status);
+        Assert.Equal(2, fixture.Database.FundTransactions.Count());
+        Assert.Equal(2, fixture.Database.PaymentAllocations.Count());
+        // A reversed payment can no longer be allocated.
+        Assert.False((await workflow.AllocateAsync(fixture.Zev.Id, paymentId, Guid.NewGuid(),
+            [new PaymentAllocationInput(charge.Id, 10m)], CancellationToken.None, actorId)).Success);
+    }
+
+    [Fact]
+    public async Task ManualPaymentReversalSkipsAlreadyReleasedAllocations()
+    {
+        using var fixture = new PaymentFixture(1);
+        var first = fixture.Charges[0];
+        var second = new Charge { OrganizationId = first.OrganizationId, ZevId = first.ZevId,
+            PersonId = first.PersonId, PropertyUnitId = first.PropertyUnitId, FundId = first.FundId,
+            Period = first.Period, DueDate = first.DueDate, Amount = 100m, Reference = "SECOND" };
+        fixture.Database.Charges.Add(second);
+        await fixture.Database.SaveChangesAsync();
+        var workflow = new PaymentWorkflowService(fixture.Database);
+        var created = await workflow.CreateManualAsync(fixture.Zev.Id,
+            new ManualPaymentInput(Guid.NewGuid(), first.PersonId, null, first.FundId,
+                new DateOnly(2026, 9, 1), 200m, "BAM", "Transfer", "Test", null, null,
+                [new PaymentAllocationInput(first.Id, 100m), new PaymentAllocationInput(second.Id, 100m)]),
+            null, CancellationToken.None);
+        Assert.True(created.Success, created.Error);
+        var allocation = fixture.Database.PaymentAllocations.Single(item => item.ChargeId == first.Id);
+        Assert.True((await workflow.ReverseAllocationAsync(fixture.Zev.Id, allocation.Id, "Pogrešan stan",
+            CancellationToken.None)).Success);
+
+        var reversed = await workflow.ReverseManualAsync(fixture.Zev.Id, created.PaymentId!.Value, "Storno",
+            null, CancellationToken.None);
+
+        Assert.Equal(ManualPaymentReversalStatus.Reversed, reversed.Status);
+        var releases = fixture.Database.PaymentAllocations.Where(item => item.Amount < 0m).ToList();
+        Assert.Equal(2, releases.Count);
+        Assert.Single(releases, item => item.ChargeId == second.Id && item.ReversalReason == "Storno");
+    }
+
+    [Fact]
+    public async Task ManualPaymentReversalRejectsMissingReasonBankPaymentsAndUnknownPayments()
+    {
+        using var fixture = new PaymentFixture(1);
+        var charge = fixture.Charges[0];
+        var workflow = new PaymentWorkflowService(fixture.Database);
+        var created = await workflow.CreateManualAsync(fixture.Zev.Id,
+            new ManualPaymentInput(Guid.NewGuid(), charge.PersonId, null, charge.FundId,
+                new DateOnly(2026, 9, 1), 50m, "BAM", "Transfer", "Test", null, null, null), null, CancellationToken.None);
+        Assert.Equal(ManualPaymentReversalStatus.Invalid, (await workflow.ReverseManualAsync(fixture.Zev.Id,
+            created.PaymentId!.Value, "   ", null, CancellationToken.None)).Status);
+        Assert.Equal(ManualPaymentReversalStatus.Invalid, (await workflow.ReverseManualAsync(fixture.Zev.Id,
+            created.PaymentId!.Value, new string('x', 501), null, CancellationToken.None)).Status);
+        Assert.Equal(ManualPaymentReversalStatus.NotFound, (await workflow.ReverseManualAsync(Guid.NewGuid(),
+            created.PaymentId!.Value, "Storno", null, CancellationToken.None)).Status);
+        Assert.Equal(PaymentStatus.Posted, fixture.Database.Payments.Single().Status);
+
+        var bankPayment = new Payment { OrganizationId = fixture.Zev.OrganizationId, ZevId = fixture.Zev.Id,
+            FundId = charge.FundId, PersonId = charge.PersonId, CurrencyCode = "BAM", Amount = 10m,
+            SourceType = PaymentSourceType.BankTransaction, BankTransactionId = Guid.NewGuid(),
+            PaidOn = new DateOnly(2026, 9, 2) };
+        fixture.Database.Payments.Add(bankPayment);
+        await fixture.Database.SaveChangesAsync();
+        var bank = await workflow.ReverseManualAsync(fixture.Zev.Id, bankPayment.Id, "Storno", null, CancellationToken.None);
+        Assert.Equal(ManualPaymentReversalStatus.Conflict, bank.Status);
+        Assert.Contains("bank return", bank.Error);
+    }
+
+    [Fact]
+    public async Task ReversalFieldsCannotBeChangedOutsideTheReversal()
+    {
+        using var fixture = new PaymentFixture(1);
+        var charge = fixture.Charges[0];
+        var workflow = new PaymentWorkflowService(fixture.Database);
+        var created = await workflow.CreateManualAsync(fixture.Zev.Id,
+            new ManualPaymentInput(Guid.NewGuid(), charge.PersonId, null, charge.FundId,
+                new DateOnly(2026, 9, 1), 50m, "BAM", "Transfer", "Test", null, null, null), null, CancellationToken.None);
+        var payment = fixture.Database.Payments.Single();
+        payment.ReversalReason = "Bez storna";
+        Assert.Throws<InvalidOperationException>(() => fixture.Database.SaveChanges());
+        fixture.Database.Entry(payment).Reload();
+        Assert.Equal(ManualPaymentReversalStatus.Reversed, (await workflow.ReverseManualAsync(fixture.Zev.Id,
+            created.PaymentId!.Value, "Storno", null, CancellationToken.None)).Status);
+        payment.ReversalReason = "Prepravljen razlog";
+        Assert.Throws<InvalidOperationException>(() => fixture.Database.SaveChanges());
+    }
+
     private sealed class PaymentFixture : IDisposable
     {
         public ZevDbContext Database { get; }

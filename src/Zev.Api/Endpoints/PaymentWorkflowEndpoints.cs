@@ -162,6 +162,26 @@ public static class PaymentWorkflowEndpoints
                 : Results.Conflict(new { error = result.Error });
         });
 
+        group.MapPost("/{paymentId:guid}/reverse", async (Guid zevId, Guid paymentId,
+            ReversePaymentCommand request, TenantAccess access, PaymentWorkflowService workflow,
+            ClaimsPrincipal user, CancellationToken cancellationToken) =>
+        {
+            if (!await access.CanReadZevAsync(zevId, cancellationToken)) return Results.NotFound();
+            if (!await access.HasPermissionAsync(zevId, "Payments.Reverse", cancellationToken)) return Results.Forbid();
+            if (string.IsNullOrWhiteSpace(request.Reason) || request.Reason.Trim().Length > 500)
+                return Results.BadRequest(new { error = "Reason is required (max 500 characters)." });
+            var actorId = Guid.TryParse(user.FindFirstValue("sub"), out var parsed) ? parsed : (Guid?)null;
+            var result = await workflow.ReverseManualAsync(zevId, paymentId, request.Reason, actorId, cancellationToken);
+            return result.Status switch
+            {
+                ManualPaymentReversalStatus.Reversed => Results.Ok(new { id = paymentId, alreadyExists = false }),
+                ManualPaymentReversalStatus.AlreadyReversed => Results.Ok(new { id = paymentId, alreadyExists = true }),
+                ManualPaymentReversalStatus.Invalid => Results.BadRequest(new { error = result.Error }),
+                ManualPaymentReversalStatus.NotFound => Results.NotFound(),
+                _ => Results.Conflict(new { error = result.Error }),
+            };
+        });
+
         group.MapPost("/allocations/{allocationId:guid}/reverse", async (Guid zevId, Guid allocationId,
             ReverseAllocationCommand request, TenantAccess access, PaymentWorkflowService workflow,
             CancellationToken cancellationToken) =>
@@ -331,4 +351,5 @@ public sealed record IdentifyPaymentCommand(Guid PersonId);
 public sealed record ChangePayerCommand(Guid PersonId, string Reason,
     IReadOnlyList<PaymentAllocationInput>? Allocations);
 public sealed record ReverseAllocationCommand(string Reason);
+public sealed record ReversePaymentCommand(string? Reason);
 public sealed record CreditPolicyCommand(bool Enabled, string RowVersion);

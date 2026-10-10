@@ -80,6 +80,8 @@ public sealed class Payment : ITenantRecord
     public decimal Amount { get; set; }
     public PaymentStatus Status { get; set; } = PaymentStatus.Posted;
     public DateOnly? ReversedOn { get; set; }
+    public string? ReversalReason { get; set; }
+    public Guid? ReversedByUserId { get; set; }
     public DateOnly PaidOn { get; set; }
     public DateTimeOffset CreatedUtc { get; set; } = DateTimeOffset.UtcNow;
     Guid? ITenantRecord.OrganizationId => OrganizationId;

@@ -1945,6 +1945,13 @@ namespace Zev.Api.Data.Migrations
                     b.Property<Guid?>("PersonId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("ReversalReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid?>("ReversedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateOnly?>("ReversedOn")
                         .HasColumnType("date");
 
@@ -1979,6 +1986,8 @@ namespace Zev.Api.Data.Migrations
                             t.HasCheckConstraint("CK_Payments_Amount", "[Amount] > 0");
 
                             t.HasCheckConstraint("CK_Payments_Source", "([SourceType] = 'BankTransaction' AND [BankTransactionId] IS NOT NULL AND [ManualReason] IS NULL AND [ManualMethod] IS NULL) OR ([SourceType] = 'Manual' AND [BankTransactionId] IS NULL AND [ManualReason] IS NOT NULL AND LEN(LTRIM(RTRIM([ManualReason]))) > 0 AND [ManualMethod] IS NOT NULL AND LEN(LTRIM(RTRIM([ManualMethod]))) > 0 AND [RequestId] IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_Payments_Reversal", "[ReversalReason] IS NULL OR ([Status] = 'Reversed' AND LEN(LTRIM(RTRIM([ReversalReason]))) > 0)");
                         });
                 });
 
