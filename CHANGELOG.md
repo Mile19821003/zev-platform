@@ -2,6 +2,42 @@
 
 Sve značajne izmjene ZEV Platforme. Ranija historija (faze do 4) je u `CLOUD_HANDOFF_STATUS.md` i git logu.
 
+## [v2.5] - 2026-10-10
+
+### Dodano (Added)
+- Saldo i period izvoda: `BankStatementImport.OpeningBalance`, `ClosingBalance`, `StatementFrom`, `StatementTo`.
+  - CAMT.053: početni saldo `OPBD` (ili `PRCD`), završni `CLBD`, predznak iz `CdtDbtInd`, period iz `FrToDt`;
+    valuta salda mora odgovarati valuti računa.
+  - Interni XML: opcioni `<openingBalance>`, `<closingBalance>`, `<from>`, `<to>` pod korijenom.
+  - CSV/TXT nemaju standardna polja salda — vrijednosti ostaju prazne (ništa se ne izvodi iz transakcija).
+  - Prikaz u pregledu (`POST .../statements/preview`) i listi izvoda (`GET .../statements`).
+- `GET /api/zevs/{zevId}/payments/accounts/{accountId}/balance` (pravo `BankAccounts.View`, inače 404):
+  - **Banka** (samo iz izvoda): posljednji iskazani završni saldo i datum (`balanceSource` = `Statement` ili
+    `NotProvided`), promet (prilivi, odlivi), izvedeni saldo = početni saldo najstarijeg izvoda + sav promet
+    (samo ako je početni saldo poznat), lista izvoda i prekidi kontinuiteta (završni ≠ sljedeći početni).
+  - **Fond** (samo iz knjige fonda, valuta računa): saldo i sastav — uplate s ovog računa, s drugih računa istog
+    fonda, ručne uplate, rashodi, ostalo.
+  - **Usklađivanje**: razlika promet banke − saldo fonda razložena na bankovne odlive koji nisu u fondu, ručne
+    uplate i rashode koji nisu u banci i druge račune fonda; `unexplained` treba biti 0.
+- Testovi: `BankAccountBalanceTests` (5: parseri, snimanje i odbijanje izvoda, razlaganje razlike, prekid
+  kontinuiteta, izolacija po ZEV-u i prava) i `SqlBankAccountBalanceTests` (SQL Server).
+
+### Ispravljeno (Fixed)
+- Uvoz odbija izvod čiji se iskazani saldo ne slaže s transakcijama (početni + promet ≠ završni), izvod čija
+  je valuta salda različita od valute računa i izvod čiji period završava prije početka.
+
+### Baza / Migracije
+- `20261010191157_BankStatementBalances`: kolone `OpeningBalance`, `ClosingBalance` (decimal(18,2)),
+  `StatementFrom`, `StatementTo` (date) na `BankStatementImports`, check `CK_BankStatementImports_Period`.
+  Postojeći izvodi ostaju bez salda (null).
+
+### Otvorene odluke (Open Decisions)
+- Bankovni odlivi (provizije, isplate dobavljačima) i dalje ne knjiže `FundTransaction`; izvještaj ih prikazuje
+  kao „odlivi koji nisu u fondu“. Potrebna odluka da li ih vezati za rashode/knjigu fonda.
+- Saldo za CSV/TXT izvode: banke ga ponekad daju u zaglavlju ili podnožju bez standarda — podrška po banci
+  kad budu dostupni stvarni uzorci.
+- Web prikaz salda računa (UI) još ne postoji (samo API).
+
 ## [v2.4] - 2026-10-10
 
 ### Dodano (Added)

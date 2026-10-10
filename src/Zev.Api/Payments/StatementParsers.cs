@@ -8,10 +8,18 @@ namespace Zev.Api.Payments;
 public sealed record ParsedBankTransaction(DateOnly BookingDate, decimal Amount, string? Reference,
     string? Counterparty, string? Description, string? CurrencyCode);
 
+// Statement-level data as written in the file. Balances and period stay null when the format has none;
+// they are never derived from the transactions.
+public sealed record ParsedStatement(IReadOnlyList<ParsedBankTransaction> Transactions,
+    decimal? OpeningBalance = null, decimal? ClosingBalance = null, DateOnly? From = null, DateOnly? To = null,
+    string? BalanceCurrencyCode = null);
+
 public interface IBankStatementParser
 {
     string Format { get; }
     IReadOnlyList<ParsedBankTransaction> Parse(string content);
+    // Delimited exports (CSV/TXT) have no standard balance fields, so the default carries transactions only.
+    ParsedStatement ParseStatement(string content) => new(Parse(content));
 }
 
 public static class StatementText
@@ -158,9 +166,20 @@ public sealed class XmlStatementParser : IBankStatementParser
 {
     public string Format => "XML";
 
-    public IReadOnlyList<ParsedBankTransaction> Parse(string content)
+    public IReadOnlyList<ParsedBankTransaction> Parse(string content) => ParseStatement(content).Transactions;
+
+    // Optional statement fields directly under the root: <openingBalance>, <closingBalance>, <from>, <to>.
+    public ParsedStatement ParseStatement(string content)
     {
         var document = SafeXml(content);
+        var root = document.Root ?? throw new FormatException("Statement has no root element.");
+        return new(Transactions(document), OptionalAmount(Child(root, "openingBalance"), "openingBalance"),
+            OptionalAmount(Child(root, "closingBalance"), "closingBalance"),
+            OptionalDate(Child(root, "from"), "from"), OptionalDate(Child(root, "to"), "to"));
+    }
+
+    private static IReadOnlyList<ParsedBankTransaction> Transactions(XDocument document)
+    {
         var transactions = document.Descendants().Where(item => item.Name.LocalName == "transaction").ToList();
         if (transactions.Count == 0) throw new FormatException("Statement has no transactions.");
         return transactions.Select(item => new ParsedBankTransaction(
@@ -169,6 +188,16 @@ public sealed class XmlStatementParser : IBankStatementParser
             Child(item, "reference"), Child(item, "counterparty"), Child(item, "description"),
             Child(item, "currency"))).ToList();
     }
+
+    internal static decimal? OptionalAmount(string? text, string field) => string.IsNullOrWhiteSpace(text) ? null
+        : decimal.TryParse(text, NumberStyles.AllowDecimalPoint | NumberStyles.AllowLeadingSign,
+            CultureInfo.InvariantCulture, out var value) ? value
+        : throw new FormatException($"Invalid {field} '{text}'.");
+
+    internal static DateOnly? OptionalDate(string? text, string field) => string.IsNullOrWhiteSpace(text) ? null
+        : DateOnly.TryParse(text.Length >= 10 ? text[..10] : text, CultureInfo.InvariantCulture,
+            DateTimeStyles.None, out var value) ? value
+        : throw new FormatException($"Invalid {field} '{text}'.");
 
     internal static XDocument SafeXml(string content)
     {
@@ -187,9 +216,41 @@ public sealed class Camt053StatementParser : IBankStatementParser
 {
     public string Format => "CAMT053";
 
-    public IReadOnlyList<ParsedBankTransaction> Parse(string content)
+    public IReadOnlyList<ParsedBankTransaction> Parse(string content) => ParseStatement(content).Transactions;
+
+    // Balances: OPBD (or PRCD, previous closing) is the opening and CLBD the closing booked balance; the sign
+    // comes from CdtDbtInd. Period: Stmt/FrToDt. A file with several statements keeps the first opening and the
+    // last closing balance.
+    public ParsedStatement ParseStatement(string content)
     {
         var document = XmlStatementParser.SafeXml(content);
+        var balances = document.Descendants().Where(item => item.Name.LocalName == "Bal").Select(item => new
+        {
+            Code = item.Descendants().FirstOrDefault(code => code.Name.LocalName == "Cd")?.Value.Trim(),
+            Amount = item.Elements().FirstOrDefault(amount => amount.Name.LocalName == "Amt"),
+            Debit = XmlStatementParser.Child(item, "CdtDbtInd") == "DBIT"
+        }).ToList();
+        decimal? Balance(params string[] codes)
+        {
+            var match = codes.Select(code => balances.FirstOrDefault(item => item.Code == code)).FirstOrDefault(item => item is not null);
+            if (match is null) return null;
+            var amount = XmlStatementParser.OptionalAmount(match.Amount?.Value.Trim(), "balance")
+                ?? throw new FormatException("CAMT.053 balance has no amount.");
+            return match.Debit ? -amount : amount;
+        }
+        var opening = Balance("OPBD", "PRCD");
+        balances.Reverse();
+        var closing = Balance("CLBD");
+        var currency = balances.Select(item => item.Amount?.Attributes().FirstOrDefault(attribute =>
+            attribute.Name.LocalName == "Ccy")?.Value).FirstOrDefault(item => item is not null);
+        var period = document.Descendants().FirstOrDefault(item => item.Name.LocalName == "FrToDt");
+        var from = XmlStatementParser.OptionalDate(period?.Elements().FirstOrDefault(item => item.Name.LocalName is "FrDtTm" or "FrDt")?.Value.Trim(), "FrDtTm");
+        var to = XmlStatementParser.OptionalDate(period?.Elements().FirstOrDefault(item => item.Name.LocalName is "ToDtTm" or "ToDt")?.Value.Trim(), "ToDtTm");
+        return new(Entries(document), opening, closing, from, to, currency);
+    }
+
+    private static IReadOnlyList<ParsedBankTransaction> Entries(XDocument document)
+    {
         var entries = document.Descendants().Where(item => item.Name.LocalName == "Ntry").ToList();
         if (entries.Count == 0) throw new FormatException("CAMT.053 statement has no entries.");
         var result = new List<ParsedBankTransaction>(entries.Count);

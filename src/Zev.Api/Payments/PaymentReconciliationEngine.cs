@@ -8,7 +8,8 @@ using Zev.Api.Domain;
 namespace Zev.Api.Payments;
 
 public sealed record StatementImportResult(BankStatementImport? Import, int MatchedCount, string? Error);
-public sealed record StatementPreviewResult(IReadOnlyList<ParsedBankTransaction>? Rows, bool IsDuplicate, string? Error);
+public sealed record StatementPreviewResult(IReadOnlyList<ParsedBankTransaction>? Rows, bool IsDuplicate, string? Error,
+    ParsedStatement? Statement = null);
 public sealed record BankReturnResult(bool Success, string? Error);
 
 public sealed class PaymentReconciliationEngine(ZevDbContext database, IEnumerable<IBankStatementParser> parsers,
@@ -19,25 +20,25 @@ public sealed class PaymentReconciliationEngine(ZevDbContext database, IEnumerab
         string format, byte[] content, CancellationToken cancellationToken)
     {
         var parsed = Parse(fileName, format, content);
-        if (parsed.Rows is null) return new(null, false, parsed.Error);
+        if (parsed.Statement is null) return new(null, false, parsed.Error);
         var account = await database.BankAccounts.AsNoTracking().SingleOrDefaultAsync(item => item.Id == bankAccountId
             && item.ZevId == zevId && item.IsActive && item.Fund.IsActive, cancellationToken);
         if (account is null) return new(null, false, "Bank account not found.");
-        if (parsed.Rows.Any(item => item.CurrencyCode is not null
-            && !item.CurrencyCode.Equals(account.CurrencyCode, StringComparison.OrdinalIgnoreCase)))
-            return new(null, false, "Statement currency does not match account currency.");
+        if (CurrencyError(parsed.Statement, account.CurrencyCode) is string currencyError)
+            return new(null, false, currencyError);
         var checksum = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(content));
         var duplicate = await database.BankStatementImports.AnyAsync(item => item.ZevId == zevId
             && item.BankAccountId == bankAccountId && item.ChecksumSha256 == checksum, cancellationToken);
-        return new(parsed.Rows, duplicate, null);
+        return new(parsed.Statement.Transactions, duplicate, null, parsed.Statement);
     }
 
     public async Task<StatementImportResult> ImportAsync(Guid zevId, Guid bankAccountId, string fileName,
         string format, byte[] content, CancellationToken cancellationToken)
     {
         var parsed = Parse(fileName, format, content);
-        if (parsed.Rows is null || parsed.Parser is null) return new(null, 0, parsed.Error);
-        var rows = parsed.Rows;
+        if (parsed.Statement is null || parsed.Parser is null) return new(null, 0, parsed.Error);
+        var statement = parsed.Statement;
+        var rows = statement.Transactions;
         var parser = parsed.Parser;
 
         var checksum = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(content));
@@ -48,9 +49,7 @@ public sealed class PaymentReconciliationEngine(ZevDbContext database, IEnumerab
         var account = await database.BankAccounts.AsNoTracking().SingleOrDefaultAsync(item => item.Id == bankAccountId
             && item.ZevId == zevId && item.IsActive && item.Fund.IsActive, cancellationToken);
         if (account is null) return new(null, 0, "Bank account not found.");
-        if (rows.Any(item => item.CurrencyCode is not null
-            && !item.CurrencyCode.Equals(account.CurrencyCode, StringComparison.OrdinalIgnoreCase)))
-            return new(null, 0, "Statement currency does not match account currency.");
+        if (CurrencyError(statement, account.CurrencyCode) is string currencyError) return new(null, 0, currencyError);
         if (await database.BankStatementImports.AnyAsync(item => item.ZevId == zevId
             && item.BankAccountId == bankAccountId && item.ChecksumSha256 == checksum, cancellationToken))
             return new(null, 0, "Statement already imported.");
@@ -60,6 +59,8 @@ public sealed class PaymentReconciliationEngine(ZevDbContext database, IEnumerab
             OrganizationId = account.OrganizationId, ZevId = zevId, BankAccountId = account.Id,
             OriginalFileName = Path.GetFileName(fileName), ChecksumSha256 = checksum,
             Format = parser.Format, TransactionCount = rows.Count,
+            OpeningBalance = statement.OpeningBalance, ClosingBalance = statement.ClosingBalance,
+            StatementFrom = statement.From, StatementTo = statement.To,
             ImportedByUserId = Guid.TryParse(context?.HttpContext?.User.FindFirst("sub")?.Value,
                 out var importerId) ? importerId : null
         };
@@ -184,7 +185,14 @@ public sealed class PaymentReconciliationEngine(ZevDbContext database, IEnumerab
         }
     }
 
-    private (IReadOnlyList<ParsedBankTransaction>? Rows, IBankStatementParser? Parser, string? Error)
+    private static string? CurrencyError(ParsedStatement statement, string accountCurrency) =>
+        statement.Transactions.Any(item => item.CurrencyCode is not null
+            && !item.CurrencyCode.Equals(accountCurrency, StringComparison.OrdinalIgnoreCase))
+        || statement.BalanceCurrencyCode is not null
+            && !statement.BalanceCurrencyCode.Equals(accountCurrency, StringComparison.OrdinalIgnoreCase)
+            ? "Statement currency does not match account currency." : null;
+
+    private (ParsedStatement? Statement, IBankStatementParser? Parser, string? Error)
         Parse(string fileName, string format, byte[] content)
     {
         if (content.Length is 0 or > 5_000_000 || string.IsNullOrWhiteSpace(fileName) || fileName.Length > 255)
@@ -194,11 +202,19 @@ public sealed class PaymentReconciliationEngine(ZevDbContext database, IEnumerab
         try
         {
             var decoded = StatementText.Decode(content);
-            var rows = parser.Parse(decoded);
+            var statement = parser.ParseStatement(decoded);
+            var rows = statement.Transactions;
             if (rows.Count is 0 or > 10000 || rows.Any(item => item.Amount == 0m || item.Reference?.Length > 120
                 || item.Counterparty?.Length > 250 || item.Description?.Length > 500))
                 return (null, null, "Invalid statement rows.");
-            return (rows, parser, null);
+            if (statement.From > statement.To) return (null, null, "Statement period ends before it starts.");
+            // A statement that states both balances must add up; otherwise the file is incomplete or altered.
+            if (statement.OpeningBalance is decimal opening && statement.ClosingBalance is decimal closing
+                && opening + rows.Sum(item => item.Amount) != closing)
+                return (null, null, string.Create(System.Globalization.CultureInfo.InvariantCulture,
+                    $"Statement balances do not match its transactions: opening {opening:0.00} + "
+                    + $"movements {rows.Sum(item => item.Amount):0.00} != closing {closing:0.00}."));
+            return (statement, parser, null);
         }
         catch (FormatException problem)
         {

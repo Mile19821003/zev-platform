@@ -50,6 +50,7 @@ builder.Services.AddScoped<InvoiceLifecycleService>();
 builder.Services.AddScoped<UatFinanceSeed>();
 builder.Services.AddScoped<PaymentReconciliationEngine>();
 builder.Services.AddScoped<PaymentWorkflowService>();
+builder.Services.AddScoped<BankAccountBalanceService>();
 builder.Services.AddScoped<OwnerCardService>();
 builder.Services.AddScoped<PaymentReferenceService>();
 builder.Services.AddSingleton<IPaymentQrProvider, UnconfiguredPaymentQrProvider>();

@@ -483,8 +483,11 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
 
         modelBuilder.Entity<BankStatementImport>(entity =>
         {
-            entity.ToTable("BankStatementImports");
+            entity.ToTable("BankStatementImports", table => table.HasCheckConstraint("CK_BankStatementImports_Period",
+                "[StatementFrom] IS NULL OR [StatementTo] IS NULL OR [StatementTo] >= [StatementFrom]"));
             entity.HasKey(import => import.Id);
+            entity.Property(import => import.OpeningBalance).HasPrecision(18, 2);
+            entity.Property(import => import.ClosingBalance).HasPrecision(18, 2);
             entity.Property(import => import.OriginalFileName).HasMaxLength(255).IsRequired();
             entity.Property(import => import.ChecksumSha256).HasMaxLength(64).IsRequired();
             entity.Property(import => import.Format).HasMaxLength(30).IsRequired();

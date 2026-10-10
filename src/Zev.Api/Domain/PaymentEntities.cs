@@ -34,6 +34,11 @@ public sealed class BankStatementImport : ITenantRecord
     public string Format { get; set; } = string.Empty;
     public BankImportStatus Status { get; set; } = BankImportStatus.Imported;
     public int TransactionCount { get; set; }
+    // Balances and period as stated in the file; null when the format does not carry them.
+    public decimal? OpeningBalance { get; set; }
+    public decimal? ClosingBalance { get; set; }
+    public DateOnly? StatementFrom { get; set; }
+    public DateOnly? StatementTo { get; set; }
     public Guid? ImportedByUserId { get; set; }
     public DateTimeOffset ImportedUtc { get; set; } = DateTimeOffset.UtcNow;
     Guid? ITenantRecord.OrganizationId => OrganizationId;

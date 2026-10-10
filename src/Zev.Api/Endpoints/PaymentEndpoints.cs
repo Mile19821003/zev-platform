@@ -25,6 +25,15 @@ public static class PaymentEndpoints
             return Results.Ok(accounts);
         });
 
+        // Bank balance from imported statements next to the fund ledger balance, with the difference explained.
+        group.MapGet("/accounts/{accountId:guid}/balance", async (Guid zevId, Guid accountId, TenantAccess access,
+            BankAccountBalanceService balances, CancellationToken cancellationToken) =>
+        {
+            if (!await access.HasPermissionAsync(zevId, "BankAccounts.View", cancellationToken)) return Results.NotFound();
+            var balance = await balances.ReadAsync(zevId, accountId, cancellationToken);
+            return balance is null ? Results.NotFound() : Results.Ok(balance);
+        });
+
         group.MapPost("/accounts", async (Guid zevId, CreateBankAccountRequest request, TenantAccess access,
             ZevDbContext database, CancellationToken cancellationToken) =>
         {
@@ -67,7 +76,9 @@ public static class PaymentEndpoints
                 .Select(account => account.CurrencyCode).SingleOrDefaultAsync(cancellationToken);
             return result.Rows is null ? Results.BadRequest(new { error = result.Error })
                 : Results.Ok(new { transactionCount = result.Rows.Count, result.IsDuplicate,
-                    items = result.Rows.Take(50), truncated = result.Rows.Count > 50, currencyCode });
+                    items = result.Rows.Take(50), truncated = result.Rows.Count > 50, currencyCode,
+                    openingBalance = result.Statement?.OpeningBalance, closingBalance = result.Statement?.ClosingBalance,
+                    statementFrom = result.Statement?.From, statementTo = result.Statement?.To });
         }).RequireRateLimiting("upload");
 
         group.MapPost("/statements", async (Guid zevId, ImportStatementRequest request, TenantAccess access,
@@ -101,6 +112,7 @@ public static class PaymentEndpoints
             var items = await query.OrderByDescending(item => item.ImportedUtc).Skip((currentPage - 1) * currentSize)
                 .Take(currentSize).Select(item => new { item.Id, item.BankAccountId, item.OriginalFileName,
                     item.ChecksumSha256, item.Format, status = item.Status.ToString(), item.TransactionCount,
+                    item.OpeningBalance, item.ClosingBalance, item.StatementFrom, item.StatementTo,
                     item.ImportedUtc, item.ImportedByUserId }).ToListAsync(cancellationToken);
             return Results.Ok(new { page = currentPage, pageSize = currentSize, totalCount, items });
         });

@@ -474,11 +474,19 @@ namespace Zev.Api.Data.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
 
+                    b.Property<decimal?>("ClosingBalance")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<Guid?>("ImportedByUserId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTimeOffset>("ImportedUtc")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<decimal?>("OpeningBalance")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<Guid>("OrganizationId")
                         .HasColumnType("uniqueidentifier");
@@ -487,6 +495,12 @@ namespace Zev.Api.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
+
+                    b.Property<DateOnly?>("StatementFrom")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("StatementTo")
+                        .HasColumnType("date");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -508,7 +522,10 @@ namespace Zev.Api.Data.Migrations
                     b.HasIndex("ZevId", "BankAccountId", "ChecksumSha256")
                         .IsUnique();
 
-                    b.ToTable("BankStatementImports", (string)null);
+                    b.ToTable("BankStatementImports", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_BankStatementImports_Period", "[StatementFrom] IS NULL OR [StatementTo] IS NULL OR [StatementTo] >= [StatementFrom]");
+                        });
                 });
 
             modelBuilder.Entity("Zev.Api.Domain.BankTransaction", b =>
