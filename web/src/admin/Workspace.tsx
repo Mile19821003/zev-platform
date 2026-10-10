@@ -11,7 +11,7 @@ import HodogramPage from "./HodogramPage";
 import CommunityPage from "./CommunityPage";
 import ReportsPage from "./ReportsPage";
 import ResourcePage, { ResourceConfig } from "./ResourcePage";
-import AccessControlPage from "./AccessControlPage";
+import ZevPermissionPage from "./ZevPermissionPage";
 import { useChangeRevision } from "../useChangeRevision.ts";
 
 type MenuKey = "overview" | "organizations" | "zevs" | "buildings" | "entrances" | "units"
@@ -219,7 +219,7 @@ export default function Workspace({ token, profile, zevs, onLogout, onProfile }:
         {active === "reports" && <ReportsPage token={token} zevs={scopedZevs} />}
         {resources[active] && <ResourcePage key={active} config={resources[active]} token={token}
           onChanged={() => setRevision((value) => value + 1)} />}
-        {active === "memberships" && activeZev && <AccessControlPage token={token} zevId={activeZev.id} zevs={zevs} />}
+        {active === "memberships" && activeZev && <ZevPermissionPage token={token} zevId={activeZev.id} zevs={zevs} />}
       </main>
     </div>
   </div>;
