@@ -700,7 +700,7 @@ public sealed class PaymentTests
     {
         var unitId = Guid.NewGuid();
         using var fixture = new PaymentFixture(1, accountUnitId: unitId, firstAmount: 30m);
-        var provider = new PaymentReferenceProvider();
+        var references = new PaymentReferenceService(fixture.Database);
         var first = fixture.Charges[0];
         foreach (var amount in new[] { 18m, 5m })
             fixture.Database.Charges.Add(new Charge { OrganizationId = first.OrganizationId,
@@ -708,9 +708,15 @@ public sealed class PaymentTests
                 FundId = first.FundId, Amount = amount, Period = first.Period,
                 DueDate = first.DueDate, Reference = $"ZEV-{Guid.NewGuid():N}" });
         fixture.Database.SaveChanges();
-        var reference = provider.ForAccount(fixture.Zev.Id, unitId, first.PersonId);
-        Assert.Equal(new PaymentAccountReference(fixture.Zev.Id, unitId, first.PersonId), provider.Parse(reference));
-        Assert.Null(provider.Parse(provider.ForAccount(Guid.NewGuid(), unitId, first.PersonId) + "X"));
+        var reference = await references.EnsureAsync(fixture.Zev.Id, unitId, first.PersonId, CancellationToken.None);
+        Assert.Equal(PaymentReferenceFormat.Length, reference.Length);
+        Assert.True(reference.All(char.IsAsciiDigit));
+        Assert.Equal(reference, await references.EnsureAsync(fixture.Zev.Id, unitId, first.PersonId, CancellationToken.None));
+        var wrongCheckDigit = reference[..^1] + (char)('0' + (reference[^1] - '0' + 1) % 10);
+        var resolved = await references.ResolveAsync(fixture.Zev.Id, [reference, wrongCheckDigit], CancellationToken.None);
+        Assert.Equal(new PaymentAccountReference(fixture.Zev.Id, unitId, first.PersonId), resolved[reference]);
+        Assert.False(resolved.ContainsKey(wrongCheckDigit));
+        Assert.Empty(await references.ResolveAsync(Guid.NewGuid(), [reference], CancellationToken.None));
         var partial = Encoding.UTF8.GetBytes($"date,amount,reference\n2026-10-10,30.00,{reference}");
         var result = await fixture.Engine.ImportAsync(fixture.Zev.Id, fixture.Account.Id,
             "partial.csv", "CSV", partial, CancellationToken.None);
@@ -775,7 +781,8 @@ public sealed class PaymentTests
                 PropertyUnitId = unitId, PersonId = first.PersonId, FundId = reserve.Id,
                 Amount = 18m, Reference = $"ZEV-{Guid.NewGuid():N}" });
         fixture.Database.SaveChanges();
-        var reference = new PaymentReferenceProvider().ForAccount(fixture.Zev.Id, unitId, first.PersonId);
+        // Issued invoices before the short numeric format keep the legacy reference; statements quoting it still match.
+        var reference = LegacyPaymentReference.Format(fixture.Zev.Id, unitId, first.PersonId);
         var imported = await fixture.Engine.ImportAsync(fixture.Zev.Id, fixture.Account.Id, "mixed.csv", "CSV",
             Encoding.UTF8.GetBytes($"date,amount,reference\n2026-10-10,53.00,{reference}"), CancellationToken.None);
         Assert.Equal(BankImportStatus.PartiallyReconciled, imported.Import?.Status);
@@ -794,7 +801,7 @@ public sealed class PaymentTests
         var context = new HttpContextAccessor { HttpContext = new DefaultHttpContext() };
         context.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", userId.ToString())]));
         var engine = new PaymentReconciliationEngine(fixture.Database,
-            [new DelimitedStatementParser("CSV", ',')], null, context);
+            [new DelimitedStatementParser("CSV", ',')], context);
         var result = await engine.ImportAsync(fixture.Zev.Id, fixture.Account.Id,
             "importer.csv", "CSV", Encoding.UTF8.GetBytes("date,amount,reference\n2026-10-10,5.00,UNKNOWN"),
             CancellationToken.None);

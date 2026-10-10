@@ -48,6 +48,8 @@ public sealed class Expense : ITenantRecord
     public string InvoiceNumber { get; set; } = string.Empty;
     public DateOnly InvoiceDate { get; set; }
     public decimal Amount { get; set; }
+    // Snapshot of the fund's currency when the expense was entered (see FundCurrency).
+    public string CurrencyCode { get; set; } = "BAM";
     public string Category { get; set; } = string.Empty;
     public string? Description { get; set; }
     public ExpenseStatus Status { get; set; } = ExpenseStatus.Draft;

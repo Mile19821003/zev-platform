@@ -29,15 +29,17 @@ public static class PaymentEndpoints
             ZevDbContext database, CancellationToken cancellationToken) =>
         {
             if (!await access.HasPermissionAsync(zevId, "BankAccounts.Create", cancellationToken)) return Results.NotFound();
-            if (!AdminValidation.Required(request.AccountNumber, 64) || !AdminValidation.Optional(request.BankName, 120)
-                || request.CurrencyCode?.Length != 3 || !request.CurrencyCode.All(char.IsLetter)) return Results.BadRequest();
+            var accountNumber = AdminValidation.TransactionAccount(request.AccountNumber);
+            if (accountNumber is null || !AdminValidation.Optional(request.BankName, 120)
+                || request.CurrencyCode?.Length != 3 || !request.CurrencyCode.All(char.IsLetter))
+                return Results.BadRequest(new { error = "Transakcijski račun mora imati tačno 16 cifara (BiH standard)." });
             var fund = await database.Funds.AsNoTracking().SingleOrDefaultAsync(item => item.Id == request.FundId
                 && item.ZevId == zevId && item.IsActive, cancellationToken);
             if (fund is null) return Results.NotFound();
             var account = new BankAccount
             {
                 OrganizationId = fund.OrganizationId, ZevId = zevId, FundId = fund.Id,
-                AccountNumber = request.AccountNumber.Trim(), BankName = AdminValidation.Clean(request.BankName),
+                AccountNumber = accountNumber, BankName = AdminValidation.Clean(request.BankName),
                 CurrencyCode = request.CurrencyCode.ToUpperInvariant()
             };
             database.BankAccounts.Add(account);

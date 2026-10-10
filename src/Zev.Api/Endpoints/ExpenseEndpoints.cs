@@ -59,14 +59,14 @@ public static class ExpenseEndpoints
                 {
                     item.Id, item.FundId, item.SupplierId, supplierName = item.Supplier.Name,
                     item.InvoiceNumber, item.InvoiceDate, item.Amount, item.Category, item.Description,
-                    currencyCode = FinancialReadModel.UnknownCurrency,
+                    item.CurrencyCode,
                     item.DocumentId, status = item.Status.ToString(), rowVersion = Convert.ToBase64String(item.RowVersion)
                 }).ToListAsync(cancellationToken);
             return Results.Ok(new { page = currentPage, pageSize = currentSize, totalCount, items });
         });
 
         group.MapPost("", async (Guid zevId, CreateExpenseRequest request, TenantAccess access,
-            ZevDbContext database, CancellationToken cancellationToken) =>
+            ZevDbContext database, IConfiguration configuration, CancellationToken cancellationToken) =>
         {
             if (!await access.HasPermissionAsync(zevId, "Expenses.Create", cancellationToken)) return Results.NotFound();
             if (!AdminValidation.Required(request.InvoiceNumber, 100) || !AdminValidation.Required(request.Category, 100)
@@ -78,12 +78,15 @@ public static class ExpenseEndpoints
                     && item.OrganizationId == fund.OrganizationId && item.IsActive, cancellationToken)
                 || (request.DocumentId is Guid documentId && !await database.StoredFiles.AnyAsync(item => item.Id == documentId
                     && item.ZevId == zevId, cancellationToken))) return Results.NotFound();
+            var currency = await FundCurrency.ResolveAsync(database, zevId, fund.Id, configuration, cancellationToken);
+            if (currency is null)
+                return Results.Conflict(new { error = "Fond ima aktivne račune u više valuta; valuta rashoda nije jednoznačna." });
             var expense = new Expense
             {
                 OrganizationId = fund.OrganizationId, ZevId = zevId, FundId = fund.Id,
                 SupplierId = request.SupplierId, DocumentId = request.DocumentId,
                 InvoiceNumber = request.InvoiceNumber.Trim(), InvoiceDate = request.InvoiceDate,
-                Amount = request.Amount, Category = request.Category.Trim(),
+                Amount = request.Amount, CurrencyCode = currency, Category = request.Category.Trim(),
                 Description = AdminValidation.Clean(request.Description)
             };
             database.Expenses.Add(expense);

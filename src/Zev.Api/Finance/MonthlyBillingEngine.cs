@@ -58,11 +58,11 @@ public sealed record BillingPreflightResult(IReadOnlyList<BillingPreflightIssue>
     public BillingFailure Failure => Issues.FirstOrDefault()?.Failure ?? BillingFailure.None;
 }
 
-public sealed class MonthlyBillingEngine(ZevDbContext database, IPaymentReferenceProvider? referenceProvider = null,
+public sealed class MonthlyBillingEngine(ZevDbContext database,
     IConfiguration? configuration = null, IHttpContextAccessor? httpContextAccessor = null,
     IInvoiceNumberProvider? invoiceNumberProvider = null)
 {
-    private readonly IPaymentReferenceProvider references = referenceProvider ?? new PaymentReferenceProvider();
+    private readonly PaymentReferenceService references = new(database);
     private readonly IInvoiceNumberProvider numbers = invoiceNumberProvider ?? new InvoiceNumberProvider(configuration);
     public Task<BillingResult> GenerateAsync(Guid zevId, DateOnly period, DateOnly dueDate,
         CancellationToken cancellationToken) => GenerateAsync(zevId, period, dueDate, null, cancellationToken);
@@ -250,6 +250,13 @@ public sealed class MonthlyBillingEngine(ZevDbContext database, IPaymentReferenc
         BillingDraftRequest? draft, CancellationToken cancellationToken)
     {
         if (period.Day != 1 || dueDate < period) return new(null, BillingFailure.Invalid);
+        // Payment accounts are stable mappings independent of the run: create them for the period's owners in
+        // their own short transaction, so the serializable billing transaction stays as small as before.
+        var ownerPairs = await database.Ownerships.AsNoTracking().Where(item => item.ZevId == zevId
+                && item.ValidFrom <= period && (item.ValidTo == null || item.ValidTo > period))
+            .Select(item => new { item.PropertyUnitId, item.PersonId }).Distinct().ToListAsync(cancellationToken);
+        await references.EnsureAsync(zevId, ownerPairs.Select(item => (item.PropertyUnitId, item.PersonId)).ToList(),
+            cancellationToken);
         await using var transaction = await database.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
         if (database.Database.IsSqlServer())
             await database.Database.ExecuteSqlInterpolatedAsync(
@@ -300,6 +307,10 @@ public sealed class MonthlyBillingEngine(ZevDbContext database, IPaymentReferenc
         var issueDate = DateOnly.FromDateTime(now.UtcDateTime);
         var nextSequence = await database.Invoices.AsNoTracking().Where(item => item.ZevId == zevId
             && item.NumberYear == period.Year).Select(item => (int?)item.NumberSequence).MaxAsync(cancellationToken) ?? 0;
+        // Normally a pure read (accounts were created above); nothing is tracked yet, so a rare missing account is
+        // the only thing this could save.
+        var accountReferences = await references.EnsureAsync(zevId,
+            plan.Items.Select(item => (item.Unit.Id, item.Person.Id)).Distinct().ToList(), cancellationToken);
         var invoices = new List<Invoice>();
         foreach (var group in plan.Items.GroupBy(item => new { UnitId = item.Unit.Id, PersonId = item.Person.Id })
             .OrderBy(group => group.First().Unit.Code).ThenBy(group => group.First().Person.DisplayName)
@@ -318,7 +329,7 @@ public sealed class MonthlyBillingEngine(ZevDbContext database, IPaymentReferenc
                 PreviousBalanceSnapshot = prior, CurrentChargeTotal = group.Sum(item => item.Charge.Amount),
                 DiscountTotal = group.Sum(item => item.Line.DiscountAmount), TotalAmount = group.Sum(item => item.Charge.Amount),
                 TotalDueAtIssue = prior + group.Sum(item => item.Charge.Amount),
-                PaymentReferenceSnapshot = references.ForAccount(zevId, first.Unit.Id, first.Person.Id),
+                PaymentReferenceSnapshot = accountReferences[(first.Unit.Id, first.Person.Id)],
                 ZevNameSnapshot = zev.Name, ZevAddressSnapshot = zev.AddressLine,
                 ZevTaxIdentifierSnapshot = zev.TaxIdentifier, ZevEmailSnapshot = zev.ContactEmail,
                 ZevPhoneSnapshot = zev.ContactPhone, PersonNameSnapshot = first.Person.DisplayName,

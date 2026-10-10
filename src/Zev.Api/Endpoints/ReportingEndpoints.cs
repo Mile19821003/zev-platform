@@ -53,14 +53,16 @@ public static class ReportingEndpoints
             var receivedByCurrency = await payments.GroupBy(item => item.CurrencyCode)
                 .Select(group => new { currencyCode = group.Key,
                     amount = group.Sum(item => item.Amount) }).ToListAsync(cancellationToken);
-            var spentUnknown = await expenses.SumAsync(item => (decimal?)item.Amount, cancellationToken) ?? 0m;
+            var spentByCurrency = await expenses.GroupBy(item => item.CurrencyCode)
+                .Select(group => new { currencyCode = group.Key,
+                    amount = group.Sum(item => item.Amount) }).ToListAsync(cancellationToken);
             var funds = await fundTransactions.GroupBy(item => new { item.FundId, item.CurrencyCode })
                 .Select(group => new { fundId = group.Key.FundId,
                     currencyCode = group.Key.CurrencyCode, balance = group.Sum(item => item.Amount) })
                 .ToListAsync(cancellationToken);
             var currencies = billedByCurrency.Select(item => item.currencyCode)
                 .Concat(receivedByCurrency.Select(item => item.currencyCode))
-                .Concat(spentUnknown == 0m ? [] : [FinancialReadModel.UnknownCurrency])
+                .Concat(spentByCurrency.Select(item => item.currencyCode))
                 .Concat(funds.Select(item => item.currencyCode))
                 .Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(item => item).ToList();
             var balancesByCurrency = currencies.Select(currency =>
@@ -69,7 +71,7 @@ public static class ReportingEndpoints
                     .Sum(item => item.amount);
                 var received = receivedByCurrency.Where(item => item.currencyCode == currency)
                     .Sum(item => item.amount);
-                var spent = currency == FinancialReadModel.UnknownCurrency ? spentUnknown : 0m;
+                var spent = spentByCurrency.Where(item => item.currencyCode == currency).Sum(item => item.amount);
                 return new { currencyCode = currency, billed, received, spent,
                     netCash = received - spent };
             }).ToList();
@@ -82,22 +84,22 @@ public static class ReportingEndpoints
         });
 
         reports.MapGet("/annual/{year:int}", async (Guid zevId, int year, TenantAccess access,
-            ZevDbContext database, CancellationToken cancellationToken) =>
+            ZevDbContext database, IConfiguration configuration, CancellationToken cancellationToken) =>
         {
             if (!await access.HasPermissionAsync(zevId, "Reports.View", cancellationToken)) return Results.NotFound();
             if (year is < 2000 or > 2100) return Results.BadRequest();
-            if (await HasUnverifiedOrMixedCurrencyAsync(database, zevId, cancellationToken))
-                return Results.Conflict(new { error = "Annual combined totals are unavailable for multiple currencies." });
+            var (_, currencyProblem) = await AnnualCurrencyAsync(database, zevId, configuration, cancellationToken);
+            if (currencyProblem is not null) return currencyProblem;
             return Results.Ok(await BuildAnnualAsync(database, zevId, year, cancellationToken));
         });
 
         reports.MapGet("/annual/{year:int}.pdf", async (Guid zevId, int year, TenantAccess access,
-            ZevDbContext database, HttpContext httpContext, CancellationToken cancellationToken) =>
+            ZevDbContext database, IConfiguration configuration, HttpContext httpContext, CancellationToken cancellationToken) =>
         {
             if (!await access.HasPermissionAsync(zevId, "Reports.Export", cancellationToken)) return Results.NotFound();
             if (year is < 2000 or > 2100) return Results.BadRequest();
-            if (await HasUnverifiedOrMixedCurrencyAsync(database, zevId, cancellationToken))
-                return Results.Conflict(new { error = "Annual combined totals are unavailable for multiple currencies." });
+            var (_, currencyProblem) = await AnnualCurrencyAsync(database, zevId, configuration, cancellationToken);
+            if (currencyProblem is not null) return currencyProblem;
             var report = await BuildAnnualAsync(database, zevId, year, cancellationToken);
             var lines = new List<string> { $"GODISNJI FINANSIJSKI PREGLED {year}",
                 "Mjesec     Zaduzena       Uplacena       Rashodi        Neto tok" };
@@ -108,21 +110,24 @@ public static class ReportingEndpoints
         });
 
         reports.MapGet("/annual/{year:int}.xlsx", async (Guid zevId, int year, TenantAccess access,
-            ZevDbContext database, HttpContext httpContext, CancellationToken cancellationToken) =>
+            ZevDbContext database, IConfiguration configuration, HttpContext httpContext, CancellationToken cancellationToken) =>
         {
             if (!await access.HasPermissionAsync(zevId, "Reports.Export", cancellationToken)) return Results.NotFound();
             if (year is < 2000 or > 2100) return Results.BadRequest();
-            if (await HasUnverifiedOrMixedCurrencyAsync(database, zevId, cancellationToken))
-                return Results.Conflict(new { error = "Annual combined totals are unavailable for multiple currencies." });
+            var (currency, currencyProblem) = await AnnualCurrencyAsync(database, zevId, configuration, cancellationToken);
+            if (currencyProblem is not null) return currencyProblem;
             var report = await BuildAnnualAsync(database, zevId, year, cancellationToken);
             var rows = new List<IReadOnlyList<object?>>
             {
-                new object?[] { "Mjesec", "Zaduženo", "Uplaćeno", "Rashodi", "Neto tok" }
+                new object?[] { "Mjesec", "Valuta", "Zaduženo", "Uplaćeno", "Rashodi", "Neto tok" }
             };
             rows.AddRange(report.Months.Select(item => (IReadOnlyList<object?>)new object?[]
             {
-                item.Month, item.Billed, item.Received, item.Spent, item.NetCash
+                item.Month, currency, item.Billed, item.Received, item.Spent, item.NetCash
             }));
+            rows.Add(new object?[] { "Ukupno", currency, report.Months.Sum(item => item.Billed),
+                report.Months.Sum(item => item.Received), report.Months.Sum(item => item.Spent),
+                report.Months.Sum(item => item.NetCash) });
             await AuditExportAsync(database, httpContext, access.CurrentUserId, zevId,
                 "AnnualReportXlsx", year.ToString(), new { year }, cancellationToken);
             return Results.File(XlsxWriter.Write(rows),
@@ -246,18 +251,27 @@ public static class ReportingEndpoints
             .Select(item => item.CurrencyCode).Distinct().ToListAsync(cancellationToken);
         var fundCurrencies = await FinancialReadModel.FundMovements(database, zevId)
             .Select(item => item.CurrencyCode).Distinct().ToListAsync(cancellationToken);
-        if (await database.Expenses.AsNoTracking().AnyAsync(item => item.ZevId == zevId
-                && item.Status == ExpenseStatus.Posted, cancellationToken))
-            charges.Add(FinancialReadModel.UnknownCurrency);
+        charges.AddRange(await database.Expenses.AsNoTracking().Where(item => item.ZevId == zevId
+                && item.Status == ExpenseStatus.Posted)
+            .Select(item => item.CurrencyCode).Distinct().ToListAsync(cancellationToken));
         return charges.Concat(payments).Concat(fundCurrencies)
             .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
     }
 
-    private static async Task<bool> HasUnverifiedOrMixedCurrencyAsync(ZevDbContext database, Guid zevId,
-        CancellationToken cancellationToken)
+    // The single currency of the annual report, or a 409 explaining why combined totals are unavailable.
+    private static async Task<(string Currency, IResult? Problem)> AnnualCurrencyAsync(ZevDbContext database,
+        Guid zevId, IConfiguration configuration, CancellationToken cancellationToken)
     {
         var currencies = await KnownCurrenciesAsync(database, zevId, cancellationToken);
-        return currencies.Count > 1 || currencies.Contains(FinancialReadModel.UnknownCurrency);
+        if (currencies.Contains(FinancialReadModel.UnknownCurrency))
+            return (FinancialReadModel.UnknownCurrency, Results.Conflict(new
+            {
+                error = "Annual totals are unavailable: some records have an unverified (UNKNOWN) currency."
+            }));
+        if (currencies.Count > 1)
+            return (string.Empty, Results.Conflict(new { error = "Annual combined totals are unavailable for multiple currencies." }));
+        return (currencies.SingleOrDefault()?.ToUpperInvariant()
+            ?? configuration["Finance:DefaultCurrency"]?.Trim().ToUpperInvariant() ?? "BAM", null);
     }
 
     private static async Task<IResult> OwnerCardAsync(ZevDbContext database, OwnerCardService ownerCard,
@@ -358,17 +372,24 @@ public static class ReportingEndpoints
             .GroupBy(item => item.PaidOn.Month).Select(group => new { month = group.Key,
                 amount = group.Sum(item => item.Amount) }).ToDictionaryAsync(item => item.month, item => item.amount,
                 cancellationToken);
+        // Only bank returns of payments reduce "received"; an expense reversal is not a payment.
         var returns = await database.FundTransactions.AsNoTracking().Where(item => item.ZevId == zevId
-                && item.Kind == FundTransactionKind.Reversal && item.EffectiveOn >= start
-                && item.EffectiveOn < end)
+                && item.Kind == FundTransactionKind.Reversal && item.ReversesTransaction != null
+                && item.ReversesTransaction.Kind == FundTransactionKind.Payment
+                && item.EffectiveOn >= start && item.EffectiveOn < end)
             .GroupBy(item => item.EffectiveOn.Month).Select(group => new { month = group.Key,
                 amount = group.Sum(item => item.SignedAmount) }).ToDictionaryAsync(item => item.month,
                 item => item.amount, cancellationToken);
-        var spent = await database.Expenses.AsNoTracking().Where(item => item.ZevId == zevId
-                && item.Status == ExpenseStatus.Posted && item.InvoiceDate >= start && item.InvoiceDate < end)
-            .GroupBy(item => item.InvoiceDate.Month).Select(group => new { month = group.Key,
-                amount = group.Sum(item => item.Amount) }).ToDictionaryAsync(item => item.month, item => item.amount,
-                cancellationToken);
+        // Expenses from the fund ledger: posting (negative) counts in its month, a reversal (positive) reduces
+        // spending in the month it was reversed, so history is not rewritten.
+        var spent = await database.FundTransactions.AsNoTracking().Where(item => item.ZevId == zevId
+                && (item.Kind == FundTransactionKind.Expense
+                    || item.Kind == FundTransactionKind.Reversal && item.ReversesTransaction != null
+                        && item.ReversesTransaction.Kind == FundTransactionKind.Expense)
+                && item.EffectiveOn >= start && item.EffectiveOn < end)
+            .GroupBy(item => item.EffectiveOn.Month).Select(group => new { month = group.Key,
+                amount = -group.Sum(item => item.SignedAmount) }).ToDictionaryAsync(item => item.month,
+                item => item.amount, cancellationToken);
         return new AnnualReport(year, Enumerable.Range(1, 12).Select(month => new AnnualMonth(month,
             billed.GetValueOrDefault(month), received.GetValueOrDefault(month) + returns.GetValueOrDefault(month),
             spent.GetValueOrDefault(month))).ToList());

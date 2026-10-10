@@ -59,6 +59,23 @@ public sealed class BillingMigrationTests
         Assert.DoesNotContain("ALTER TABLE [PropertyUnits]", script);
     }
     [Fact]
+    public void PaymentAccountsAndExpenseCurrencyMigrationIsAdditive()
+    {
+        var options = new DbContextOptionsBuilder<ZevDbContext>()
+            .UseSqlServer("Server=localhost;Database=ZevSnapshotCheck;User Id=unused;Password=unused;TrustServerCertificate=True")
+            .Options;
+        using var database = new ZevDbContext(options, new HttpContextAccessor());
+        var script = database.GetService<IMigrator>().GenerateScript(
+            "20261010063920_HodogramRaci", "20261010092746_PaymentAccountsAndExpenseCurrency");
+        Assert.Contains("CREATE TABLE [PaymentAccounts]", script);
+        Assert.Contains("ALTER TABLE [Expenses] ADD [CurrencyCode] nvarchar(7) NOT NULL DEFAULT N'BAM'", script);
+        Assert.Contains("UPDATE e SET CurrencyCode", script);
+        Assert.Contains("CREATE UNIQUE INDEX [IX_PaymentAccounts_ZevId_PropertyUnitId_PersonId]", script);
+        Assert.DoesNotContain("DROP TABLE", script);
+        Assert.DoesNotContain("DROP COLUMN", script);
+        Assert.DoesNotContain("DELETE FROM", script);
+    }
+    [Fact]
     public void CurrentSqlServerModelMatchesMigrationSnapshot()
     {
         var options = new DbContextOptionsBuilder<ZevDbContext>()

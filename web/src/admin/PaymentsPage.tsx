@@ -154,7 +154,9 @@ export default function PaymentsPage({ token, zevs, permissions }: { token: stri
         {allowed("BankAccounts.Create") && <form className="admin-form" onSubmit={createAccount}>
         <label>Fond<select required value={fundId} onChange={(event) => setFundId(event.target.value)}>
           <option value="">Odaberite</option>{funds.map((fund) => <option key={fund.id} value={fund.id}>{fund.name}</option>)}</select></label>
-        <label>Broj računa<input required maxLength={64} value={accountNumber} onChange={(event) => setAccountNumber(event.target.value)} /></label>
+        <label>Broj računa<input required inputMode="numeric" maxLength={19} pattern="[0-9 \-]{16,19}"
+          placeholder="16 cifara, npr. 1610000012345678" title="Transakcijski račun: 16 cifara (BiH standard)"
+          value={accountNumber} onChange={(event) => setAccountNumber(event.target.value)} /></label>
         <label>Banka<input maxLength={120} value={bankName} onChange={(event) => setBankName(event.target.value)} /></label>
         <label>Valuta (ISO 4217)<input required minLength={3} maxLength={3} value={currencyCode} onChange={(event) => setCurrencyCode(event.target.value.toUpperCase())} /></label>
         <button type="submit" disabled={busy}>Dodaj račun</button></form>}</section>

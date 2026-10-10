@@ -32,6 +32,7 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
     public DbSet<BankTransaction> BankTransactions => Set<BankTransaction>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<PaymentAllocation> PaymentAllocations => Set<PaymentAllocation>();
+    public DbSet<PaymentAccount> PaymentAccounts => Set<PaymentAccount>();
     public DbSet<PaymentIdentificationHistory> PaymentIdentificationHistories => Set<PaymentIdentificationHistory>();
     public DbSet<ReconciliationAttempt> ReconciliationAttempts => Set<ReconciliationAttempt>();
     public DbSet<StoredFile> StoredFiles => Set<StoredFile>();
@@ -575,6 +576,23 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
                 .IsUnique().HasFilter("[ReversesAllocationId] IS NOT NULL");
         });
 
+        modelBuilder.Entity<PaymentAccount>(entity =>
+        {
+            entity.ToTable("PaymentAccounts", table => table.HasCheckConstraint("CK_PaymentAccounts_Number",
+                "[Number] BETWEEN 1 AND 9999999999"));
+            entity.HasKey(account => account.Number);
+            entity.Property(account => account.Number).UseIdentityColumn();
+            entity.HasOne<ZevEntity>().WithMany().HasForeignKey(account => new { account.OrganizationId, account.ZevId })
+                .HasPrincipalKey(zev => new { zev.OrganizationId, zev.Id }).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<PropertyUnit>().WithMany()
+                .HasForeignKey(account => new { account.OrganizationId, account.ZevId, account.PropertyUnitId })
+                .HasPrincipalKey(unit => new { unit.OrganizationId, unit.ZevId, unit.Id }).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<Person>().WithMany()
+                .HasForeignKey(account => new { account.OrganizationId, account.PersonId })
+                .HasPrincipalKey(person => new { person.OrganizationId, person.Id }).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(account => new { account.ZevId, account.PropertyUnitId, account.PersonId }).IsUnique();
+        });
+
         modelBuilder.Entity<PaymentIdentificationHistory>(entity =>
         {
             entity.ToTable("PaymentIdentificationHistories", table =>
@@ -650,6 +668,7 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
             entity.Property(expense => expense.Category).HasMaxLength(100).IsRequired();
             entity.Property(expense => expense.Description).HasMaxLength(1000);
             entity.Property(expense => expense.Amount).HasPrecision(18, 2);
+            entity.Property(expense => expense.CurrencyCode).HasMaxLength(7).IsRequired();
             entity.Property(expense => expense.Status).HasConversion<string>().HasMaxLength(20);
             entity.Property(expense => expense.RowVersion).IsRowVersion();
             entity.HasOne(expense => expense.Fund).WithMany()

@@ -51,8 +51,11 @@ public sealed class TenantAccess(ZevDbContext database, IHttpContextAccessor htt
     public async Task<bool> CanReportTicketAsync(Guid zevId, Guid? unitId, CancellationToken cancellationToken)
     {
         if (!await CanReadZevAsync(zevId, cancellationToken) || CurrentUserId is not Guid userId) return false;
-        if (await CanManageMaintenanceAsync(zevId, cancellationToken)) return true;
-        if (unitId is not Guid propertyUnitId) return false;
+        // Common parts (no unit): anyone who manages maintenance, including the building representative.
+        if (unitId is not Guid propertyUnitId) return await CanManageMaintenanceAsync(zevId, cancellationToken);
+        // A specific unit: maintenance staff with edit rights, otherwise only its verified owner or occupant.
+        if (await CanManageMaintenanceAsync(zevId, cancellationToken)
+            && await HasPermissionAsync(zevId, "Maintenance.Edit", cancellationToken)) return true;
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         return await effectiveAccess.CanAccessOwnUnitAsync(userId, zevId, propertyUnitId, cancellationToken)
             || await database.Occupancies.AnyAsync(item => item.ZevId == zevId && item.PropertyUnitId == propertyUnitId

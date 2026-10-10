@@ -51,7 +51,7 @@ builder.Services.AddScoped<UatFinanceSeed>();
 builder.Services.AddScoped<PaymentReconciliationEngine>();
 builder.Services.AddScoped<PaymentWorkflowService>();
 builder.Services.AddScoped<OwnerCardService>();
-builder.Services.AddSingleton<IPaymentReferenceProvider, PaymentReferenceProvider>();
+builder.Services.AddScoped<PaymentReferenceService>();
 builder.Services.AddSingleton<IPaymentQrProvider, UnconfiguredPaymentQrProvider>();
 builder.Services.AddSingleton<IPaymentSlipProvider, GenericPdfPaymentSlipProvider>();
 builder.Services.AddScoped<ExpensePostingService>();

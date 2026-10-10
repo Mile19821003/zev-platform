@@ -18,8 +18,12 @@ public static class VotingEndpoints
             if (!await access.HasPermissionAsync(zevId, "Voting.View", cancellationToken, staffOnly: false)) return Results.NotFound();
             var (currentPage, currentSize) = AdminValidation.Page(page, pageSize);
             var manager = await access.HasPermissionAsync(zevId, "Voting.Manage", cancellationToken);
+            // Staff with Voting.View (e.g. the building representative) follow every published ballot and its
+            // result without owning a unit; casting a vote still requires an owned eligibility.
+            var staffViewer = !manager && await access.HasPermissionAsync(zevId, "Voting.View", cancellationToken);
             var query = database.Ballots.AsNoTracking().Where(item => item.ZevId == zevId);
-            if (!manager)
+            if (staffViewer) query = query.Where(item => item.Status != BallotStatus.Draft);
+            else if (!manager)
             {
                 if (access.CurrentUserId is not Guid userId) return Results.NotFound();
                 var today = DateOnly.FromDateTime(DateTime.UtcNow);

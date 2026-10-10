@@ -15,6 +15,13 @@ internal static class AdminValidation
 
     public static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
+    // BiH transaction account: exactly 16 digits. Spaces and hyphens used for readability are removed.
+    public static string? TransactionAccount(string? value)
+    {
+        var digits = value?.Replace(" ", string.Empty).Replace("-", string.Empty);
+        return digits is { Length: 16 } && digits.All(char.IsAsciiDigit) ? digits : null;
+    }
+
     public static bool TryRowVersion(string? value, out byte[] rowVersion)
     {
         rowVersion = [];

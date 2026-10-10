@@ -821,6 +821,11 @@ namespace Zev.Api.Data.Migrations
                     b.Property<DateTimeOffset>("CreatedUtc")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .HasColumnType("nvarchar(7)");
+
                     b.Property<string>("Description")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
@@ -1974,6 +1979,44 @@ namespace Zev.Api.Data.Migrations
                             t.HasCheckConstraint("CK_Payments_Amount", "[Amount] > 0");
 
                             t.HasCheckConstraint("CK_Payments_Source", "([SourceType] = 'BankTransaction' AND [BankTransactionId] IS NOT NULL AND [ManualReason] IS NULL AND [ManualMethod] IS NULL) OR ([SourceType] = 'Manual' AND [BankTransactionId] IS NULL AND [ManualReason] IS NOT NULL AND LEN(LTRIM(RTRIM([ManualReason]))) > 0 AND [ManualMethod] IS NOT NULL AND LEN(LTRIM(RTRIM([ManualMethod]))) > 0 AND [RequestId] IS NOT NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("Zev.Api.Domain.PaymentAccount", b =>
+                {
+                    b.Property<long>("Number")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Number"));
+
+                    b.Property<DateTimeOffset>("CreatedUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("PersonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("PropertyUnitId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ZevId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Number");
+
+                    b.HasIndex("OrganizationId", "PersonId");
+
+                    b.HasIndex("OrganizationId", "ZevId", "PropertyUnitId");
+
+                    b.HasIndex("ZevId", "PropertyUnitId", "PersonId")
+                        .IsUnique();
+
+                    b.ToTable("PaymentAccounts", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_PaymentAccounts_Number", "[Number] BETWEEN 1 AND 9999999999");
                         });
                 });
 
@@ -3473,6 +3516,30 @@ namespace Zev.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("BankTransaction");
+                });
+
+            modelBuilder.Entity("Zev.Api.Domain.PaymentAccount", b =>
+                {
+                    b.HasOne("Zev.Api.Domain.Person", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "PersonId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Zev.Api.Domain.Zev", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "ZevId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Zev.Api.Domain.PropertyUnit", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "ZevId", "PropertyUnitId")
+                        .HasPrincipalKey("OrganizationId", "ZevId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Zev.Api.Domain.PaymentAllocation", b =>

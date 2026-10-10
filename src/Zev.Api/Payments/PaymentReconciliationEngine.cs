@@ -12,9 +12,9 @@ public sealed record StatementPreviewResult(IReadOnlyList<ParsedBankTransaction>
 public sealed record BankReturnResult(bool Success, string? Error);
 
 public sealed class PaymentReconciliationEngine(ZevDbContext database, IEnumerable<IBankStatementParser> parsers,
-    IPaymentReferenceProvider? referenceProvider = null, IHttpContextAccessor? context = null)
+    IHttpContextAccessor? context = null)
 {
-    private readonly IPaymentReferenceProvider references = referenceProvider ?? new PaymentReferenceProvider();
+    private readonly PaymentReferenceService references = new(database);
     public async Task<StatementPreviewResult> PreviewAsync(Guid zevId, Guid bankAccountId, string fileName,
         string format, byte[] content, CancellationToken cancellationToken)
     {
@@ -90,9 +90,9 @@ public sealed class PaymentReconciliationEngine(ZevDbContext database, IEnumerab
         var references = transactions.Select(item => item.Reference).Where(item => item is not null).Distinct().ToArray();
         var charges = await database.Charges.AsNoTracking().Where(item => item.ZevId == zevId
             && item.Amount > 0m && references.Contains(item.Reference)).ToListAsync(cancellationToken);
-        var accountKeys = transactions.Select(item => this.references.Parse(item.Reference))
-            .Where(item => item is not null && item.ZevId == zevId).ToList();
-        var accountUnitIds = accountKeys.Select(item => item!.PropertyUnitId).Distinct().ToArray();
+        var accountKeys = await this.references.ResolveAsync(zevId,
+            transactions.Select(item => item.Reference), cancellationToken);
+        var accountUnitIds = accountKeys.Values.Select(item => item.PropertyUnitId).Distinct().ToArray();
         var accountCharges = await database.Charges.AsNoTracking().Where(item => item.ZevId == zevId
             && item.Amount > 0m && accountUnitIds.Contains(item.PropertyUnitId))
             .ToListAsync(cancellationToken);
@@ -113,7 +113,8 @@ public sealed class PaymentReconciliationEngine(ZevDbContext database, IEnumerab
             paymentsByTransaction.TryGetValue(bankTransaction.Id, out var payment);
             var candidates = bankTransaction.Reference is not null && chargesByReference.TryGetValue(bankTransaction.Reference, out var found)
                 ? found : [];
-            var key = this.references.Parse(bankTransaction.Reference);
+            var key = bankTransaction.Reference is not null
+                && accountKeys.TryGetValue(bankTransaction.Reference, out var resolved) ? resolved : null;
             var eligible = candidates.Count == 1 ? candidates
                 : candidates.Count > 1 || key is null || key.ZevId != zevId ? []
                 : accountCharges.Where(item => item.PropertyUnitId == key.PropertyUnitId

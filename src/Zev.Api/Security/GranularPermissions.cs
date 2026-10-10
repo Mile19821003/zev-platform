@@ -48,9 +48,10 @@ public static class GranularPermissions
             || key.StartsWith("Billing.", StringComparison.Ordinal) || key.StartsWith("Funds.", StringComparison.Ordinal)
             || key.StartsWith("Invoice.", StringComparison.Ordinal) || key.StartsWith("Payments.", StringComparison.Ordinal)
             || key.StartsWith("Bank", StringComparison.Ordinal) || key.StartsWith("Reports.", StringComparison.Ordinal)
-            || key.StartsWith("OwnerLedger.", StringComparison.Ordinal) || key == "Overview.View";
+            || key.StartsWith("OwnerLedger.", StringComparison.Ordinal) || key == "Overview.View"
+            || key is "Expenses.View" or "Expenses.Create" or "Expenses.Post";
         if (role == MembershipRole.BuildingRepresentative) return key == "Overview.View"
-            || key is "Maintenance.View" or "Maintenance.Approve"
+            || key is "Maintenance.View" or "Maintenance.Approve" or "Maintenance.Create"
             || key == "Community.View" || key == "Documents.View" || key == "Documents.Download"
             || key == "Voting.View";
         return role == MembershipRole.Owner && (key == "Overview.View" || key == "Finance.View"

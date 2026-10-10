@@ -11,12 +11,13 @@ public static class PaymentSlipEndpoints
     {
         api.MapGet("/zevs/{zevId:guid}/charges/{chargeId:guid}/payment-slip.pdf", async (Guid zevId,
             Guid chargeId, TenantAccess access, ZevDbContext database, IPaymentSlipProvider provider,
+            PaymentReferenceService references,
             CancellationToken cancellationToken) =>
         {
             if (!await access.CanReadZevAsync(zevId, cancellationToken) || access.CurrentUserId is not Guid userId)
                 return Results.NotFound();
             var charge = await database.Charges.AsNoTracking().Where(item => item.Id == chargeId
-                && item.ZevId == zevId).Select(item => new { item.Id, item.PersonId,
+                && item.ZevId == zevId).Select(item => new { item.Id, item.PersonId, item.PropertyUnitId,
                     payer = item.Person.DisplayName, beneficiary = item.PropertyUnit.Entrance.Building.Zev.Name,
                     item.FundId, item.Reference, item.Amount, item.DueDate }).SingleOrDefaultAsync(cancellationToken);
             if (charge is null || (!await access.HasPermissionAsync(zevId, "Invoice.Export", cancellationToken)
@@ -34,7 +35,8 @@ public static class PaymentSlipEndpoints
             var outstanding = balances[0].Open;
             if (outstanding <= 0m) return Results.Conflict(new { error = "Charge is already settled." });
             var pdf = provider.Generate(new PaymentSlipData(charge.beneficiary, account.AccountNumber,
-                charge.payer, charge.Reference, outstanding, account.CurrencyCode, charge.DueDate));
+                charge.payer, await references.EnsureAsync(zevId, charge.PropertyUnitId, charge.PersonId, cancellationToken),
+                outstanding, account.CurrencyCode, charge.DueDate));
             return Results.File(pdf, "application/pdf", $"uplatnica-{charge.Id:N}.pdf");
         });
         return api;

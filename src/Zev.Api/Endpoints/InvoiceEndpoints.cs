@@ -69,7 +69,7 @@ public static class InvoiceEndpoints
 
         invoices.MapGet("/{unitId:guid}/{personId:guid}", async (Guid zevId, Guid unitId, Guid personId,
             DateOnly period, TenantAccess access, ZevDbContext database,
-            IPaymentReferenceProvider references, OwnerCardService ownerCard,
+            PaymentReferenceService references, OwnerCardService ownerCard,
             CancellationToken cancellationToken) =>
         {
             if (!await CanReadInvoiceAsync(access, zevId, personId, period, cancellationToken))
@@ -84,7 +84,7 @@ public static class InvoiceEndpoints
 
         invoices.MapGet("/{unitId:guid}/{personId:guid}.pdf", async (Guid zevId, Guid unitId, Guid personId,
             DateOnly period, TenantAccess access, ZevDbContext database,
-            IPaymentReferenceProvider references, OwnerCardService ownerCard,
+            PaymentReferenceService references, OwnerCardService ownerCard,
             CancellationToken cancellationToken) =>
         {
             if (!await CanReadInvoiceAsync(access, zevId, personId, period, cancellationToken))
@@ -100,7 +100,7 @@ public static class InvoiceEndpoints
 
         invoices.MapGet("/{unitId:guid}/{personId:guid}/payment-slip.pdf", async (Guid zevId,
             Guid unitId, Guid personId, DateOnly period, Guid fundId, TenantAccess access,
-            ZevDbContext database, IPaymentReferenceProvider references, IPaymentSlipProvider slips,
+            ZevDbContext database, PaymentReferenceService references, IPaymentSlipProvider slips,
             OwnerCardService ownerCard,
             CancellationToken cancellationToken) =>
         {
@@ -137,7 +137,7 @@ public static class InvoiceEndpoints
         });
 
         invoices.MapGet("/archive.zip", async (Guid zevId, DateOnly period, TenantAccess access,
-            ZevDbContext database, IPaymentReferenceProvider references, OwnerCardService ownerCard,
+            ZevDbContext database, PaymentReferenceService references, OwnerCardService ownerCard,
             CancellationToken cancellationToken) =>
         {
             if (!await access.HasPermissionAsync(zevId, "Invoice.Export", cancellationToken)) return Results.NotFound();
@@ -176,7 +176,7 @@ public static class InvoiceEndpoints
         return await access.CanReadHistoricalPersonAsync(zevId, personId, period, cancellationToken);
     }
 
-    private static async Task<InvoiceView?> ReadAsync(ZevDbContext database, IPaymentReferenceProvider references,
+    private static async Task<InvoiceView?> ReadAsync(ZevDbContext database, PaymentReferenceService references,
         OwnerCardService ownerCard,
         Guid zevId, Guid unitId, Guid personId, DateOnly period, CancellationToken cancellationToken,
         bool includeOwnerBalance = true)
@@ -267,7 +267,7 @@ public static class InvoiceEndpoints
         if (activeBalances.Count > 1)
             return new InvoiceView(zevId, unitId, personId, period, details.zevName,
                 details.zevAddress, details.Code, details.AreaSquareMeters, owner,
-                charges, 0m, 0m, 0m, 0m, references.ForAccount(zevId, unitId, personId), [])
+                charges, 0m, 0m, 0m, 0m, await references.EnsureAsync(zevId, unitId, personId, cancellationToken), [])
             { IsMixedCurrency = true, BalancesByCurrency = activeBalances };
         var legacyBalance = activeBalances.SingleOrDefault();
         var currency = legacyBalance?.CurrencyCode ?? FinancialReadModel.UnknownCurrency;
@@ -292,7 +292,7 @@ public static class InvoiceEndpoints
         return new InvoiceView(zevId, unitId, personId, period, details.zevName, details.zevAddress,
             details.Code, details.AreaSquareMeters, owner, charges, total, currentPaid, previousOpen,
             (legacyBalance?.Open ?? 0m) + previousOpen,
-            references.ForAccount(zevId, unitId, personId), accounts)
+            await references.EnsureAsync(zevId, unitId, personId, cancellationToken), accounts)
         {
             Currency = currency, TotalDueAtIssue = total + previousOpen,
             BalancesByCurrency = currentState.Balances,

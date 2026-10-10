@@ -41,6 +41,29 @@ cloud okruženje su zaključeni.
 - **UI:** meni „Hodogram“ u sistemskoj administraciji (izbor organizacije) i u radnom prostoru administratora organizacije.
 - **Van opsega ove verzije:** globalni šabloni (bez organizacije) i vezivanje hodograma za pojedinačni ZEV.
 
+## Faza 3A — Persona UAT, bankarska pravila i godišnji izvještaj: VERIFIED (10.10.2026.)
+
+HTTP UAT runner kroz produkcijski stack (Caddy/HTTPS, sintetički podaci) + browser smoke po ulogama (Edge).
+Završni prolaz: **77 PASS, 0 FAIL**, 2 minorne otvorene stavke (niže). Backend: non-SQL 173/173, SQL 13/13 (10/10 uzastopnih
+pokretanja na lokalnom ZEVTEST); web 62/62.
+
+| Oblast | Ispravka | Status |
+|---|---|---|
+| Godišnji izvještaj | Rashodi trajno čuvaju valutu fonda (`Expenses.CurrencyCode`, migracija `20261010092746` s popunjavanjem postojećih); rashodi iz fond-knjige (storno umanjuje u mjesecu storna); „Uplaćeno“ samo uplate i njihovi povrati; XLSX s kolonom valute i redom „Ukupno“ | **VERIFIED** |
+| Knjigovođa | Podrazumijevano `Expenses.View/Create/Post` (storno rashoda ostaje upravniku) | **VERIFIED** |
+| Predstavnik | Vidi objavljena glasanja i rezultate bez vlasništva (glasa samo za svoj stan); prijava kvara na zajedničkim dijelovima (ne tuđi stan) | **VERIFIED** |
+| Poziv na broj | 12 cifara: broj računa plaćanja (`PaymentAccounts`, stabilan po stanu/osobi) + MOD 97-10; stari format ostaje prepoznat pri sravnjenju; uplatnica po zaduženju koristi isti broj (raspodjela na najstarije otvoreno u fondu) | **VERIFIED** |
+| Transakcijski račun | Tačno 16 cifara (razmaci/crtice se uklanjaju) | **VERIFIED** |
+| Uplatnica | Iznos u lokalnom formatu (`30,00`, `1.234,56`) | **VERIFIED** |
+
+Usput ispravljeno: idempotentna migracijska skripta (kolona i `UPDATE` u istom batchu — `EXEC`), `migrate.sh` sada ispisuje
+SQL grešku, a računi plaćanja se kreiraju prije serializable billing transakcije (nestabilan timeout billing testa uklonjen).
+
+**Minorne otvorene stavke**
+- Uplatnica je i dalje informativna: bez QR koda i dijakritika (odluke #18/#25).
+- R5: predstavnik nema uvid u hodogram (hodogram je na nivou organizacije, SysAdmin/OrgAdmin).
+- O19: glasanje za tuđi stan vraća 409 (kao svaki neuspjeh glasanja) umjesto 404; bez curenja podataka.
+
 ## Faza 2 — Produkcijski Docker stack i operativni backup/restore: VERIFIED (10.10.2026.)
 
 Detalji, procedure i mjerenja: `OPERATIONAL_BACKUP_RESTORE.md`.

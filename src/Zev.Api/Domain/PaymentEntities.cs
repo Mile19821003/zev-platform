@@ -137,3 +137,17 @@ public sealed class ReconciliationAttempt : ITenantRecord
     Guid? ITenantRecord.OrganizationId => OrganizationId;
     Guid? ITenantRecord.ZevId => ZevId;
 }
+
+// Stable payment account of one person for one property unit; Number is the basis of the short
+// numeric payment reference (poziv na broj), see PaymentReferenceFormat.
+public sealed class PaymentAccount : ITenantRecord
+{
+    public long Number { get; set; }
+    public Guid OrganizationId { get; set; }
+    public Guid ZevId { get; set; }
+    public Guid PropertyUnitId { get; set; }
+    public Guid PersonId { get; set; }
+    public DateTimeOffset CreatedUtc { get; set; } = DateTimeOffset.UtcNow;
+    Guid? ITenantRecord.OrganizationId => OrganizationId;
+    Guid? ITenantRecord.ZevId => ZevId;
+}

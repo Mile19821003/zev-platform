@@ -169,6 +169,15 @@ public static class FinancialReadModel
                         ? database.Payments.Where(payment => payment.ZevId == zevId
                                 && payment.Id == item.ReversesTransaction.SourceId)
                             .Select(payment => payment.CurrencyCode).FirstOrDefault() ?? UnknownCurrency
+                    // Expenses and their reversals carry the expense's fund-currency snapshot.
+                    : item.Kind == FundTransactionKind.Expense
+                        ? database.Expenses.Where(expense => expense.ZevId == zevId && expense.Id == item.SourceId)
+                            .Select(expense => expense.CurrencyCode).FirstOrDefault() ?? UnknownCurrency
+                    : item.Kind == FundTransactionKind.Reversal && item.ReversesTransaction != null
+                        && item.ReversesTransaction.Kind == FundTransactionKind.Expense
+                        ? database.Expenses.Where(expense => expense.ZevId == zevId
+                                && expense.Id == item.ReversesTransaction.SourceId)
+                            .Select(expense => expense.CurrencyCode).FirstOrDefault() ?? UnknownCurrency
                         : UnknownCurrency,
                 Amount = item.SignedAmount
             });

@@ -42,7 +42,11 @@ END"
 
 before=$(sql -d "$DB_NAME" -h -1 -W -Q "SET NOCOUNT ON; IF OBJECT_ID(N'[__EFMigrationsHistory]') IS NULL SELECT 0 ELSE SELECT COUNT(*) FROM [__EFMigrationsHistory]")
 echo "migrate: applying idempotent migration script (applied before: $before)"
-sql -d "$DB_NAME" -i /migrator/migrate.sql > /dev/null
+if ! sql -d "$DB_NAME" -i /migrator/migrate.sql > /tmp/migrate.out 2>&1; then
+    echo "migrate: migration script FAILED (each migration runs in its own transaction and was rolled back):" >&2
+    grep -A3 "^Msg " /tmp/migrate.out >&2 || tail -n 20 /tmp/migrate.out >&2
+    exit 1
+fi
 after=$(sql -d "$DB_NAME" -h -1 -W -Q "SET NOCOUNT ON; SELECT COUNT(*) FROM [__EFMigrationsHistory]")
 latest=$(sql -d "$DB_NAME" -h -1 -W -Q "SET NOCOUNT ON; SELECT TOP 1 MigrationId FROM [__EFMigrationsHistory] ORDER BY MigrationId DESC")
 echo "migrate: applied migrations $before -> $after (latest $latest)"

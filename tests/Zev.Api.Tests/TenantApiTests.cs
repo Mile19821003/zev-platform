@@ -918,12 +918,17 @@ public sealed class TenantApiTests
         Assert.Equal(20m, updatedDetail.RootElement.GetProperty("totalOpen").GetDecimal());
         var slip = await client.GetAsync(path + $"/payment-slip.pdf?period=2026-10-01&fundId={fundId}");
         Assert.Equal(HttpStatusCode.OK, slip.StatusCode);
-        Assert.Contains(Convert.ToHexString(System.Text.Encoding.BigEndianUnicode.GetBytes("20.00")),
-            System.Text.Encoding.ASCII.GetString(await slip.Content.ReadAsByteArrayAsync()));
+        var slipText = System.Text.Encoding.ASCII.GetString(await slip.Content.ReadAsByteArrayAsync());
+        Assert.Contains(Convert.ToHexString(System.Text.Encoding.BigEndianUnicode.GetBytes("20,00")), slipText);
+        var reference = updatedDetail.RootElement.GetProperty("paymentReference").GetString()!;
+        Assert.Equal(12, reference.Length);
+        Assert.Contains(Convert.ToHexString(System.Text.Encoding.BigEndianUnicode.GetBytes(reference)), slipText);
         var chargeSlip = await client.GetAsync($"/api/zevs/{zevId}/charges/{chargeId}/payment-slip.pdf");
         Assert.Equal(HttpStatusCode.OK, chargeSlip.StatusCode);
-        Assert.Contains(Convert.ToHexString(System.Text.Encoding.BigEndianUnicode.GetBytes("20.00")),
-            System.Text.Encoding.ASCII.GetString(await chargeSlip.Content.ReadAsByteArrayAsync()));
+        var chargeSlipText = System.Text.Encoding.ASCII.GetString(await chargeSlip.Content.ReadAsByteArrayAsync());
+        Assert.Contains(Convert.ToHexString(System.Text.Encoding.BigEndianUnicode.GetBytes("20,00")), chargeSlipText);
+        // The per-charge slip quotes the same short account reference, not the internal 36-character charge id.
+        Assert.Contains(Convert.ToHexString(System.Text.Encoding.BigEndianUnicode.GetBytes(reference)), chargeSlipText);
     }
 
 

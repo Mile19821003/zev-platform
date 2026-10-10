@@ -35,10 +35,15 @@ public sealed class GenericPdfPaymentSlipProvider(IPaymentQrProvider qrProvider)
             $"Uplatilac: {data.Payer}",
             $"Poziv na broj: {data.Reference}",
             $"Svrha: {data.Purpose ?? "Uplata zaduzenja"}",
-            $"Iznos: {data.Amount.ToString("0.00", CultureInfo.InvariantCulture)} {data.CurrencyCode}",
+            $"Iznos: {FormatAmount(data.Amount)} {data.CurrencyCode}",
             $"Dospijece: {data.DueDate:dd.MM.yyyy}",
             "QR kod nije konfigurisan."
         };
         return SimplePdfWriter.Write(lines);
     }
+
+    // Local BiH notation (1.234,56), independent of the server culture.
+    private static readonly NumberFormatInfo LocalAmount = new() { NumberDecimalSeparator = ",", NumberGroupSeparator = "." };
+
+    public static string FormatAmount(decimal amount) => amount.ToString("#,##0.00", LocalAmount);
 }
