@@ -2691,6 +2691,64 @@ namespace Zev.Api.Data.Migrations
                     b.ToTable("Suppliers", (string)null);
                 });
 
+            modelBuilder.Entity("Zev.Api.Domain.SystemSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int");
+
+                    b.Property<string>("DateFormat")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("DecimalSeparator")
+                        .IsRequired()
+                        .HasMaxLength(1)
+                        .HasColumnType("nvarchar(1)");
+
+                    b.Property<string>("DefaultTheme")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<string>("FontSize")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UpdatedByUserId");
+
+                    b.ToTable("SystemSettings", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SystemSettings_DateFormat", "[DateFormat] IN ('DD.MM.YYYY', 'YYYY-MM-DD')");
+
+                            t.HasCheckConstraint("CK_SystemSettings_DecimalSeparator", "[DecimalSeparator] IN (',', '.')");
+
+                            t.HasCheckConstraint("CK_SystemSettings_FontSize", "[FontSize] IN ('13px', '14px', '15px')");
+
+                            t.HasCheckConstraint("CK_SystemSettings_Singleton", "[Id] = 1");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            DateFormat = "DD.MM.YYYY",
+                            DecimalSeparator = ",",
+                            DefaultTheme = "Default",
+                            FontSize = "13px",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        });
+                });
+
             modelBuilder.Entity("Zev.Api.Domain.TariffVersion", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3737,6 +3795,14 @@ namespace Zev.Api.Data.Migrations
                         .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Zev.Api.Domain.SystemSettings", b =>
+                {
+                    b.HasOne("Zev.Api.Domain.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("Zev.Api.Domain.TariffVersion", b =>

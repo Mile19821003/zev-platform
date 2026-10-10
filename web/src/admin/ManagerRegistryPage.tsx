@@ -3,6 +3,7 @@ import { callApi, errorText } from "../api";
 import ResourcePage, { ResourceConfig } from "./ResourcePage";
 import { Lookup, SectionTitle } from "./shared";
 import { useChangeRevision } from "../useChangeRevision.ts";
+import { formatNumber } from "../displaySettings.ts";
 
 type ZevOption = { id: string; code: string; name: string };
 type Section = "buildings" | "entrances" | "units" | "people" | "ownership";
@@ -155,7 +156,7 @@ export default function ManagerRegistryPage({ token, zevs, permissions }: { toke
           {loading && <p role="status">Učitavanje…</p>}
           <div className="table-wrap"><table><thead><tr><th>Vlasnik</th><th>Od</th><th>Do</th><th>Udio</th><th>Radnja</th></tr></thead>
             <tbody>{ownerships.map((item) => <tr key={item.id}><td>{item.personName}</td><td>{item.validFrom}</td>
-              <td>{item.validTo ?? "Aktivno"}</td><td>{(item.share * 100).toFixed(2)}%</td><td>{allowed("Ownership.Close") && !item.validTo && <>
+              <td>{item.validTo ?? "Aktivno"}</td><td>{formatNumber(item.share * 100)}%</td><td>{allowed("Ownership.Close") && !item.validTo && <>
                 <input aria-label="Datum zatvaranja" type="date" value={closeDates[item.id] ?? ""}
                   onChange={(event) => setCloseDates((current) => ({ ...current, [item.id]: event.target.value }))} />
                 <button type="button" disabled={busy} onClick={() => void closeOwnership(item)}>Zatvori</button></>}</td></tr>)}</tbody>

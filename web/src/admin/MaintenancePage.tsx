@@ -3,6 +3,7 @@ import { callApi, errorText, Page } from "../api";
 import { Pager, SectionTitle } from "./shared";
 import { label, maintenanceStatusLabels, priorityLabels } from "../uiLabels.ts";
 import { useChangeRevision } from "../useChangeRevision.ts";
+import { formatNumber } from "../displaySettings.ts";
 
 type ZevOption = { id: string; code: string; name: string };
 type Unit = { id: string; zevId: string; code: string };
@@ -180,7 +181,7 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
     {role !== "owner" && <><section className="panel table-panel"><h2>Radni nalozi</h2><div className="table-scroll"><table><thead><tr>
       <th>Naslov</th><th>Rok</th><th>Trošak</th><th>Status</th><th>Radnja</th>
     </tr></thead><tbody>{orders.items.map((item) => <tr key={item.id}><td>{item.title}</td><td>{item.dueOn ?? "—"}</td>
-      <td>{item.costAmount?.toFixed(2) ?? "—"}</td><td>{label(maintenanceStatusLabels, item.status)}</td><td className="actions">
+      <td>{item.costAmount === null || item.costAmount === undefined ? "—" : formatNumber(item.costAmount)}</td><td>{label(maintenanceStatusLabels, item.status)}</td><td className="actions">
         {role === "manager" && allowed("Maintenance.Edit") && item.status === "Open" && <button onClick={() => changeStatus("work-orders", item, "InProgress")}>Započni</button>}
         {role === "manager" && allowed("Maintenance.Edit") && item.status === "InProgress" && <button onClick={() => changeStatus("work-orders", item, "Completed")}>Završi</button>}
       </td></tr>)}</tbody></table></div></section>

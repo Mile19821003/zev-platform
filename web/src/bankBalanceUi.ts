@@ -1,5 +1,6 @@
 // View rules for GET /api/zevs/{zevId}/payments/accounts/{accountId}/balance (bank vs fund balance).
 import { formatMoney } from "./currency.ts";
+import { formatDate } from "./displaySettings.ts";
 
 export type BankAccountBalance = {
   accountId: string; accountNumber: string; bankName: string | null; currencyCode: string; isActive: boolean;
@@ -55,7 +56,4 @@ export function gapLines(balance: BankAccountBalance): string[] {
     + `(razlika ${formatMoney(gap.difference, balance.currencyCode)}) — nedostaje izvod ili je saldo pogrešan.`);
 }
 
-export function formatDate(value: string): string {
-  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
-  return match ? `${match[3]}.${match[2]}.${match[1]}.` : value;
-}
+export { formatDate } from "./displaySettings.ts";

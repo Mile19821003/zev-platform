@@ -1,10 +1,5 @@
-export function formatMoney(amount: number, currencyCode: string): string {
-  const value = new Intl.NumberFormat("bs-BA", { minimumFractionDigits: 2,
-    maximumFractionDigits: 2 }).format(amount);
-  const currency = currencyCode.toUpperCase();
-  return `${value} ${currency === "UNKNOWN" ? "[valuta nepoznata]"
-    : currency === "BAM" ? "KM" : currency}`;
-}
+// Money is formatted centrally from the platform settings (decimal separator), independent of the browser locale.
+export { formatMoney } from "./displaySettings.ts";
 
 export function ownerLedgerLabel(kind: string): string {
   return ({ Invoice: "Račun", LegacyCharge: "Starije zaduženje", Correction: "Korekcija",

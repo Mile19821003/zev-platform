@@ -43,3 +43,4 @@
 .workspace-nav .sidebar-note{display:none}.module-grid{grid-template-columns:minmax(0,1fr)}}
 .workspace-nav .nav-group-header .nav-text{white-space:normal;line-height:1.25}
 @media(max-width:800px){.app-shell{grid-template-rows:auto minmax(0,1fr)}}
+.workspace-nav .nav-item .nav-text{white-space:normal;line-height:1.25}

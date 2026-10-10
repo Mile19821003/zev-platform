@@ -5,6 +5,8 @@ import PasswordChangePage from "./PasswordChangePage";
 import { ApiError, callApi, errorText, Profile, Zev, Page } from "./api";
 import { useChangeRevision } from "./useChangeRevision.ts";
 import { refreshVisibleData } from "./dataSync.ts";
+import { setDisplaySettings } from "./displaySettings.ts";
+import { useSystemSettings } from "./useSystemSettings.ts";
 
 type TokenResponse = { accessToken: string; expiresUtc: string };
 
@@ -27,6 +29,8 @@ export default function App() {
   const [error, setError] = useState("");
   const [profilePage, setProfilePage] = useState(false);
   const revision = useChangeRevision("organizations", "zevs", "access");
+  const settings = useSystemSettings(token);
+  setDisplaySettings(settings);
 
   useEffect(() => {
     const refetch = () => { if (document.visibilityState === "visible") refreshVisibleData(); };

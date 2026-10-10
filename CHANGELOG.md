@@ -2,6 +2,45 @@
 
 Sve značajne izmjene ZEV Platforme. Ranija historija (faze do 4) je u `CLOUD_HANDOFF_STATUS.md` i git logu.
 
+## [v2.8] - 2026-10-10
+
+### Dodano (Added)
+- Sistemska podešavanja (regionalni prikaz): entitet `SystemSettings` (jedan red: `DecimalSeparator`, `DateFormat`,
+  `FontSize`, `DefaultTheme`, `UpdatedAt`, `UpdatedByUserId`).
+  - `GET /api/system/settings` — svaki prijavljeni korisnik (klijenti formatiraju prema njima); vraća i dozvoljene
+    vrijednosti (`options`).
+  - `PUT /api/system/settings` — samo sistemski administrator (ostali 403; pravo `System.Manage` ne postoji jer su
+    detaljna prava vezana za ZEV, a podešavanja su globalna). Dozvoljene vrijednosti: separator `,` / `.`, datum
+    `DD.MM.YYYY` / `YYYY-MM-DD`, font `13px` / `14px` / `15px`, tema `Default`; inače 400. Optimistička provjera
+    preko `updatedAt` (409 za zastarjelu verziju). Promjena se upisuje u `AuditLog` (`SystemSettingsUpdated`,
+    prije/poslije, autor).
+- Web centralni formater `web/src/displaySettings.ts`: `formatNumber`, `formatMoney(amount, currency = "KM")`,
+  `formatDate`, `formatDateTime` — bez `Intl`/`toLocaleString`, strogo prema odabranom separatoru i formatu.
+  `useSystemSettings` učitava postavke nakon prijave, kešira ih u pregledniku i ponovo učitava nakon svake izmjene
+  (dataSync ključ `settings`); veličina slova se primjenjuje na cijelu aplikaciju (osnovni font).
+- Administracija → „Sistemska podešavanja“ (kategorija Administracija i sistem): izbor separatora, formata datuma i
+  veličine slova, primjer prikaza i „Snimi podešavanja“; promjena se primjenjuje odmah, bez F5.
+- Testovi: `SystemSettingsApiTests` (2: čitanje za sve prijavljene, izmjena samo za sistemskog administratora,
+  400/409, audit), `web/tests/displaySettings.test.mjs` (4); provjera u pregledniku (simulirani API) 6/6.
+
+### Ispravljeno (Fixed)
+- Iznosi na webu više ne zavise od lokala preglednika (Edge je prikazivao `145.00 KM` umjesto `145,00 KM`):
+  `currency.formatMoney`, `billingMoney`, kartica stanja računa, uplatnice/alokacije, troškovi održavanja i udjeli
+  vlasništva koriste centralni formater. Vremena (`toLocaleString("bs-BA")`) u istoriji dokumenata i identifikacije
+  uplatioca koriste `formatDateTime`.
+- Datumi koji su već bili formatirani (kartica stanja računa, izvodi, obračun) prate odabrani format; `DD.MM.YYYY`
+  se ispisuje bez završne tačke (`31.10.2026`).
+
+### Baza / Migracije
+- `20261010203655_AddSystemSettings`: tabela `SystemSettings` s provjerama dozvoljenih vrijednosti i jednog reda,
+  FK na `Users`, početni red (`,`, `DD.MM.YYYY`, `13px`, `Default`).
+
+### Otvorene odluke (Open Decisions)
+- Dio tabela i dalje prikazuje datume kako ih API vraća (`2026-10-31`); prelazak svih prikaza na `formatDate`
+  može se uraditi postepeno po ekranima.
+- Mobilna aplikacija ima vlastiti formater (zarez, `DD.MM.YYYY.`) i još ne čita sistemska podešavanja.
+- `DefaultTheme` ima samo vrijednost `Default` (temelj za kasnije teme).
+
 ## [v2.7] - 2026-10-10
 
 ### Dodano (Added)

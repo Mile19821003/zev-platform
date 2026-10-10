@@ -5,7 +5,7 @@ export type NavItem = { key: string; label: string };
 export type NavGroupId = "finance" | "registry" | "community" | "admin";
 export type IconName = "home" | "finance" | "registry" | "community" | "admin" | "invoice" | "wallet" | "bank"
   | "transfer" | "receipt" | "chart" | "scale" | "building" | "door" | "person" | "deed" | "wrench" | "megaphone"
-  | "ballot" | "key" | "users" | "link" | "flow" | "organization";
+  | "ballot" | "key" | "users" | "link" | "flow" | "organization" | "settings";
 export type NavModule = NavItem & { icon: IconName };
 export type NavGroup = { id: NavGroupId; label: string; icon: IconName; description: string; items: NavModule[] };
 
@@ -46,6 +46,7 @@ const modules: Record<string, { group: NavGroupId; icon: IconName; label?: strin
   accountLinks: { group: "admin", icon: "link", label: "Veze naloga" },
   organizations: { group: "admin", icon: "organization" },
   hodogram: { group: "admin", icon: "flow" },
+  settings: { group: "admin", icon: "settings" },
 };
 
 export function moduleLabel(item: NavItem): string {
@@ -113,4 +114,5 @@ export const iconPaths: Record<IconName, string> = {
   link: "M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1",
   flow: "M4 4h6v5H4zM14 15h6v5h-6zM7 9v4h10v2",
   organization: "M9 3h6v5H9zM12 8v4M5 12h14M5 12v4M19 12v4M2 16h6v5H2zM16 16h6v5h-6z",
+  settings: "M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0M14 4v4M8 10v4M16 16v4",
 };

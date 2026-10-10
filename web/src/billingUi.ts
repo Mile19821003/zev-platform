@@ -1,3 +1,4 @@
+import { formatDate, formatNumber } from "./displaySettings.ts";
 export type BillingItem = {
   id: string; code: string; version: number; name: string; basis: string; rate: number;
   fundId: string; fundName: string; validFrom: string; validTo: string | null;
@@ -48,13 +49,11 @@ export function billingBasisLabel(basis: string): string {
 }
 
 export function billingDate(value: string | null): string {
-  if (!value) return "bez kraja";
-  const [year, month, day] = value.slice(0, 10).split("-");
-  return `${day}.${month}.${year}.`;
+  return value ? formatDate(value.slice(0, 10)) : "bez kraja";
 }
 
 export function billingMoney(value: number): string {
-  return new Intl.NumberFormat("bs-BA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+  return formatNumber(value);
 }
 
 export function billingItemTitle(item: BillingItem): string {

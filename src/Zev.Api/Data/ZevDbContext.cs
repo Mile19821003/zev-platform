@@ -65,6 +65,7 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     public DbSet<RefreshSession> RefreshSessions => Set<RefreshSession>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<SystemSettings> SystemSettings => Set<SystemSettings>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -1127,6 +1128,25 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
             entity.HasOne(session => session.User).WithMany().HasForeignKey(session => session.UserId).OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(session => session.TokenHash).IsUnique();
             entity.HasIndex(session => new { session.UserId, session.ExpiresUtc });
+        });
+
+        modelBuilder.Entity<SystemSettings>(entity =>
+        {
+            entity.ToTable("SystemSettings", table =>
+            {
+                table.HasCheckConstraint("CK_SystemSettings_Singleton", "[Id] = 1");
+                table.HasCheckConstraint("CK_SystemSettings_DecimalSeparator", "[DecimalSeparator] IN (',', '.')");
+                table.HasCheckConstraint("CK_SystemSettings_DateFormat", "[DateFormat] IN ('DD.MM.YYYY', 'YYYY-MM-DD')");
+                table.HasCheckConstraint("CK_SystemSettings_FontSize", "[FontSize] IN ('13px', '14px', '15px')");
+            });
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.Id).ValueGeneratedNever();
+            entity.Property(item => item.DecimalSeparator).HasMaxLength(1).IsRequired();
+            entity.Property(item => item.DateFormat).HasMaxLength(20).IsRequired();
+            entity.Property(item => item.FontSize).HasMaxLength(10).IsRequired();
+            entity.Property(item => item.DefaultTheme).HasMaxLength(40).IsRequired();
+            entity.HasOne<AppUser>().WithMany().HasForeignKey(item => item.UpdatedByUserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasData(new SystemSettings());
         });
 
         modelBuilder.Entity<AuditLog>(entity =>

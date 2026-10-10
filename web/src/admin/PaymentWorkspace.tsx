@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { callApi, errorText, Page } from "../api";
 import { Pager } from "./shared";
 import { canShowPaymentAction } from "../permissionUi.ts";
+import { formatDateTime, formatNumber } from "../displaySettings.ts";
 import { activeAllocationCount, allocationStatusLabel, canSubmitPayerCorrection,
   matchRuleLabel } from "../paymentUi.ts";
 import { formatMoney } from "../currency.ts";
@@ -261,8 +262,7 @@ export default function PaymentWorkspace({ zevId, token, permissions, funds, acc
           </div>}
         </div>}
         {detail.identificationHistory.length > 0 && <details><summary>Istorija identifikacije uplatioca</summary>
-          <ul>{detail.identificationHistory.map((entry) => <li key={entry.id}>{new Date(entry.changedUtc)
-            .toLocaleString("bs-BA")} · {entry.previousPersonName ?? "Neprepoznat"} → {entry.newPersonName}
+          <ul>{detail.identificationHistory.map((entry) => <li key={entry.id}>{formatDateTime(entry.changedUtc)} · {entry.previousPersonName ?? "Neprepoznat"} → {entry.newPersonName}
             · {entry.reason} · {entry.actorName ?? "Sistem"}</li>)}</ul></details>}
         <h4>Detalji alokacija</h4><ul>{detail.allocations.map((item) => <li key={item.id}>
           {item.invoiceNumber ?? item.releaseInvoiceNumber ?? "Legacy"} / {item.unitCode} / {item.description ?? item.period}
@@ -327,7 +327,7 @@ export default function PaymentWorkspace({ zevId, token, permissions, funds, acc
                   manualOpen ? Number(manualAmount) || item.open : detail?.credit ?? item.open));
                 else delete next[item.id]; return next; })} /></td><td>{item.invoiceNumber ?? "Legacy"}</td>
               <td>{item.unitCode}</td><td>{item.period}</td><td>{item.dueDate}</td><td>{item.reference}</td>
-              <td>{item.open.toFixed(2)}</td><td><input type="number" min="0.01" max={item.open} step="0.01"
+              <td>{formatNumber(item.open)}</td><td><input type="number" min="0.01" max={item.open} step="0.01"
                 disabled={values[item.id] === undefined} value={values[item.id] ?? ""}
                 onChange={(event) => setValues((current) => ({ ...current, [item.id]: event.target.value }))} /></td></tr>;
           })}</tbody></table></div>

@@ -5,6 +5,7 @@ import { canCorrect, canStorno, coalesceTimelineEvents, correctionSignedTotal, d
 import type { CorrectionLineDraft, CorrectionType } from "../invoiceLifecycleUi.ts";
 import { useChangeRevision } from "../useChangeRevision.ts";
 import { formatMoney } from "../currency.ts";
+import { formatDateTime } from "../displaySettings.ts";
 
 type Document = { id: string; documentNumber: string; type: string; issueDate: string;
   reason: string; note: string | null; signedAmount: number; createdByUserId: string | null;
@@ -106,7 +107,7 @@ export default function InvoiceDocuments({ zevId, invoiceId, status, token, canR
     {notice && <p className="notice" role="status">{notice}</p>}
     {documents.length === 0 ? <p className="empty-inline">Nema povezanih dokumenata.</p>
       : <ul>{documents.map((item) => <li key={item.id}>
-        {item.issueDate} · Evidentirano: {new Date(item.createdUtc).toLocaleString("bs-BA")}
+        {item.issueDate} · Evidentirano: {formatDateTime(item.createdUtc)}
         {" "}· {timelineEventLabel(item.type)}
         {" "}· {item.documentNumber} · {formatMoney(item.signedAmount, currencyCode)} · {item.reason}
         {" "}· {item.type === "Storno" ? "Stornirao" : "Korigovao"}: {item.actorName ?? "Nepoznat korisnik"}
@@ -115,7 +116,7 @@ export default function InvoiceDocuments({ zevId, invoiceId, status, token, canR
     {timeline.length > 0 && <><h4>Timeline</h4><ol>{coalesceTimelineEvents(timeline).map((item, index) => {
       const related = documents.find((document) => document.id === item.sourceId);
       return <li key={`${item.sourceId}-${index}`}>
-        {item.date} · Evidentirano: {new Date(item.occurredUtc).toLocaleString("bs-BA")}
+        {item.date} · Evidentirano: {formatDateTime(item.occurredUtc)}
         {" "}· {timelineEventLabel(item.type)}
         {item.number ? ` · ${item.number}` : ""} · {item.type === "Payment" && item.appliedToInvoice != null
           ? paymentSplitLabel(item.amount, item.appliedToInvoice, item.currencyCode ?? currencyCode)

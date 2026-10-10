@@ -16,10 +16,10 @@ const balance = {
 };
 
 test("reported bank balance shows amount and statement date; missing balance is said plainly", () => {
-  assert.equal(bankBalanceLine(balance), "145,00 KM na dan 31.10.2026.");
+  assert.equal(bankBalanceLine(balance), "145,00 KM na dan 31.10.2026");
   assert.equal(bankBalanceLine({ ...balance, bank: { ...balance.bank, balanceSource: "NotProvided", reportedBalance: null } }),
     "Izvodi ne sadrže saldo (CSV/TXT) — prikazan je samo promet.");
-  assert.equal(formatDate("2026-10-31"), "31.10.2026.");
+  assert.equal(formatDate("2026-10-31"), "31.10.2026");
 });
 
 test("reconciliation rows add up to the difference and skip zero parts", () => {
