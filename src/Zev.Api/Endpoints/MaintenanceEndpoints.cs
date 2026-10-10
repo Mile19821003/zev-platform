@@ -16,9 +16,8 @@ public static class MaintenanceEndpoints
         group.MapGet("/tickets", async (Guid zevId, int? page, int? pageSize, TenantAccess access,
             ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Maintenance.View", cancellationToken, staffOnly: false)
-                || access.CurrentUserId is not Guid userId)
-                return Results.NotFound();
+            if (access.CurrentUserId is not Guid userId) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Maintenance.View", cancellationToken, staffOnly: false) is { } denied) return denied;
             var canManage = await access.HasPermissionAsync(zevId, "Maintenance.View", cancellationToken);
             var (currentPage, currentSize) = AdminValidation.Page(page, pageSize);
             var query = database.MaintenanceTickets.AsNoTracking().Where(item => item.ZevId == zevId);
@@ -35,10 +34,11 @@ public static class MaintenanceEndpoints
         group.MapPost("/tickets", async (Guid zevId, CreateMaintenanceTicketRequest request,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (access.CurrentUserId is not Guid userId
-                || !await access.HasPermissionAsync(zevId, "Maintenance.Create", cancellationToken, staffOnly: false)
-                || !await access.CanReportTicketAsync(zevId,
-                request.PropertyUnitId, cancellationToken)) return Results.NotFound();
+            if (access.CurrentUserId is not Guid userId) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Maintenance.Create", cancellationToken, staffOnly: false)
+                is { } denied) return denied;
+            // A unit the caller may not report for is not revealed (404), like other people's records.
+            if (!await access.CanReportTicketAsync(zevId, request.PropertyUnitId, cancellationToken)) return Results.NotFound();
             if (!AdminValidation.Required(request.Category, 100) || !AdminValidation.Required(request.Description, 4000)
                 || !AdminValidation.Required(request.Location, 250)
                 || !Enum.TryParse<MaintenancePriority>(request.Priority, true, out var priority)
@@ -119,7 +119,7 @@ public static class MaintenanceEndpoints
         group.MapGet("/work-orders", async (Guid zevId, int? page, int? pageSize,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Maintenance.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Maintenance.View", cancellationToken) is { } denied) return denied;
             var (currentPage, currentSize) = AdminValidation.Page(page, pageSize);
             var query = database.WorkOrders.AsNoTracking().Where(item => item.ZevId == zevId);
             var totalCount = await query.CountAsync(cancellationToken);
@@ -134,8 +134,8 @@ public static class MaintenanceEndpoints
         group.MapPost("/work-orders", async (Guid zevId, CreateWorkOrderRequest request,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Maintenance.Assign", cancellationToken)
-                || access.CurrentUserId is not Guid userId) return Results.NotFound();
+            if (access.CurrentUserId is not Guid userId) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Maintenance.Assign", cancellationToken) is { } denied) return denied;
             if (!AdminValidation.Required(request.Title, 200) || !AdminValidation.Required(request.Description, 4000)
                 || request.CostAmount < 0m || !Enum.TryParse<MaintenancePriority>(request.Priority, true, out var priority)
                 || !Enum.IsDefined(priority)) return Results.BadRequest();
@@ -163,8 +163,8 @@ public static class MaintenanceEndpoints
             ChangeMaintenanceStatusRequest request, TenantAccess access, ZevDbContext database,
             CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Maintenance.Edit", cancellationToken)
-                || access.CurrentUserId is not Guid userId) return Results.NotFound();
+            if (access.CurrentUserId is not Guid userId) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Maintenance.Edit", cancellationToken) is { } denied) return denied;
             if (!Enum.TryParse<MaintenanceStatus>(request.Status, true, out var next) || !Enum.IsDefined(next)
                 || !AdminValidation.TryRowVersion(request.RowVersion, out var rowVersion)) return Results.BadRequest();
             var order = await database.WorkOrders.SingleOrDefaultAsync(item => item.Id == orderId
@@ -191,7 +191,7 @@ public static class MaintenanceEndpoints
             LinkWorkOrderFileRequest request, TenantAccess access, ZevDbContext database,
             CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Maintenance.Edit", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Maintenance.Edit", cancellationToken) is { } denied) return denied;
             var order = await database.WorkOrders.AsNoTracking().SingleOrDefaultAsync(item => item.Id == orderId
                 && item.ZevId == zevId, cancellationToken);
             if (order is null || !await database.StoredFiles.AnyAsync(item => item.Id == request.FileId
@@ -206,8 +206,8 @@ public static class MaintenanceEndpoints
         group.MapGet("/work-orders/{orderId:guid}/history", async (Guid zevId, Guid orderId,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Maintenance.View", cancellationToken)
-                || !await database.WorkOrders.AnyAsync(item => item.Id == orderId && item.ZevId == zevId,
+            if (await access.RequirePermissionAsync(zevId, "Maintenance.View", cancellationToken) is { } denied) return denied;
+            if (!await database.WorkOrders.AnyAsync(item => item.Id == orderId && item.ZevId == zevId,
                     cancellationToken)) return Results.NotFound();
             var history = await database.MaintenanceStatusEvents.AsNoTracking().Where(item => item.WorkOrderId == orderId)
                 .OrderBy(item => item.ChangedUtc).Select(item => new { item.Id,
@@ -223,7 +223,7 @@ public static class MaintenanceEndpoints
         group.MapGet("/plans", async (Guid zevId, TenantAccess access, ZevDbContext database,
             CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Maintenance.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Maintenance.View", cancellationToken) is { } denied) return denied;
             var plans = await database.MaintenancePlans.AsNoTracking().Where(item => item.ZevId == zevId)
                 .OrderBy(item => item.Title).Select(item => new { item.Id, item.Title, item.Category,
                     item.FrequencyDays, item.FirstDueOn, item.IsActive }).ToListAsync(cancellationToken);
@@ -233,7 +233,7 @@ public static class MaintenanceEndpoints
         group.MapPost("/plans", async (Guid zevId, CreateMaintenancePlanRequest request, TenantAccess access,
             ZevDbContext database, MaintenanceScheduleService scheduleService, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Maintenance.Create", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Maintenance.Create", cancellationToken) is { } denied) return denied;
             if (!AdminValidation.Required(request.Title, 200) || !AdminValidation.Required(request.Category, 100)
                 || request.FrequencyDays is < 1 or > 3660 || request.FirstDueOn == default) return Results.BadRequest();
             var organizationId = await database.Zevs.Where(item => item.Id == zevId)
@@ -251,7 +251,7 @@ public static class MaintenanceEndpoints
             GenerateScheduleRequest request, TenantAccess access, MaintenanceScheduleService service,
             CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Maintenance.Create", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Maintenance.Create", cancellationToken) is { } denied) return denied;
             var created = await service.EnsureUntilAsync(zevId, planId, request.Through, cancellationToken);
             return Results.Ok(new { created });
         });
@@ -259,7 +259,7 @@ public static class MaintenanceEndpoints
         group.MapGet("/calendar", async (Guid zevId, DateOnly? from, DateOnly? to,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Maintenance.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Maintenance.View", cancellationToken) is { } denied) return denied;
             var start = from ?? DateOnly.FromDateTime(DateTime.UtcNow);
             var end = to ?? start.AddDays(90);
             if (end < start || end.DayNumber - start.DayNumber > 366) return Results.BadRequest();
@@ -275,7 +275,7 @@ public static class MaintenanceEndpoints
             ChangeScheduleStatusRequest request, TenantAccess access, ZevDbContext database,
             CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Maintenance.Edit", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Maintenance.Edit", cancellationToken) is { } denied) return denied;
             if (!Enum.TryParse<ScheduleStatus>(request.Status, true, out var status) || !Enum.IsDefined(status))
                 return Results.BadRequest();
             var schedule = await database.ScheduledMaintenances.SingleOrDefaultAsync(item => item.Id == scheduleId

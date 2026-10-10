@@ -16,7 +16,7 @@ public static class InvoiceEndpoints
         invoices.MapGet("", async (Guid zevId, DateOnly period, int? page, int? pageSize,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Invoice.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Invoice.View", cancellationToken) is { } denied) return denied;
             if (period.Day != 1) return Results.BadRequest();
             var (currentPage, currentSize) = AdminValidation.Page(page, pageSize);
             var issued = await database.Invoices.AsNoTracking().Where(item => item.ZevId == zevId && item.Period == period)
@@ -140,7 +140,7 @@ public static class InvoiceEndpoints
             ZevDbContext database, PaymentReferenceService references, OwnerCardService ownerCard,
             CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Invoice.Export", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Invoice.Export", cancellationToken) is { } denied) return denied;
             if (period.Day != 1) return Results.BadRequest();
             var keys = await database.Charges.AsNoTracking().Where(item => item.ZevId == zevId
                     && item.Period == period).Select(item => new { item.PropertyUnitId, item.PersonId })

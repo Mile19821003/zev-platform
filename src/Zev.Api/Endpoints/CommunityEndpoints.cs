@@ -15,9 +15,8 @@ public static class CommunityEndpoints
         group.MapGet("/announcements", async (Guid zevId, int? page, int? pageSize,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Community.View", cancellationToken, staffOnly: false)
-                || access.CurrentUserId is not Guid userId)
-                return Results.NotFound();
+            if (access.CurrentUserId is not Guid userId) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Community.View", cancellationToken, staffOnly: false) is { } denied) return denied;
             var staff = await access.HasPermissionAsync(zevId, "Community.View", cancellationToken);
             var now = DateTimeOffset.UtcNow;
             var today = DateOnly.FromDateTime(now.UtcDateTime);
@@ -59,8 +58,8 @@ public static class CommunityEndpoints
         group.MapPost("/announcements", async (Guid zevId, CreateAnnouncementRequest request,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Announcements.Create", cancellationToken)
-                || access.CurrentUserId is not Guid userId) return Results.NotFound();
+            if (access.CurrentUserId is not Guid userId) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Announcements.Create", cancellationToken) is { } denied) return denied;
             if (!AdminValidation.Required(request.Title, 200) || !AdminValidation.Required(request.Content, 10000)
                 || !Enum.TryParse<AudienceScope>(request.Scope, true, out var scope) || !Enum.IsDefined(scope)
                 || request.ExpiresUtc <= request.PublishedFromUtc) return Results.BadRequest();
@@ -103,9 +102,8 @@ public static class CommunityEndpoints
         group.MapGet("/documents", async (Guid zevId, int? page, int? pageSize,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Documents.View", cancellationToken, staffOnly: false)
-                || access.CurrentUserId is not Guid userId)
-                return Results.NotFound();
+            if (access.CurrentUserId is not Guid userId) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Documents.View", cancellationToken, staffOnly: false) is { } denied) return denied;
             var manager = await access.CanManageLegalCasesAsync(zevId, cancellationToken)
                 && await access.HasPermissionAsync(zevId, "Documents.View", cancellationToken);
             var (currentPage, currentSize) = AdminValidation.Page(page, pageSize);
@@ -123,8 +121,8 @@ public static class CommunityEndpoints
         group.MapPost("/documents", async (Guid zevId, CreateManagedDocumentRequest request,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Documents.Upload", cancellationToken)
-                || access.CurrentUserId is not Guid userId) return Results.NotFound();
+            if (access.CurrentUserId is not Guid userId) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Documents.Upload", cancellationToken) is { } denied) return denied;
             if (!AdminValidation.Required(request.Title, 200)
                 || !Enum.TryParse<ManagedDocumentType>(request.Type, true, out var type) || !Enum.IsDefined(type)
                 || !Enum.TryParse<DocumentVisibility>(request.Visibility, true, out var visibility)
@@ -161,8 +159,8 @@ public static class CommunityEndpoints
             UpdateManagedDocumentVisibilityRequest request, TenantAccess access, ZevDbContext database,
             CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Documents.Edit", cancellationToken)
-                || access.CurrentUserId is not Guid actorId) return Results.NotFound();
+            if (access.CurrentUserId is not Guid actorId) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Documents.Edit", cancellationToken) is { } denied) return denied;
             if (!Enum.TryParse<DocumentVisibility>(request.Visibility, true, out var visibility)
                 || !Enum.IsDefined(visibility)
                 || (visibility == DocumentVisibility.PersonOnly) != (request.PersonId is not null)
@@ -203,10 +201,10 @@ public static class CommunityEndpoints
         group.MapGet("/documents/{documentId:guid}/download", async (Guid zevId, Guid documentId,
             TenantAccess access, ZevDbContext database, IFileStorage storage, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Documents.View", cancellationToken, staffOnly: false)
-                || !await access.HasPermissionAsync(zevId, "Documents.Download", cancellationToken, staffOnly: false)
-                || access.CurrentUserId is not Guid userId)
-                return Results.NotFound();
+            if (access.CurrentUserId is not Guid userId) return Results.NotFound();
+            if ((await access.RequirePermissionAsync(zevId, "Documents.View", cancellationToken, staffOnly: false)
+                ?? await access.RequirePermissionAsync(zevId, "Documents.Download", cancellationToken, staffOnly: false))
+                is { } denied) return denied;
             var manager = await access.CanManageLegalCasesAsync(zevId, cancellationToken)
                 && await access.HasPermissionAsync(zevId, "Documents.Download", cancellationToken);
             var document = await VisibleDocuments(database, zevId, userId, manager)

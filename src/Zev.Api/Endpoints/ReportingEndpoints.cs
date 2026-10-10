@@ -15,7 +15,7 @@ public static class ReportingEndpoints
         reports.MapGet("/summary", async (Guid zevId, DateOnly? from, DateOnly? to, Guid? fundId,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Reports.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Reports.View", cancellationToken) is { } denied) return denied;
             if (from is not null && to is not null && from > to) return Results.BadRequest();
             if (fundId is Guid selectedFund && !await database.Funds.AnyAsync(item => item.Id == selectedFund
                 && item.ZevId == zevId, cancellationToken)) return Results.NotFound();
@@ -86,7 +86,7 @@ public static class ReportingEndpoints
         reports.MapGet("/annual/{year:int}", async (Guid zevId, int year, TenantAccess access,
             ZevDbContext database, IConfiguration configuration, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Reports.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Reports.View", cancellationToken) is { } denied) return denied;
             if (year is < 2000 or > 2100) return Results.BadRequest();
             var (_, currencyProblem) = await AnnualCurrencyAsync(database, zevId, configuration, cancellationToken);
             if (currencyProblem is not null) return currencyProblem;
@@ -96,7 +96,7 @@ public static class ReportingEndpoints
         reports.MapGet("/annual/{year:int}.pdf", async (Guid zevId, int year, TenantAccess access,
             ZevDbContext database, IConfiguration configuration, HttpContext httpContext, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Reports.Export", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Reports.Export", cancellationToken) is { } denied) return denied;
             if (year is < 2000 or > 2100) return Results.BadRequest();
             var (_, currencyProblem) = await AnnualCurrencyAsync(database, zevId, configuration, cancellationToken);
             if (currencyProblem is not null) return currencyProblem;
@@ -112,7 +112,7 @@ public static class ReportingEndpoints
         reports.MapGet("/annual/{year:int}.xlsx", async (Guid zevId, int year, TenantAccess access,
             ZevDbContext database, IConfiguration configuration, HttpContext httpContext, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Reports.Export", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Reports.Export", cancellationToken) is { } denied) return denied;
             if (year is < 2000 or > 2100) return Results.BadRequest();
             var (currency, currencyProblem) = await AnnualCurrencyAsync(database, zevId, configuration, cancellationToken);
             if (currencyProblem is not null) return currencyProblem;
@@ -139,7 +139,7 @@ public static class ReportingEndpoints
             Guid? propertyUnitId, Guid? fundId, int? page, int? pageSize, TenantAccess access,
             ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Reports.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Reports.View", cancellationToken) is { } denied) return denied;
             var date = asOf ?? DateOnly.FromDateTime(DateTime.UtcNow);
             var (currentPage, currentSize) = AdminValidation.Page(page, pageSize);
             var query = FinancialReadModel.OpenItems(database, zevId, date);
@@ -164,7 +164,7 @@ public static class ReportingEndpoints
             Guid? buildingId, Guid? propertyUnitId, Guid? fundId, TenantAccess access,
             ZevDbContext database, HttpContext httpContext, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Reports.Export", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Reports.Export", cancellationToken) is { } denied) return denied;
             var date = asOf ?? DateOnly.FromDateTime(DateTime.UtcNow);
             var query = FinancialReadModel.OpenItems(database, zevId, date);
             if (personId is Guid person) query = query.Where(item => item.PersonId == person);
@@ -198,7 +198,7 @@ public static class ReportingEndpoints
             ZevDbContext database, OwnerCardService ownerCard,
             CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "OwnerLedger.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "OwnerLedger.View", cancellationToken) is { } denied) return denied;
             return await OwnerCardAsync(database, ownerCard, zevId, personId, from, to,
                 page, pageSize, cancellationToken);
         });

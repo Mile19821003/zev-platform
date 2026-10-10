@@ -51,6 +51,26 @@ public sealed class TenantAccess(ZevDbContext database, IHttpContextAccessor htt
     public async Task<bool> CanManageMaintenanceAsync(Guid zevId, CancellationToken cancellationToken) =>
         CurrentUserId is Guid userId && (await effectiveAccess.GetEffectiveZevAccess(userId, zevId, cancellationToken)).CanManageMaintenance;
 
+    // Authorization policy for routes inside a ZEV (see ACCESS_CONTROL_AND_PRIVACY.md, "403 ili 404"):
+    // null when allowed; 404 when the caller cannot read the ZEV at all (another tenant or an unknown ZEV),
+    // so foreign resources are not revealed; 403 when the caller can read the ZEV but lacks a permission.
+    public async Task<IResult?> RequirePermissionAsync(Guid zevId, string permissionKey,
+        CancellationToken cancellationToken, bool staffOnly = true) =>
+        await HasPermissionAsync(zevId, permissionKey, cancellationToken, staffOnly) ? null
+            : await DeniedAsync(zevId, cancellationToken);
+
+    public async Task<IResult?> RequireAllPermissionsAsync(Guid zevId, CancellationToken cancellationToken,
+        params string[] permissionKeys)
+    {
+        foreach (var key in permissionKeys)
+            if (!await HasPermissionAsync(zevId, key, cancellationToken)) return await DeniedAsync(zevId, cancellationToken);
+        return null;
+    }
+
+    // The refusal for a caller who passed no permission check: 403 inside a readable ZEV, otherwise 404.
+    public async Task<IResult> DeniedAsync(Guid zevId, CancellationToken cancellationToken) =>
+        await CanReadZevAsync(zevId, cancellationToken) ? Results.Forbid() : Results.NotFound();
+
     public async Task<bool> HasPermissionAsync(Guid zevId, string permissionKey, CancellationToken cancellationToken,
         bool staffOnly = true) => CurrentUserId is Guid userId
             && await effectiveAccess.HasPermissionAsync(userId, zevId, permissionKey, cancellationToken, staffOnly);

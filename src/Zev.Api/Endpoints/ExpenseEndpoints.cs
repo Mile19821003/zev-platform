@@ -16,7 +16,7 @@ public static class ExpenseEndpoints
         group.MapGet("/suppliers", async (Guid zevId, int? page, int? pageSize, string? search,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Expenses.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Expenses.View", cancellationToken) is { } denied) return denied;
             var organizationId = await database.Zevs.Where(item => item.Id == zevId)
                 .Select(item => item.OrganizationId).SingleAsync(cancellationToken);
             var (currentPage, currentSize) = AdminValidation.Page(page, pageSize);
@@ -32,7 +32,7 @@ public static class ExpenseEndpoints
         group.MapPost("/suppliers", async (Guid zevId, CreateSupplierRequest request, TenantAccess access,
             ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Expenses.Create", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Expenses.Create", cancellationToken) is { } denied) return denied;
             if (!AdminValidation.Required(request.Name, 200) || !AdminValidation.Optional(request.TaxIdentifier, 32)
                 || !AdminValidation.Optional(request.Email, 320) || !AdminValidation.Optional(request.Phone, 40))
                 return Results.BadRequest();
@@ -49,7 +49,7 @@ public static class ExpenseEndpoints
         group.MapGet("", async (Guid zevId, int? page, int? pageSize, Guid? fundId,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Expenses.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Expenses.View", cancellationToken) is { } denied) return denied;
             var (currentPage, currentSize) = AdminValidation.Page(page, pageSize);
             var query = database.Expenses.AsNoTracking().Where(item => item.ZevId == zevId);
             if (fundId is Guid selectedFund) query = query.Where(item => item.FundId == selectedFund);
@@ -68,7 +68,7 @@ public static class ExpenseEndpoints
         group.MapPost("", async (Guid zevId, CreateExpenseRequest request, TenantAccess access,
             ZevDbContext database, IConfiguration configuration, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Expenses.Create", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Expenses.Create", cancellationToken) is { } denied) return denied;
             if (!AdminValidation.Required(request.InvoiceNumber, 100) || !AdminValidation.Required(request.Category, 100)
                 || !AdminValidation.Optional(request.Description, 1000) || request.Amount <= 0m
                 || request.InvoiceDate == default) return Results.BadRequest();
@@ -101,7 +101,7 @@ public static class ExpenseEndpoints
         group.MapPost("/{expenseId:guid}/post", async (Guid zevId, Guid expenseId, TenantAccess access,
             ExpensePostingService service, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Expenses.Post", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Expenses.Post", cancellationToken) is { } denied) return denied;
             return await service.PostAsync(zevId, expenseId, cancellationToken)
                 ? Results.Ok(new { status = "Posted" }) : Results.Conflict();
         });
@@ -109,7 +109,7 @@ public static class ExpenseEndpoints
         group.MapPost("/{expenseId:guid}/reverse", async (Guid zevId, Guid expenseId, TenantAccess access,
             ExpensePostingService service, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Expenses.Reverse", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Expenses.Reverse", cancellationToken) is { } denied) return denied;
             return await service.ReverseAsync(zevId, expenseId, cancellationToken)
                 ? Results.Ok(new { status = "Reversed" }) : Results.Conflict();
         });
@@ -117,7 +117,7 @@ public static class ExpenseEndpoints
         group.MapGet("/debtors", async (Guid zevId, DateOnly? asOf, int? page, int? pageSize,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Expenses.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Expenses.View", cancellationToken) is { } denied) return denied;
             var date = asOf ?? DateOnly.FromDateTime(DateTime.UtcNow);
             var (currentPage, currentSize) = AdminValidation.Page(page, pageSize);
             var open = FinancialReadModel.OpenItems(database, zevId, date)

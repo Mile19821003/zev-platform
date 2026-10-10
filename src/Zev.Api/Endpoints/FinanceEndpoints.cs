@@ -16,7 +16,7 @@ public static class FinanceEndpoints
 
         finance.MapGet("/funds", async (Guid zevId, TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Funds.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Funds.View", cancellationToken) is { } denied) return denied;
             var funds = await database.Funds.AsNoTracking().Where(item => item.ZevId == zevId)
                 .OrderBy(item => item.Kind).ToListAsync(cancellationToken);
             var balances = await FinancialReadModel.FundMovements(database, zevId)
@@ -43,7 +43,7 @@ public static class FinanceEndpoints
         finance.MapGet("/units", async (Guid zevId, string? search, int? page, int? pageSize,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "PropertyUnits.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "PropertyUnits.View", cancellationToken) is { } denied) return denied;
             var (currentPage, currentSize) = AdminValidation.Page(page, pageSize);
             var query = database.PropertyUnits.AsNoTracking().Where(item => item.ZevId == zevId && item.IsActive);
             if (!string.IsNullOrWhiteSpace(search)) query = query.Where(item => item.Code.Contains(search.Trim()));
@@ -58,7 +58,7 @@ public static class FinanceEndpoints
         finance.MapPost("/funds", async (Guid zevId, CreateFundRequest request, TenantAccess access,
             ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Funds.Create", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Funds.Create", cancellationToken) is { } denied) return denied;
             if (!Enum.TryParse<FundKind>(request.Kind, true, out var kind) || !Enum.IsDefined(kind)
                 || !AdminValidation.Required(request.Name, 120)) return Results.BadRequest();
             var zev = await database.Zevs.SingleAsync(item => item.Id == zevId, cancellationToken);
@@ -79,7 +79,7 @@ public static class FinanceEndpoints
             FundBankAccountRequirementRequest request, TenantAccess access, ZevDbContext database,
             CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Funds.Edit", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Funds.Edit", cancellationToken) is { } denied) return denied;
             var fund = await database.Funds.SingleOrDefaultAsync(item => item.ZevId == zevId
                 && item.Id == fundId, cancellationToken);
             if (fund is null) return Results.NotFound();
@@ -92,7 +92,7 @@ public static class FinanceEndpoints
         finance.MapGet("/tariffs", async (Guid zevId, int? page, int? pageSize, TenantAccess access,
             ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Finance.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Finance.View", cancellationToken) is { } denied) return denied;
             var (currentPage, currentSize) = AdminValidation.Page(page, pageSize);
             var query = database.TariffVersions.AsNoTracking().Where(item => item.ZevId == zevId);
             var totalCount = await query.CountAsync(cancellationToken);
@@ -111,7 +111,7 @@ public static class FinanceEndpoints
         finance.MapGet("/billing-items", async (Guid zevId, DateOnly? period, TenantAccess access,
             ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Finance.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Finance.View", cancellationToken) is { } denied) return denied;
             if (period is not DateOnly selectedPeriod || selectedPeriod.Day != 1) return Results.BadRequest();
             var items = await database.TariffVersions.AsNoTracking().Where(item => item.ZevId == zevId
                 && item.IsActive && item.Basis != TariffBasis.Extraordinary
@@ -131,7 +131,7 @@ public static class FinanceEndpoints
         finance.MapPost("/tariffs", async (Guid zevId, CreateTariffRequest request, TenantAccess access,
             ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Finance.Create", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Finance.Create", cancellationToken) is { } denied) return denied;
             if (!AdminValidation.Code(request.Code) || !AdminValidation.Required(request.Name, 200)
                 || !TryBasis(request.Basis, out var basis)
                 || request.Rate < 0m || request.Rate > 99999999999999m
@@ -172,7 +172,7 @@ public static class FinanceEndpoints
             UpdateTariffStatusRequest request, TenantAccess access, ZevDbContext database,
             CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Finance.Edit", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Finance.Edit", cancellationToken) is { } denied) return denied;
             if (!AdminValidation.TryRowVersion(request.RowVersion, out var rowVersion)) return Results.BadRequest();
             var tariff = await database.TariffVersions.SingleOrDefaultAsync(item => item.Id == tariffId
                 && item.ZevId == zevId, cancellationToken);
@@ -191,7 +191,7 @@ public static class FinanceEndpoints
         finance.MapPost("/billing-runs/preflight", async (Guid zevId, GenerateBillingRequest request, TenantAccess access,
             MonthlyBillingEngine engine, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Billing.Preview", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Billing.Preview", cancellationToken) is { } denied) return denied;
             return Results.Ok(await engine.PreflightAsync(zevId, request.Period, request.DueDate, request.Draft,
                 cancellationToken));
         });
@@ -199,7 +199,7 @@ public static class FinanceEndpoints
         finance.MapPost("/billing-runs/preview", async (Guid zevId, GenerateBillingRequest request, TenantAccess access,
             MonthlyBillingEngine engine, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Billing.Preview", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Billing.Preview", cancellationToken) is { } denied) return denied;
             var result = await engine.PreviewAsync(zevId, request.Period, request.DueDate, request.Draft,
                 cancellationToken);
             return result.Failure == BillingFailure.None ? Results.Ok(result)
@@ -210,7 +210,7 @@ public static class FinanceEndpoints
         finance.MapPost("/billing-runs", async (Guid zevId, GenerateBillingRequest request, TenantAccess access,
             MonthlyBillingEngine engine, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Billing.Post", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Billing.Post", cancellationToken) is { } denied) return denied;
             var result = await engine.GenerateAsync(zevId, request.Period, request.DueDate, request.Draft,
                 cancellationToken);
             if (result.Run is null) return result.Failure == BillingFailure.Invalid
@@ -223,7 +223,7 @@ public static class FinanceEndpoints
         finance.MapGet("/charges", async (Guid zevId, DateOnly? period, Guid? personId, string? reference, int? page, int? pageSize,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Billing.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Billing.View", cancellationToken) is { } denied) return denied;
             var (currentPage, currentSize) = AdminValidation.Page(page, pageSize);
             var query = database.Charges.AsNoTracking().Where(item => item.ZevId == zevId);
             if (period is DateOnly selectedPeriod) query = query.Where(item => item.Period == selectedPeriod);
@@ -248,7 +248,7 @@ public static class FinanceEndpoints
         finance.MapPost("/extraordinary-charges", async (Guid zevId, ExtraordinaryChargeRequest request,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Finance.Create", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Finance.Create", cancellationToken) is { } denied) return denied;
             if (request.Amount <= 0m || request.Period.Day != 1 || request.DueDate < request.Period) return Results.BadRequest();
             var tariff = await database.TariffVersions.AsNoTracking().SingleOrDefaultAsync(item => item.Id == request.TariffVersionId
                 && item.ZevId == zevId && item.Basis == TariffBasis.Extraordinary && item.IsActive

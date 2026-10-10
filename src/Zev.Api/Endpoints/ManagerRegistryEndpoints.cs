@@ -14,7 +14,7 @@ public static class ManagerRegistryEndpoints
             bool? isActive, int? page, int? pageSize,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "PropertyUnits.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "PropertyUnits.View", cancellationToken) is { } denied) return denied;
             var (currentPage, currentSize) = AdminValidation.Page(page, pageSize);
             var query = database.PropertyUnits.AsNoTracking().Where(item => item.ZevId == zevId);
             if (buildingId is Guid building) query = query.Where(item => item.BuildingId == building);
@@ -39,7 +39,7 @@ public static class ManagerRegistryEndpoints
         group.MapGet("/people", async (Guid zevId, string? search, bool? isActive, int? page, int? pageSize,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Persons.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Persons.View", cancellationToken) is { } denied) return denied;
             var (currentPage, currentSize) = AdminValidation.Page(page, pageSize);
             var query = database.People.AsNoTracking().Where(item => database.Ownerships.Any(ownership =>
                 ownership.ZevId == zevId && ownership.PersonId == item.Id)
@@ -58,8 +58,8 @@ public static class ManagerRegistryEndpoints
         group.MapGet("/units/{unitId:guid}/ownerships", async (Guid zevId, Guid unitId,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Ownership.View", cancellationToken)
-                || !await database.PropertyUnits.AnyAsync(item => item.ZevId == zevId && item.Id == unitId,
+            if (await access.RequirePermissionAsync(zevId, "Ownership.View", cancellationToken) is { } denied) return denied;
+            if (!await database.PropertyUnits.AnyAsync(item => item.ZevId == zevId && item.Id == unitId,
                     cancellationToken)) return Results.NotFound();
             var rows = await database.Ownerships.AsNoTracking().Where(item => item.ZevId == zevId
                     && item.PropertyUnitId == unitId).OrderBy(item => item.ValidFrom).Take(500)

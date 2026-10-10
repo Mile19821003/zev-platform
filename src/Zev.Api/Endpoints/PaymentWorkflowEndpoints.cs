@@ -14,7 +14,7 @@ public static class PaymentWorkflowEndpoints
         group.MapGet("/lookup", async (Guid zevId, TenantAccess access, ZevDbContext database,
             CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Payments.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Payments.View", cancellationToken) is { } denied) return denied;
             var funds = await database.Funds.AsNoTracking().Where(item => item.ZevId == zevId && item.IsActive)
                 .OrderBy(item => item.Name).Select(item => new { item.Id, item.Name }).ToListAsync(cancellationToken);
             var accounts = await database.BankAccounts.AsNoTracking().Where(item => item.ZevId == zevId)
@@ -27,7 +27,7 @@ public static class PaymentWorkflowEndpoints
             IConfiguration configuration,
             CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Payments.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Payments.View", cancellationToken) is { } denied) return denied;
             var zev = await database.Zevs.AsNoTracking().Where(item => item.Id == zevId)
                 .Select(item => new { item.AutoApplyPaymentCredit, item.RowVersion })
                 .SingleOrDefaultAsync(cancellationToken);
@@ -39,8 +39,8 @@ public static class PaymentWorkflowEndpoints
         group.MapPut("/credit-policy", async (Guid zevId, CreditPolicyCommand request,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Payments.ReconcileAutomatic", cancellationToken))
-                return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Payments.ReconcileAutomatic", cancellationToken) is { } denied)
+                return denied;
             var zev = await database.Zevs.SingleOrDefaultAsync(item => item.Id == zevId, cancellationToken);
             if (zev is null) return Results.NotFound();
             if (Convert.ToBase64String(zev.RowVersion) != request.RowVersion) return Results.Conflict();
@@ -57,7 +57,7 @@ public static class PaymentWorkflowEndpoints
         group.MapGet("/people", async (Guid zevId, string? search, int? page, int? pageSize,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Payments.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Payments.View", cancellationToken) is { } denied) return denied;
             var (currentPage, currentSize) = AdminValidation.Page(page, pageSize);
             var query = database.People.AsNoTracking().Where(item => item.IsActive
                 && (database.Ownerships.Any(ownership => ownership.ZevId == zevId && ownership.PersonId == item.Id)
@@ -73,7 +73,7 @@ public static class PaymentWorkflowEndpoints
         group.MapGet("/units", async (Guid zevId, Guid personId, TenantAccess access,
             ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Payments.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Payments.View", cancellationToken) is { } denied) return denied;
             var units = await database.Ownerships.AsNoTracking().Where(item => item.ZevId == zevId
                 && item.PersonId == personId && item.ValidFrom <= DateOnly.FromDateTime(DateTime.UtcNow)
                 && (item.ValidTo == null || item.ValidTo > DateOnly.FromDateTime(DateTime.UtcNow)))
@@ -85,8 +85,7 @@ public static class PaymentWorkflowEndpoints
         group.MapPost("/manual", async (Guid zevId, ManualPaymentInput request, ClaimsPrincipal user,
             TenantAccess access, PaymentWorkflowService workflow, CancellationToken cancellationToken) =>
         {
-            if (!await access.CanReadZevAsync(zevId, cancellationToken)) return Results.NotFound();
-            if (!await access.HasPermissionAsync(zevId, "Payments.CreateManual", cancellationToken)) return Results.Forbid();
+            if (await access.RequirePermissionAsync(zevId, "Payments.CreateManual", cancellationToken) is { } denied) return denied;
             var actorId = Guid.TryParse(user.FindFirstValue("sub"), out var parsed) ? parsed : (Guid?)null;
             var result = await workflow.CreateManualAsync(zevId, request, actorId, cancellationToken);
             return result.Success ? Results.Ok(new { id = result.PaymentId, result.AlreadyExists })
@@ -97,8 +96,7 @@ public static class PaymentWorkflowEndpoints
             PaymentAllocationCommand request, TenantAccess access, PaymentWorkflowService workflow, ClaimsPrincipal user,
             CancellationToken cancellationToken) =>
         {
-            if (!await access.CanReadZevAsync(zevId, cancellationToken)) return Results.NotFound();
-            if (!await access.HasPermissionAsync(zevId, "Payments.ReconcileManual", cancellationToken)) return Results.Forbid();
+            if (await access.RequirePermissionAsync(zevId, "Payments.ReconcileManual", cancellationToken) is { } denied) return denied;
             var actorId = Guid.TryParse(user.FindFirstValue("sub"), out var parsed) ? parsed : (Guid?)null;
             var result = await workflow.AllocateAsync(zevId, paymentId, request.RequestId,
                 request.Allocations ?? [], cancellationToken, actorId);
@@ -110,7 +108,7 @@ public static class PaymentWorkflowEndpoints
             Guid? propertyUnitId, TenantAccess access, PaymentWorkflowService workflow,
             CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Payments.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Payments.View", cancellationToken) is { } denied) return denied;
             var preview = await workflow.PreviewAutomaticAsync(zevId, paymentId, propertyUnitId, cancellationToken);
             return preview.Error is null ? Results.Ok(preview) : Results.Conflict(new { error = preview.Error });
         });
@@ -120,7 +118,7 @@ public static class PaymentWorkflowEndpoints
             ZevDbContext database,
             CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Payments.ReconcileManual", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Payments.ReconcileManual", cancellationToken) is { } denied) return denied;
             if (request.RequestId == Guid.Empty) return Results.BadRequest(new { error = "Request ID is required." });
             var prior = await database.PaymentAllocations.AsNoTracking().Where(item => item.ZevId == zevId
                 && item.PaymentId == paymentId && item.OperationId == request.RequestId)
@@ -142,7 +140,7 @@ public static class PaymentWorkflowEndpoints
             IdentifyPaymentCommand request, TenantAccess access, PaymentWorkflowService workflow, ClaimsPrincipal user,
             CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Payments.ReconcileManual", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Payments.ReconcileManual", cancellationToken) is { } denied) return denied;
             var actorId = Guid.TryParse(user.FindFirstValue("sub"), out var parsed) ? parsed : (Guid?)null;
             var result = await workflow.IdentifyAsync(zevId, paymentId, request.PersonId, cancellationToken, actorId);
             return result.Success ? Results.Ok(new { id = result.PaymentId, result.AlreadyExists })
@@ -153,8 +151,7 @@ public static class PaymentWorkflowEndpoints
             ChangePayerCommand request, TenantAccess access, PaymentWorkflowService workflow,
             ClaimsPrincipal user, CancellationToken cancellationToken) =>
         {
-            if (!await access.CanReadZevAsync(zevId, cancellationToken)) return Results.NotFound();
-            if (!await access.HasPermissionAsync(zevId, "Payments.ChangePayer", cancellationToken)) return Results.Forbid();
+            if (await access.RequirePermissionAsync(zevId, "Payments.ChangePayer", cancellationToken) is { } denied) return denied;
             var actorId = Guid.TryParse(user.FindFirstValue("sub"), out var parsed) ? parsed : (Guid?)null;
             var result = await workflow.ChangePayerAsync(zevId, paymentId, request.PersonId,
                 request.Reason, request.Allocations, actorId, cancellationToken);
@@ -166,8 +163,7 @@ public static class PaymentWorkflowEndpoints
             ReversePaymentCommand request, TenantAccess access, PaymentWorkflowService workflow,
             ClaimsPrincipal user, CancellationToken cancellationToken) =>
         {
-            if (!await access.CanReadZevAsync(zevId, cancellationToken)) return Results.NotFound();
-            if (!await access.HasPermissionAsync(zevId, "Payments.Reverse", cancellationToken)) return Results.Forbid();
+            if (await access.RequirePermissionAsync(zevId, "Payments.Reverse", cancellationToken) is { } denied) return denied;
             if (string.IsNullOrWhiteSpace(request.Reason) || request.Reason.Trim().Length > 500)
                 return Results.BadRequest(new { error = "Reason is required (max 500 characters)." });
             var actorId = Guid.TryParse(user.FindFirstValue("sub"), out var parsed) ? parsed : (Guid?)null;
@@ -186,8 +182,7 @@ public static class PaymentWorkflowEndpoints
             ReverseAllocationCommand request, TenantAccess access, PaymentWorkflowService workflow,
             CancellationToken cancellationToken) =>
         {
-            if (!await access.CanReadZevAsync(zevId, cancellationToken)) return Results.NotFound();
-            if (!await access.HasPermissionAsync(zevId, "Payments.ReverseAllocation", cancellationToken)) return Results.Forbid();
+            if (await access.RequirePermissionAsync(zevId, "Payments.ReverseAllocation", cancellationToken) is { } denied) return denied;
             var result = await workflow.ReverseAllocationAsync(zevId, allocationId, request.Reason, cancellationToken);
             return result.Success ? Results.Ok(new { id = result.PaymentId, result.AlreadyExists })
                 : Results.Conflict(new { error = result.Error });
@@ -197,7 +192,7 @@ public static class PaymentWorkflowEndpoints
             string? search, int? page, int? pageSize, TenantAccess access, ZevDbContext database,
             CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Payments.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Payments.View", cancellationToken) is { } denied) return denied;
             var (currentPage, currentSize) = AdminValidation.Page(page, pageSize);
             var query = database.Charges.AsNoTracking().Where(item => item.ZevId == zevId && item.Amount > 0m);
             if (personId is Guid owner) query = query.Where(item => item.PersonId == owner);
@@ -241,7 +236,7 @@ public static class PaymentWorkflowEndpoints
             string? search, int? page, int? pageSize, TenantAccess access, ZevDbContext database,
             CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Payments.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Payments.View", cancellationToken) is { } denied) return denied;
             var (currentPage, currentSize) = AdminValidation.Page(page, pageSize);
             var query = database.BankTransactions.AsNoTracking().Where(item => item.ZevId == zevId);
             if (bankAccountId is Guid account) query = query.Where(item => item.Import.BankAccountId == account);
@@ -289,7 +284,7 @@ public static class PaymentWorkflowEndpoints
         group.MapGet("/{paymentId:guid}/details", async (Guid zevId, Guid paymentId,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Payments.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Payments.View", cancellationToken) is { } denied) return denied;
             var payment = await database.Payments.AsNoTracking().Where(item => item.ZevId == zevId
                 && item.Id == paymentId).Select(item => new { item.Id, item.PersonId, item.FundId,
                 item.Amount, item.PaidOn, item.CurrencyCode, item.BankTransactionId,

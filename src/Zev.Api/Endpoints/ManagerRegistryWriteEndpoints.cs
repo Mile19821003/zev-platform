@@ -13,7 +13,7 @@ public static class ManagerRegistryWriteEndpoints
         group.MapGet("/buildings", async (Guid zevId, string? search, bool? isActive, int? page, int? pageSize,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Registry.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Registry.View", cancellationToken) is { } denied) return denied;
             var (currentPage, currentSize) = AdminValidation.Page(page, pageSize);
             var query = database.Buildings.AsNoTracking().Where(item => item.ZevId == zevId);
             if (!string.IsNullOrWhiteSpace(search)) query = query.Where(item => item.Name.Contains(search.Trim())
@@ -29,7 +29,7 @@ public static class ManagerRegistryWriteEndpoints
         group.MapPost("/buildings", async (Guid zevId, ManagerBuildingRequest request, TenantAccess access,
             ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Buildings.Create", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Buildings.Create", cancellationToken) is { } denied) return denied;
             if (!ValidBuilding(request.Code, request.Name, request.AddressLine)) return Results.BadRequest();
             var organizationId = await database.Zevs.Where(item => item.Id == zevId)
                 .Select(item => item.OrganizationId).SingleAsync(cancellationToken);
@@ -46,7 +46,7 @@ public static class ManagerRegistryWriteEndpoints
             ManagerBuildingRequest request, TenantAccess access, ZevDbContext database,
             CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Buildings.Edit", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Buildings.Edit", cancellationToken) is { } denied) return denied;
             if (!ValidBuilding(request.Code, request.Name, request.AddressLine)
                 || !AdminValidation.TryRowVersion(request.RowVersion, out var version)) return Results.BadRequest();
             var building = await database.Buildings.SingleOrDefaultAsync(item => item.Id == buildingId
@@ -63,7 +63,7 @@ public static class ManagerRegistryWriteEndpoints
         group.MapPatch("/buildings/{buildingId:guid}/status", async (Guid zevId, Guid buildingId,
             UpdateStatusRequest request, TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Buildings.Edit", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Buildings.Edit", cancellationToken) is { } denied) return denied;
             if (!AdminValidation.TryRowVersion(request.RowVersion, out var version)) return Results.BadRequest();
             var building = await database.Buildings.SingleOrDefaultAsync(item => item.Id == buildingId
                 && item.ZevId == zevId, cancellationToken);
@@ -78,7 +78,7 @@ public static class ManagerRegistryWriteEndpoints
             int? page, int? pageSize, TenantAccess access, ZevDbContext database,
             CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Registry.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Registry.View", cancellationToken) is { } denied) return denied;
             var (currentPage, currentSize) = AdminValidation.Page(page, pageSize);
             var query = database.Entrances.AsNoTracking().Include(item => item.Building)
                 .Where(item => item.ZevId == zevId);
@@ -96,7 +96,7 @@ public static class ManagerRegistryWriteEndpoints
         group.MapPost("/entrances", async (Guid zevId, CreateEntranceRequest request, TenantAccess access,
             ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Entrances.Create", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Entrances.Create", cancellationToken) is { } denied) return denied;
             if (!AdminValidation.Code(request.Code) || !AdminValidation.Required(request.Name, 200)) return Results.BadRequest();
             var building = await database.Buildings.SingleOrDefaultAsync(item => item.Id == request.BuildingId
                 && item.ZevId == zevId && item.IsActive, cancellationToken);
@@ -114,7 +114,7 @@ public static class ManagerRegistryWriteEndpoints
             UpdateEntranceRequest request, TenantAccess access, ZevDbContext database,
             CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Entrances.Edit", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Entrances.Edit", cancellationToken) is { } denied) return denied;
             if (!AdminValidation.Code(request.Code) || !AdminValidation.Required(request.Name, 200)
                 || !AdminValidation.TryRowVersion(request.RowVersion, out var version)) return Results.BadRequest();
             var entrance = await database.Entrances.Include(item => item.Building)
@@ -130,7 +130,7 @@ public static class ManagerRegistryWriteEndpoints
         group.MapPatch("/entrances/{entranceId:guid}/status", async (Guid zevId, Guid entranceId,
             UpdateStatusRequest request, TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Entrances.Edit", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Entrances.Edit", cancellationToken) is { } denied) return denied;
             if (!AdminValidation.TryRowVersion(request.RowVersion, out var version)) return Results.BadRequest();
             var entrance = await database.Entrances.Include(item => item.Building)
                 .SingleOrDefaultAsync(item => item.Id == entranceId && item.ZevId == zevId, cancellationToken);
@@ -145,7 +145,7 @@ public static class ManagerRegistryWriteEndpoints
         group.MapPost("/units", async (Guid zevId, CreateUnitRequest request, TenantAccess access,
             ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "PropertyUnits.Create", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "PropertyUnits.Create", cancellationToken) is { } denied) return denied;
             if (!ValidUnit(request.Code, request.Type, request.AreaSquareMeters, request.Coefficient,
                 request.RegisteredMembers, out var type)) return Results.BadRequest();
             var entrance = await database.Entrances.Include(item => item.Building)
@@ -166,7 +166,7 @@ public static class ManagerRegistryWriteEndpoints
         group.MapPut("/units/{unitId:guid}", async (Guid zevId, Guid unitId, UpdateUnitRequest request,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "PropertyUnits.Edit", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "PropertyUnits.Edit", cancellationToken) is { } denied) return denied;
             if (!ValidUnit(request.Code, request.Type, request.AreaSquareMeters, request.Coefficient,
                 request.RegisteredMembers, out var type)
                 || !AdminValidation.TryRowVersion(request.RowVersion, out var version)) return Results.BadRequest();
@@ -188,7 +188,7 @@ public static class ManagerRegistryWriteEndpoints
             UpdateStatusRequest request, TenantAccess access, ZevDbContext database,
             CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "PropertyUnits.Edit", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "PropertyUnits.Edit", cancellationToken) is { } denied) return denied;
             if (!AdminValidation.TryRowVersion(request.RowVersion, out var version)) return Results.BadRequest();
             var unit = await database.PropertyUnits.Include(item => item.Entrance)
                 .SingleOrDefaultAsync(item => item.Id == unitId && item.ZevId == zevId, cancellationToken);
@@ -204,7 +204,7 @@ public static class ManagerRegistryWriteEndpoints
         group.MapPost("/people", async (Guid zevId, ManagerPersonRequest request, TenantAccess access,
             ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Persons.Create", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Persons.Create", cancellationToken) is { } denied) return denied;
             if (!ValidPerson(request, out var kind)) return Results.BadRequest();
             var organizationId = await database.Zevs.Where(item => item.Id == zevId)
                 .Select(item => item.OrganizationId).SingleAsync(cancellationToken);
@@ -222,7 +222,7 @@ public static class ManagerRegistryWriteEndpoints
             ManagerPersonRequest request, TenantAccess access, ZevDbContext database,
             CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Persons.Edit", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Persons.Edit", cancellationToken) is { } denied) return denied;
             if (!ValidPerson(request, out var kind)
                 || !AdminValidation.TryRowVersion(request.RowVersion, out var version)) return Results.BadRequest();
             var person = await database.People.SingleOrDefaultAsync(item => item.Id == personId
@@ -248,8 +248,8 @@ public static class ManagerRegistryWriteEndpoints
         group.MapPost("/ownerships", async (Guid zevId, CreateOwnershipRequest request, TenantAccess access,
             ZevDbContext database, OwnershipService service, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Ownership.Create", cancellationToken)
-                || !await database.PropertyUnits.AnyAsync(item => item.Id == request.PropertyUnitId
+            if (await access.RequirePermissionAsync(zevId, "Ownership.Create", cancellationToken) is { } denied) return denied;
+            if (!await database.PropertyUnits.AnyAsync(item => item.Id == request.PropertyUnitId
                     && item.ZevId == zevId, cancellationToken)
                 || await database.Ownerships.AnyAsync(item => item.PersonId == request.PersonId
                     && item.ZevId != zevId, cancellationToken)
@@ -268,8 +268,8 @@ public static class ManagerRegistryWriteEndpoints
             CloseOwnershipRequest request, TenantAccess access, ZevDbContext database,
             OwnershipService service, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Ownership.Close", cancellationToken)
-                || !await database.Ownerships.AnyAsync(item => item.Id == ownershipId && item.ZevId == zevId,
+            if (await access.RequirePermissionAsync(zevId, "Ownership.Close", cancellationToken) is { } denied) return denied;
+            if (!await database.Ownerships.AnyAsync(item => item.Id == ownershipId && item.ZevId == zevId,
                     cancellationToken)) return Results.NotFound();
             var result = await service.CloseAsync(ownershipId, request.ValidTo, cancellationToken);
             return result.Value is not null ? Results.Ok(new { result.Value.Id, result.Value.ValidTo })

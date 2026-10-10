@@ -23,7 +23,7 @@ public static class AccessOverrideEndpoints
         api.MapGet("/zevs/{zevId:guid}/access/users", async (Guid zevId, string? search,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Access.Manage", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Access.Manage", cancellationToken) is { } denied) return denied;
             var zev = await database.Zevs.AsNoTracking().Where(item => item.Id == zevId && item.IsActive)
                 .Select(item => new { item.OrganizationId }).SingleOrDefaultAsync(cancellationToken);
             if (zev is null) return Results.NotFound();
@@ -48,8 +48,8 @@ public static class AccessOverrideEndpoints
             Guid targetUserId, TenantAccess access, EffectiveAccessService effectiveAccess,
             ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Access.Manage", cancellationToken)
-                || !await database.Users.AnyAsync(item => item.Id == targetUserId && item.IsActive
+            if (await access.RequirePermissionAsync(zevId, "Access.Manage", cancellationToken) is { } denied) return denied;
+            if (!await database.Users.AnyAsync(item => item.Id == targetUserId && item.IsActive
                     && !item.IsSystemAdministrator, cancellationToken)) return Results.NotFound();
             return Results.Ok(await effectiveAccess.GetPermissionContextAsync(targetUserId, zevId, cancellationToken));
         });
@@ -58,8 +58,8 @@ public static class AccessOverrideEndpoints
             Guid targetUserId, SavePermissionMatrixRequest request, TenantAccess access,
             EffectiveAccessService effectiveAccess, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (access.CurrentUserId is not Guid actorId
-                || !await access.HasPermissionAsync(zevId, "Access.Manage", cancellationToken)) return Results.NotFound();
+            if (access.CurrentUserId is not Guid actorId) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Access.Manage", cancellationToken) is { } denied) return denied;
             if (request.Changes is null || request.Changes.Count > GranularPermissions.Keys.Length
                 || string.IsNullOrWhiteSpace(request.Reason) || request.Reason.Trim().Length > 500
                 || request.Changes.Any(item => !GranularPermissions.IsKnown(item.Key)
@@ -119,7 +119,7 @@ public static class AccessOverrideEndpoints
         group.MapGet("", async (Guid zevId, TenantAccess access, ZevDbContext database,
             CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Access.Manage", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Access.Manage", cancellationToken) is { } denied) return denied;
             var rows = await database.AccessOverrides.AsNoTracking().Where(item => item.ZevId == zevId)
                 .OrderByDescending(item => item.CreatedUtc).Take(200)
                 .Select(item => new { item.Id, item.UserId, item.ZevId, item.PermissionKey,
@@ -137,9 +137,10 @@ public static class AccessOverrideEndpoints
                 || !Enum.TryParse<AccessEffect>(request.Effect, true, out var effect) || !Enum.IsDefined(effect)
                 || string.IsNullOrWhiteSpace(request.Reason) || request.Reason.Trim().Length > 500
                 || request.ValidToUtc <= request.ValidFromUtc) return Results.BadRequest();
+            if (await access.RequirePermissionAsync(zevId, "Access.Manage", cancellationToken) is { } denied) return denied;
             var rights = await effectiveAccess.GetEffectiveZevAccess(actorId, zevId, cancellationToken);
-            if (!await access.HasPermissionAsync(zevId, "Access.Manage", cancellationToken)
-                || !CanDelegate(rights, request.PermissionKey)) return Results.NotFound();
+            // Delegating a right the actor does not hold is a missing permission, not a missing resource.
+            if (!CanDelegate(rights, request.PermissionKey)) return Results.Forbid();
             var target = await database.Users.AsNoTracking().Where(item => item.Id == request.UserId && item.IsActive)
                 .Select(item => new { item.IsSystemAdministrator }).SingleOrDefaultAsync(cancellationToken);
             if (target is null || target.IsSystemAdministrator) return Results.NotFound();
@@ -183,9 +184,9 @@ public static class AccessOverrideEndpoints
             var item = await database.AccessOverrides.SingleOrDefaultAsync(value => value.Id == overrideId
                 && value.ZevId == zevId, cancellationToken);
             if (item is null || item.RevokedUtc is not null) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Access.Manage", cancellationToken) is { } denied) return denied;
             var rights = await effectiveAccess.GetEffectiveZevAccess(actorId, zevId, cancellationToken);
-            if (!await access.HasPermissionAsync(zevId, "Access.Manage", cancellationToken)
-                || !CanDelegate(rights, item.PermissionKey)) return Results.NotFound();
+            if (!CanDelegate(rights, item.PermissionKey)) return Results.Forbid();
             var systemAdministrator = await access.IsSystemAdministratorAsync(actorId, cancellationToken);
             if (!systemAdministrator && actorId == item.UserId) return Results.NotFound();
             if (!systemAdministrator

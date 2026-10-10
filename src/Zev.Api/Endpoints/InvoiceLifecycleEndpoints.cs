@@ -15,7 +15,7 @@ public static class InvoiceLifecycleEndpoints
         group.MapPost("/storno", async (Guid zevId, Guid invoiceId, StornoRequest request,
             TenantAccess access, InvoiceLifecycleService lifecycle, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Billing.Reverse", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Billing.Reverse", cancellationToken) is { } denied) return denied;
             var result = await lifecycle.StornoAsync(zevId, invoiceId, request, access.CurrentUserId, cancellationToken);
             return result.Document is null ? Results.Conflict(new { error = result.Error })
                 : Results.Ok(new { result.Document.Id, result.Document.DocumentNumber,
@@ -24,7 +24,7 @@ public static class InvoiceLifecycleEndpoints
         group.MapPost("/corrections", async (Guid zevId, Guid invoiceId, CorrectionRequest request,
             TenantAccess access, InvoiceLifecycleService lifecycle, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Invoice.Correct", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Invoice.Correct", cancellationToken) is { } denied) return denied;
             var result = await lifecycle.CorrectAsync(zevId, invoiceId, request, access.CurrentUserId, cancellationToken);
             return result.Document is null ? Results.Conflict(new { error = result.Error })
                 : Results.Ok(new { result.Document.Id, result.Document.DocumentNumber,

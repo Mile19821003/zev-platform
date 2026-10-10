@@ -18,7 +18,7 @@ public static class PaymentEndpoints
         group.MapGet("/accounts", async (Guid zevId, TenantAccess access, ZevDbContext database,
             CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "BankAccounts.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "BankAccounts.View", cancellationToken) is { } denied) return denied;
             var accounts = await database.BankAccounts.AsNoTracking().Where(item => item.ZevId == zevId)
                 .OrderBy(item => item.AccountNumber).Select(item => new { item.Id, item.FundId, item.AccountNumber,
                     item.BankName, item.CurrencyCode, item.IsActive }).ToListAsync(cancellationToken);
@@ -29,7 +29,7 @@ public static class PaymentEndpoints
         group.MapGet("/accounts/{accountId:guid}/balance", async (Guid zevId, Guid accountId, TenantAccess access,
             BankAccountBalanceService balances, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "BankAccounts.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "BankAccounts.View", cancellationToken) is { } denied) return denied;
             var balance = await balances.ReadAsync(zevId, accountId, cancellationToken);
             return balance is null ? Results.NotFound() : Results.Ok(balance);
         });
@@ -37,7 +37,7 @@ public static class PaymentEndpoints
         group.MapPost("/accounts", async (Guid zevId, CreateBankAccountRequest request, TenantAccess access,
             ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "BankAccounts.Create", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "BankAccounts.Create", cancellationToken) is { } denied) return denied;
             var accountNumber = AdminValidation.TransactionAccount(request.AccountNumber);
             if (accountNumber is null || !AdminValidation.Optional(request.BankName, 120)
                 || request.CurrencyCode?.Length != 3 || !request.CurrencyCode.All(char.IsLetter))
@@ -63,7 +63,7 @@ public static class PaymentEndpoints
         group.MapPost("/statements/preview", async (Guid zevId, ImportStatementRequest request, TenantAccess access,
             PaymentReconciliationEngine engine, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "BankStatements.Preview", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "BankStatements.Preview", cancellationToken) is { } denied) return denied;
             if (string.IsNullOrWhiteSpace(request.ContentBase64) || request.ContentBase64.Length > 7_000_000)
                 return Results.BadRequest();
             byte[] content;
@@ -84,10 +84,8 @@ public static class PaymentEndpoints
         group.MapPost("/statements", async (Guid zevId, ImportStatementRequest request, TenantAccess access,
             PaymentReconciliationEngine engine, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "BankStatements.Import", cancellationToken)
-                || !await access.HasPermissionAsync(zevId, "BankStatements.Post", cancellationToken)
-                || !await access.HasPermissionAsync(zevId, "Payments.ReconcileAutomatic", cancellationToken))
-                return Results.NotFound();
+            if (await access.RequireAllPermissionsAsync(zevId, cancellationToken, "BankStatements.Import",
+                "BankStatements.Post", "Payments.ReconcileAutomatic") is { } denied) return denied;
             byte[] content;
             if (string.IsNullOrWhiteSpace(request.ContentBase64) || request.ContentBase64.Length > 7_000_000)
                 return Results.BadRequest();
@@ -105,7 +103,7 @@ public static class PaymentEndpoints
         group.MapGet("/statements", async (Guid zevId, int? page, int? pageSize, TenantAccess access,
             ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "BankStatements.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "BankStatements.View", cancellationToken) is { } denied) return denied;
             var (currentPage, currentSize) = AdminValidation.Page(page, pageSize);
             var query = database.BankStatementImports.AsNoTracking().Where(item => item.ZevId == zevId);
             var totalCount = await query.CountAsync(cancellationToken);
@@ -121,7 +119,7 @@ public static class PaymentEndpoints
             int? page, int? pageSize,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Payments.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Payments.View", cancellationToken) is { } denied) return denied;
             var (currentPage, currentSize) = AdminValidation.Page(page, pageSize);
             var query = database.BankTransactions.AsNoTracking().Where(item => item.ZevId == zevId
                 && (item.Status == BankTransactionStatus.ManualReview
@@ -144,7 +142,7 @@ public static class PaymentEndpoints
             ZevDbContext database,
             CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Payments.ReconcileManual", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Payments.ReconcileManual", cancellationToken) is { } denied) return denied;
             if (request.Allocations is null) return Results.BadRequest();
             var paymentId = await database.Payments.AsNoTracking().Where(item => item.ZevId == zevId
                 && item.BankTransactionId == transactionId).Select(item => (Guid?)item.Id)
@@ -165,7 +163,7 @@ public static class PaymentEndpoints
             BankReturnRequest request, TenantAccess access, PaymentReconciliationEngine engine,
             CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Payments.Reverse", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Payments.Reverse", cancellationToken) is { } denied) return denied;
             var result = await engine.ReverseFullPaymentAsync(zevId, transactionId, request.PaymentId,
                 request.Reason, cancellationToken);
             return result.Success ? Results.Ok(new { status = "Returned" })
@@ -177,7 +175,7 @@ public static class PaymentEndpoints
             string? search, string? filterStatus, int? page, int? pageSize,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Payments.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Payments.View", cancellationToken) is { } denied) return denied;
             var (currentPage, currentSize) = AdminValidation.Page(page, pageSize);
             var query = database.Payments.AsNoTracking().Where(item => item.ZevId == zevId);
             if (personId is Guid selectedPerson) query = query.Where(item => item.PersonId == selectedPerson);
@@ -249,8 +247,8 @@ public static class PaymentEndpoints
         group.MapGet("/export", async (Guid zevId, TenantAccess access, ZevDbContext database,
             CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Payments.View", cancellationToken)
-                || !await access.HasPermissionAsync(zevId, "Payments.Export", cancellationToken)) return Results.NotFound();
+            if (await access.RequireAllPermissionsAsync(zevId, cancellationToken, "Payments.View", "Payments.Export")
+                is { } denied) return denied;
             var payments = await database.Payments.AsNoTracking().Where(item => item.ZevId == zevId)
                 .OrderByDescending(item => item.PaidOn).ThenBy(item => item.Id).Take(5000)
                 .Select(item => new { item.Id, item.PersonId, item.PaidOn, item.Amount, item.CurrencyCode,
@@ -267,7 +265,7 @@ public static class PaymentEndpoints
         group.MapGet("/credits", async (Guid zevId, int? page, int? pageSize,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Payments.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Payments.View", cancellationToken) is { } denied) return denied;
             var (currentPage, currentSize) = AdminValidation.Page(page, pageSize);
             var query = database.Payments.AsNoTracking().Where(item => item.ZevId == zevId
                     && item.Status == PaymentStatus.Posted)
@@ -289,7 +287,7 @@ public static class PaymentEndpoints
             DateOnly? to, int? page, int? pageSize, TenantAccess access, OwnerCardService ownerCard,
             CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "OwnerLedger.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "OwnerLedger.View", cancellationToken) is { } denied) return denied;
             if (from > to) return Results.BadRequest(new { error = "From date must not follow to date." });
             var (currentPage, currentSize) = AdminValidation.Page(page, pageSize);
             return Results.Ok(await ownerCard.ReadAsync(zevId, personId, from, to,

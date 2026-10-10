@@ -15,7 +15,7 @@ public static class VotingEndpoints
         group.MapGet("", async (Guid zevId, int? page, int? pageSize, TenantAccess access,
             ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Voting.View", cancellationToken, staffOnly: false)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Voting.View", cancellationToken, staffOnly: false) is { } denied) return denied;
             var (currentPage, currentSize) = AdminValidation.Page(page, pageSize);
             var manager = await access.HasPermissionAsync(zevId, "Voting.Manage", cancellationToken);
             // Staff with Voting.View (e.g. the building representative) follow every published ballot and its
@@ -51,8 +51,8 @@ public static class VotingEndpoints
         group.MapPost("", async (Guid zevId, CreateBallotRequest request, TenantAccess access,
             ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Voting.Create", cancellationToken)
-                || access.CurrentUserId is not Guid userId) return Results.NotFound();
+            if (access.CurrentUserId is not Guid userId) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Voting.Create", cancellationToken) is { } denied) return denied;
             if (!AdminValidation.Required(request.Title, 200) || !AdminValidation.Required(request.Question, 4000)
                 || !Enum.TryParse<BallotKind>(request.Kind, true, out var kind) || !Enum.IsDefined(kind)
                 || !Enum.TryParse<VotingMode>(request.Mode, true, out var mode) || !Enum.IsDefined(mode)
@@ -76,7 +76,7 @@ public static class VotingEndpoints
         group.MapPost("/{ballotId:guid}/open", async (Guid zevId, Guid ballotId,
             TenantAccess access, VotingService service, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Voting.Manage", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Voting.Manage", cancellationToken) is { } denied) return denied;
             return await service.OpenAsync(zevId, ballotId, cancellationToken)
                 ? Results.Ok(new { status = "Open" }) : Results.Conflict();
         });
@@ -84,8 +84,8 @@ public static class VotingEndpoints
         group.MapPost("/{ballotId:guid}/votes", async (Guid zevId, Guid ballotId, CastVoteRequest request,
             TenantAccess access, VotingService service, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Voting.View", cancellationToken, staffOnly: false)
-                || access.CurrentUserId is not Guid userId) return Results.NotFound();
+            if (access.CurrentUserId is not Guid userId) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Voting.View", cancellationToken, staffOnly: false) is { } denied) return denied;
             if (!Enum.TryParse<VoteChoice>(request.Choice, true, out var choice) || !Enum.IsDefined(choice))
                 return Results.BadRequest();
             return await service.CastVoteAsync(zevId, ballotId, request.PropertyUnitId, userId, choice, cancellationToken) switch
@@ -101,7 +101,7 @@ public static class VotingEndpoints
         group.MapPost("/{ballotId:guid}/close", async (Guid zevId, Guid ballotId, TenantAccess access,
             VotingService service, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Voting.Manage", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Voting.Manage", cancellationToken) is { } denied) return denied;
             var result = await service.CloseAsync(zevId, ballotId, cancellationToken);
             return result is null ? Results.Conflict() : Results.Ok(result);
         });
@@ -109,7 +109,7 @@ public static class VotingEndpoints
         group.MapGet("/{ballotId:guid}/audit", async (Guid zevId, Guid ballotId, TenantAccess access,
             ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Voting.Manage", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Voting.Manage", cancellationToken) is { } denied) return denied;
             var ballot = await database.Ballots.AsNoTracking().SingleOrDefaultAsync(item => item.Id == ballotId
                 && item.ZevId == zevId && item.Status == BallotStatus.Closed, cancellationToken);
             if (ballot is null) return Results.NotFound();

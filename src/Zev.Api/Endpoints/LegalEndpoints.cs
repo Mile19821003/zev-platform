@@ -17,7 +17,7 @@ public static class LegalEndpoints
         group.MapGet("/people", async (Guid zevId, string? search, int? page, int? pageSize,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Persons.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Persons.View", cancellationToken) is { } denied) return denied;
             var (currentPage, currentSize) = AdminValidation.Page(page, pageSize);
             var query = database.People.AsNoTracking().Where(item => database.Ownerships.Any(ownership =>
                 ownership.ZevId == zevId && ownership.PersonId == item.Id)
@@ -32,7 +32,7 @@ public static class LegalEndpoints
         group.MapGet("/interest-policies", async (Guid zevId, TenantAccess access, ZevDbContext database,
             CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Legal.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Legal.View", cancellationToken) is { } denied) return denied;
             var policies = await database.InterestRatePolicies.AsNoTracking().Where(item => item.ZevId == zevId)
                 .OrderBy(item => item.ValidFrom).Select(item => new { item.Id, item.ValidFrom, item.ValidTo,
                     item.AnnualRatePercent, item.DaysPerYear, item.IsActive }).ToListAsync(cancellationToken);
@@ -42,7 +42,7 @@ public static class LegalEndpoints
         group.MapPost("/interest-policies", async (Guid zevId, CreateInterestPolicyRequest request,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Legal.Edit", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Legal.Edit", cancellationToken) is { } denied) return denied;
             if (request.ValidFrom == default || request.ValidTo <= request.ValidFrom
                 || request.AnnualRatePercent is < 0m or > 1000m || request.DaysPerYear is < 1 or > 366)
                 return Results.BadRequest();
@@ -66,7 +66,7 @@ public static class LegalEndpoints
         group.MapGet("/reminders", async (Guid zevId, Guid? personId, int? page, int? pageSize,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Legal.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Legal.View", cancellationToken) is { } denied) return denied;
             var (currentPage, currentSize) = AdminValidation.Page(page, pageSize);
             var query = database.Reminders.AsNoTracking().Where(item => item.ZevId == zevId);
             if (personId is Guid selectedPerson) query = query.Where(item => item.PersonId == selectedPerson);
@@ -81,7 +81,7 @@ public static class LegalEndpoints
         group.MapGet("/reminders/{reminderId:guid}.pdf", async (Guid zevId, Guid reminderId,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Legal.Documents", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Legal.Documents", cancellationToken) is { } denied) return denied;
             var reminder = await database.Reminders.AsNoTracking().Where(item => item.Id == reminderId
                 && item.ZevId == zevId).Select(item => new { item.Id, item.Kind, item.AsOf,
                     item.PrincipalSnapshot, item.InterestSnapshot, person = item.Person.DisplayName })
@@ -100,7 +100,7 @@ public static class LegalEndpoints
         group.MapPost("/reminders", async (Guid zevId, CreateReminderRequest request, TenantAccess access,
             ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Legal.Create", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Legal.Create", cancellationToken) is { } denied) return denied;
             if (!Enum.TryParse<ReminderKind>(request.Kind, true, out var kind) || !Enum.IsDefined(kind)
                 || request.AsOf == default) return Results.BadRequest();
             var organizationId = await database.Zevs.Where(item => item.Id == zevId)
@@ -137,7 +137,7 @@ public static class LegalEndpoints
         group.MapGet("/cases", async (Guid zevId, int? page, int? pageSize, TenantAccess access,
             ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Legal.View", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Legal.View", cancellationToken) is { } denied) return denied;
             var (currentPage, currentSize) = AdminValidation.Page(page, pageSize);
             var query = database.LegalCases.AsNoTracking().Where(item => item.ZevId == zevId);
             var totalCount = await query.CountAsync(cancellationToken);
@@ -154,7 +154,7 @@ public static class LegalEndpoints
         group.MapPost("/cases", async (Guid zevId, CreateLegalCaseRequest request, TenantAccess access,
             ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Legal.Create", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Legal.Create", cancellationToken) is { } denied) return denied;
             if (!ValidCase(request.PrincipalAmount, request.InterestAmount, request.CostsAmount,
                 request.RecoveredAmount, request.Lawyer, request.Court, request.CaseNumber, request.Notes))
                 return Results.BadRequest();
@@ -179,7 +179,7 @@ public static class LegalEndpoints
         group.MapPut("/cases/{caseId:guid}", async (Guid zevId, Guid caseId, UpdateLegalCaseRequest request,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Legal.Edit", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Legal.Edit", cancellationToken) is { } denied) return denied;
             if (!ValidCase(request.PrincipalAmount, request.InterestAmount, request.CostsAmount,
                 request.RecoveredAmount, request.Lawyer, request.Court, request.CaseNumber, request.Notes)
                 || !Enum.TryParse<LegalCaseStatus>(request.Status, true, out var status) || !Enum.IsDefined(status)
@@ -209,7 +209,7 @@ public static class LegalEndpoints
         group.MapPost("/cases/{caseId:guid}/files", async (Guid zevId, Guid caseId, LinkLegalCaseFileRequest request,
             TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
         {
-            if (!await access.HasPermissionAsync(zevId, "Legal.Documents", cancellationToken)) return Results.NotFound();
+            if (await access.RequirePermissionAsync(zevId, "Legal.Documents", cancellationToken) is { } denied) return denied;
             var legalCase = await database.LegalCases.AsNoTracking().SingleOrDefaultAsync(item => item.ZevId == zevId
                 && item.Id == caseId, cancellationToken);
             if (legalCase is null || !await database.StoredFiles.AnyAsync(item => item.Id == request.FileId

@@ -574,15 +574,15 @@ public sealed class TenantApiTests
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer",
             factory.Services.GetRequiredService<TokenService>().CreateAccessToken(new AppUser { Id = managerId }).AccessToken);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/api/zevs/{zevId}/payments/accounts")).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync($"/api/zevs/{zevId}/payments/accounts",
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsJsonAsync($"/api/zevs/{zevId}/payments/accounts",
             new { fundId, accountNumber = "DENIED", currencyCode = "BAM" })).StatusCode);
         var statement = new { bankAccountId = accountId, fileName = "bank.csv", format = "CSV",
             contentBase64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("date,amount\n2026-09-01,1.00")) };
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync($"/api/zevs/{zevId}/payments/statements/preview",
             statement)).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync($"/api/zevs/{zevId}/payments/statements",
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsJsonAsync($"/api/zevs/{zevId}/payments/statements",
             statement)).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync(
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsJsonAsync(
             $"/api/zevs/{zevId}/payments/bank-transactions/{Guid.NewGuid()}/allocate",
             new { allocations = Array.Empty<object>() })).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsJsonAsync($"/api/zevs/{zevId}/payments/manual",
@@ -637,7 +637,7 @@ public sealed class TenantApiTests
         Assert.Equal(HttpStatusCode.OK, (await managerClient.GetAsync($"/api/zevs/{zevId}/payments/accounts")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await administrator.PutAsJsonAsync(path,
             new { reason = "UAT restriction", changes = new[] { new { key = "BankAccounts.View", effect = "Deny" } } })).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await managerClient.GetAsync($"/api/zevs/{zevId}/payments/accounts")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await managerClient.GetAsync($"/api/zevs/{zevId}/payments/accounts")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await managerClient.PutAsJsonAsync(path,
             new { reason = "Self reset attempt", changes = new[] { new { key = "BankAccounts.View", effect = (string?)null } } })).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await administrator.PutAsJsonAsync(path,
@@ -1035,9 +1035,9 @@ public sealed class TenantApiTests
         Assert.DoesNotContain("private-second@example.invalid", body);
         Assert.DoesNotContain("PRIVATE-PHONE-SECOND", body);
         Assert.DoesNotContain("PRIVATE-TAX-SECOND", body);
-        Assert.Equal(HttpStatusCode.NotFound,
+        Assert.Equal(HttpStatusCode.Forbidden,
             (await client.GetAsync($"/api/zevs/{zevId}/reports/summary")).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound,
+        Assert.Equal(HttpStatusCode.Forbidden,
             (await client.GetAsync($"/api/zevs/{zevId}/registry/people")).StatusCode);
         var slip = await client.GetAsync($"/api/zevs/{zevId}/charges/{ownChargeId}/payment-slip.pdf");
         Assert.Equal(HttpStatusCode.Conflict, slip.StatusCode);
@@ -1715,7 +1715,7 @@ public sealed class TenantApiTests
             tokens.CreateAccessToken(new AppUser { Id = targetId }).AccessToken);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/api/zevs/{firstId}")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/api/zevs/{secondId}")).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync(
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync(
             $"/api/zevs/{firstId}/reports/open-items?asOf=2026-09-30")).StatusCode);
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer",
             tokens.CreateAccessToken(new AppUser { Id = managerId }).AccessToken);
@@ -1903,9 +1903,9 @@ public sealed class TenantApiTests
                 .CreateAccessToken(new AppUser { Id = userId }).AccessToken);
         var path = $"/api/zevs/{zevId}/finance/invoices/{invoiceId}";
         Authenticate(managerId);
-        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync($"{path}/storno",
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsJsonAsync($"{path}/storno",
             new { requestId = Guid.NewGuid(), reason = "Test" })).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync($"{path}/corrections",
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsJsonAsync($"{path}/corrections",
             new { requestId = Guid.NewGuid(), type = "Credit", reason = "Test", lines = new object[0] })).StatusCode);
         Authenticate(administratorId);
         Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync($"{path}/corrections",
@@ -2028,7 +2028,7 @@ public sealed class TenantApiTests
         using (var ledger = System.Text.Json.JsonDocument.Parse(await client.GetStringAsync(
             $"/api/zevs/{zevId}/payments/unit-ledger/{unitId}?personId={ownerPersonId}")))
             Assert.Equal(40m, ledger.RootElement.GetProperty("balance").GetDecimal());
-        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync($"{path}/storno",
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsJsonAsync($"{path}/storno",
             new { requestId = Guid.NewGuid(), reason = "Unauthorized" })).StatusCode);
         Authenticate(outsiderId);
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"{path}/documents")).StatusCode);

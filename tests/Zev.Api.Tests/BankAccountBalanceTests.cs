@@ -180,7 +180,7 @@ public sealed class BankAccountBalanceTests
         Assert.Equal(HttpStatusCode.NotFound, (await otherManager.GetAsync(BalancePath(seed.ZevId, seed.AccountId))).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await otherManager.GetAsync(BalancePath(seed.OtherZevId, seed.AccountId))).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await otherManager.GetAsync(BalancePath(seed.OtherZevId, seed.OtherAccountId))).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await representative.GetAsync(BalancePath(seed.ZevId, seed.AccountId))).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await representative.GetAsync(BalancePath(seed.ZevId, seed.AccountId))).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await manager.GetAsync(BalancePath(seed.ZevId, Guid.NewGuid()))).StatusCode);
     }
 

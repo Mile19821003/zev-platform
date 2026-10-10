@@ -78,7 +78,7 @@ public sealed class UatFixesTests
         var list = await ReadAsync(await accountant.GetAsync($"{root}/expenses"), HttpStatusCode.OK);
         Assert.Equal("BAM", list.GetProperty("items")[0].GetProperty("currencyCode").GetString());
         // Reversal stays a manager right (decision: Accountant gets View/Create/Post only).
-        Assert.Equal(HttpStatusCode.NotFound, (await accountant.PostAsync($"{root}/expenses/{expenseId}/reverse", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await accountant.PostAsync($"{root}/expenses/{expenseId}/reverse", null)).StatusCode);
 
         var annual = await ReadAsync(await accountant.GetAsync($"{root}/reports/annual/2026"), HttpStatusCode.OK);
         Assert.Equal(40m, Month(annual, 3).GetProperty("spent").GetDecimal());

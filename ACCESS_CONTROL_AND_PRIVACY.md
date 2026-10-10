@@ -4,7 +4,7 @@ Granularni nastavak: `GRANULAR_PERMISSIONS.md` definiše matricu User+ZEV, role 
 
 ## Sigurnosna granica
 
-`Organization` grupiše ZEV-ove, ali finansijski i drugi poslovni redovi se i dalje autorizuju po `ZevId`. Backend, ne aktivni izbor u web zaglavlju, odlučuje o pristupu. Nedozvoljeni tenant/resource zahtjevi vraćaju 404 prema postojećoj politici. JWT sadrži identitet; role/scope se pri zahtjevu čitaju iz baze.
+`Organization` grupiše ZEV-ove, ali finansijski i drugi poslovni redovi se i dalje autorizuju po `ZevId`. Backend, ne aktivni izbor u web zaglavlju, odlučuje o pristupu. Status odbijenog zahtjeva određuje pravilo „403 ili 404“ (ispod). JWT sadrži identitet; role/scope se pri zahtjevu čitaju iz baze.
 
 `EffectiveAccessService.GetEffectiveZevAccess(userId, zevId)` kombinuje aktivnog korisnika/ZEV/organizaciju, sistemsku ulogu, organizacijsko ili ZEV članstvo, `RolePermission` template, verifikovano aktivno vlasništvo i važeće ručne izuzetke. Vraća `CanRead`, `CanManageFinances`, `CanManageLegalCases`, `CanManageMaintenance`, `IsOwner` i izvore `SYSTEM_ROLE`, `ORG_ROLE`, `ZEV_MEMBERSHIP`, `OWNERSHIP`, `MANUAL_OVERRIDE`. `TenantAccess` koristi ovaj servis za guardove. Eksplicitni `Deny` nad pravom ima prednost nad grantovima; `Deny zev.read` gasi i upravljačka prava. System Administrator je izuzet od override-a, ali njegove promjene ostaju auditirane.
 
@@ -18,6 +18,24 @@ Granularni nastavak: `GRANULAR_PERMISSIONS.md` definiše matricu User+ZEV, role 
 | `Owner` | izveden iz vlasništva | samo vlastiti resursi i eksplicitno zajednički sadržaj |
 
 Nova ručna `Owner` članstva nisu dozvoljena. Stari redovi ostaju u bazi radi istorije, ali **ne** daju owner access ni pristup objavama/dokumentima ciljanim na ulogu `Owner`; i oni traže aktivno verifikovano vlasništvo. Migracija `20260930120000_EffectiveAccessPrivacy` prevodi postojeća organizacijska `Manager` članstva (`ZevId = null`) u `OrganizationAdministrator`, bez brisanja korisnika/vlasništva/finansija. Nova `Manager` članstva moraju imati `ZevId`. Postojeći organizacijski `Accountant` scope ostaje naslijeđeni izuzetak; konačna politika je otvorena odluka.
+
+## 403 ili 404 (od 10.10.2026.)
+
+Za rute unutar ZEV-a (`/api/zevs/{zevId}/...`) backend koristi `TenantAccess.RequirePermissionAsync` /
+`RequireAllPermissionsAsync`:
+
+| Situacija | Status |
+|---|---|
+| Korisnik ne može čitati ZEV (tuđi tenant, nepostojeći ili neaktivan ZEV, bez verifikovanog vlasništva/članstva) | **404** — postojanje ZEV-a i njegovih resursa se ne otkriva |
+| Korisnik može čitati ZEV, ali nema traženo pravo (npr. `Payments.Reverse`, `BankAccounts.Create`, `Reports.View` za vlasnika, `Expenses.Reverse` za računovođu, odbijen `DENY`) | **403** |
+| Delegiranje grubog prava koje dodjeljivač nema (`/access/overrides`) ili dodjela detaljnog prava koje nema (matrica) | **403** |
+| Resurs ne postoji u tom ZEV-u (pogrešan ID) | **404** |
+| Resurs postoji, ali pripada drugoj osobi ili nije vidljiv pozivaocu (`PRIVATE` klasa: kartica/račun/uplatnica tuđe osobe, `PersonOnly`/`PropertyUnit` dokument, fajl, tuđa prijava kvara, jedinica za koju korisnik ne smije prijaviti kvar) | **404** — kao i ranije, da se ne otkriva tuđi podatak |
+| Zaštićena meta upravljanja pravima (vlastita prava, organizacijski administrator, sistemski administrator) | **404** |
+
+Provjera prava se radi prije provjere postojanja resursa, pa korisnik bez prava dobija 403 i za nepostojeći ID.
+Rute nad organizacijom (npr. hodogram, `/api/organizations/{id}/...`) i vlasničke rute `/api/me/...` nisu dio ovog
+pravila i zadržavaju dosadašnje ponašanje (404).
 
 ## Verifikovana veza i lifecycle
 
