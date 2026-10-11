@@ -17,3 +17,13 @@ export function loadBlobUrl(path: string, token: string): Promise<string | null>
 export function forgetBlobUrl(path: string): void {
   cache.delete(path);
 }
+
+// Download of a protected file (exports): fetched with the token, saved under the given name.
+export async function downloadProtectedFile(path: string, token: string, fileName: string): Promise<void> {
+  const response = await fetch(`${apiBase}${path}`, { headers: { Authorization: `Bearer ${token}` }, credentials: "include" });
+  if (!response.ok) throw new Error(response.status === 403 ? "Nemate pravo izvoza izvještaja." : "Izvoz nije uspio.");
+  const url = URL.createObjectURL(await response.blob());
+  const anchor = document.createElement("a");
+  anchor.href = url; anchor.download = fileName; anchor.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}

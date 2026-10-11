@@ -9,3 +9,6 @@
 .env.prod
 logs/
 .expo/
+
+# Lokalni izvoz razgovora (ne dijeli se)
+PREPISKA_PROJEKTA.md

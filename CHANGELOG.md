@@ -2,7 +2,10 @@
 
 Sve značajne izmjene ZEV Platforme. Ranija historija (faze do 4) je u `CLOUD_HANDOFF_STATUS.md` i git logu.
 
-## [v2.20] - 2026-10-11 (u izradi — faze A i B od 3)
+## [v2.20] - 2026-10-11
+
+Kompletan modul održavanja u tri faze: A — prijave stanara i obavijesti, B — radni nalog kao dosije, kalendar i
+kartica na početnom ekranu, C — Reporting centar. Opis toka: `MAINTENANCE_WORKFLOW.md`.
 
 ### Dodano (Added)
 - **Prijava kvara od stanara** (faza A modula održavanja):
@@ -43,7 +46,24 @@ Sve značajne izmjene ZEV Platforme. Ranija historija (faze do 4) je u `CLOUD_HA
   brojem novih prijava i sljedećim terminom; klik otvara kalendar filtriran na „Dospjelo“
   (`GET .../maintenance/dashboard-summary`).
 - Testovi: `WorkOrderDossierApiTests` (3), `web/tests/maintenanceWorkflow.test.mjs` (7).
+- **Reporting centar** (faza C) — „Izvještaji održavanja“ u modulu Održavanje, za odabranu godinu:
+  - `GET .../maintenance/reports/summary?year=` (`MaintenanceReportService`): analitički redovi (termini planova s
+    njihovim nalozima, nalozi iz prijava i samostalni nalozi; termini dalje od 60 dana kao projekcija), troškovi
+    završenih poslova po kategoriji (plan → prijava → „Ostalo“), planirano / realizovano / trošak po mjesecima,
+    gantogram po planu (termini sa statusom).
+  - 📋 **Analitička tabela** s filterom izvora, pretragom i ukupnim iznosom; **Izvezi u PDF / Excel**
+    (`GET .../reports/{year}.pdf` i `.xlsx`, pravo `Maintenance.Export`, audit `Export` / `MaintenanceReport`;
+    PDF s punom dijakritikom preko postojećeg `SimplePdfWriter`, Excel preko `XlsxWriter`).
+  - 📊 **Grafikoni** (SVG, bez nove biblioteke): pita udjela troškova po kategorijama i stupci planirano naspram
+    realizovanog po mjesecima.
+  - 📅 **Gantogram**: 12 mjeseci po planu sa završenim, dospjelim, planiranim i projektovanim terminima.
+- Dokumentacija: `MAINTENANCE_WORKFLOW.md` (tok modula i API), `GRANULAR_PERMISSIONS.md` dopunjen pravima za
+  brisanje (v2.19) i izvozom izvještaja održavanja.
+- Testovi: `MaintenanceReportApiTests` (2), `web/tests/maintenanceReports.test.mjs` (6).
 - Tekuća verzija `v2.20`.
+
+### Ispravljeno (Fixed)
+- Zaglavlje se na mobilnoj širini prelama (ZEV, zvonce, profil, odjava), pa stranica ne izlazi izvan ekrana.
 
 ### Baza / Migracije
 - `20261011123454_AddMaintenanceTicketNotifications`: `SystemSettings.DefaultAdminEmail`;

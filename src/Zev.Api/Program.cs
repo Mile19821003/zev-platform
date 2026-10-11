@@ -66,6 +66,7 @@ if (string.IsNullOrWhiteSpace(builder.Configuration["Smtp:Host"]))
 else builder.Services.AddSingleton<Zev.Api.Notifications.IEmailSender, Zev.Api.Notifications.SmtpEmailSender>();
 builder.Services.AddHostedService<Zev.Api.Notifications.EmailDispatcher>();
 builder.Services.AddScoped<TicketNotifications>();
+builder.Services.AddScoped<MaintenanceReportService>();
 builder.Services.AddScoped<MaintenanceScheduleService>();
 builder.Services.AddScoped<HodogramService>();
 builder.Services.AddScoped<VotingService>();
@@ -298,6 +299,7 @@ api.MapRecycleBinEndpoints();
 api.MapThemeEndpoint();
 api.MapZevImageEndpoints();
 api.MapWorkOrderDossierEndpoints();
+api.MapMaintenanceReportEndpoints();
 api.MapManagerDeleteEndpoints();
 api.MapGet("/me", async (TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
 {

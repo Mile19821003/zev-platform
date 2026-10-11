@@ -185,3 +185,27 @@ tr.unread td{font-weight:700}
 .maintenance-widget strong{font:700 1.05rem Manrope,sans-serif}.widget-detail{font-size:.85rem;color:var(--zev-secondary)}.widget-link{font-size:.82rem;font-weight:700;color:var(--zev-primary)}
 .widget-badge{justify-self:start;border-radius:999px;padding:2px 10px;font-size:.72rem;font-weight:800}.widget-badge.tone-danger{background:#fdecec;color:#a22b2b}.widget-badge.tone-warning{background:#fff4e0;color:#8a5300}.widget-badge.tone-ok{background:var(--zev-accent-soft,#e7f5ee);color:var(--zev-primary)}
 .dossier-upload select{min-width:200px;border:1px solid var(--zev-input-border,#cdd8dc);border-radius:8px;padding:7px 9px;font:inherit;background:var(--zev-surface);color:var(--zev-text)}
+.maintenance-reports{margin-top:20px}.reports-head{display:flex;flex-wrap:wrap;gap:12px;align-items:end;justify-content:space-between}.reports-head h2{margin:0;flex:1}
+.reports-head label,.report-filters label{display:grid;gap:4px;font-weight:700;font-size:.8rem;color:var(--zev-secondary)}
+.reports-head select,.report-filters select,.report-filters input{border:1px solid var(--zev-input-border,#cdd8dc);border-radius:8px;padding:7px 9px;font:inherit;background:var(--zev-surface);color:var(--zev-text)}
+.reports-export{display:flex;gap:8px}.reports-export button{border:0;border-radius:8px;background:var(--zev-primary);color:white;font-weight:700;padding:9px 14px}.reports-export button:disabled{opacity:.5}
+.report-tabs{margin:14px 0}.report-totals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 14px}
+.report-totals div{background:var(--zev-accent);border-radius:10px;padding:10px 14px;display:grid}.report-totals span{font-size:.75rem;font-weight:700;color:var(--zev-secondary)}.report-totals strong{font:700 1.2rem Manrope,sans-serif}
+.report-filters{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:10px}.report-table td.number,.report-table tfoot td.number{text-align:right;white-space:nowrap}.report-table tfoot td{font-weight:800;border-top:2px solid var(--zev-border)}
+.report-table tr.projected td{color:var(--zev-muted,#687986)}
+.report-charts{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);gap:20px}.chart{margin:0;border:1px solid var(--zev-border);border-radius:12px;padding:14px}.chart figcaption{font-weight:800;margin-bottom:10px}
+.pie-wrap{display:flex;flex-wrap:wrap;gap:16px;align-items:center}.chart-legend{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:.85rem}.chart-legend.inline{display:flex;flex-wrap:wrap;gap:14px;margin-top:8px}
+.chart-legend span{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.bar-chart{width:100%;height:auto}.bar-chart .grid-line{stroke:var(--zev-border)}.bar-chart .axis-label{font-size:11px;fill:var(--zev-muted,#687986)}
+.bar.planned,.chart-legend .planned{fill:var(--zev-input-border,#cdd8dc);background:var(--zev-input-border,#cdd8dc)}.bar.realized,.chart-legend .realized{fill:var(--zev-primary);background:var(--zev-primary)}
+.gantt{display:grid;gap:4px;overflow-x:auto}.gantt-row{display:grid;grid-template-columns:200px minmax(520px,1fr);gap:10px;align-items:center}
+.gantt-row.inactive{opacity:.55}.gantt-label{display:grid;font-size:.85rem}.gantt-label small{color:var(--zev-muted,#687986)}
+.gantt-track{position:relative;display:grid;grid-template-columns:repeat(12,1fr);height:30px;border-radius:6px;overflow:hidden}
+.gantt-header .gantt-track{height:auto}.gantt-month{font-size:.72rem;font-weight:800;color:var(--zev-secondary);text-align:center}
+.gantt-cell{border-left:1px solid var(--zev-border);background:var(--zev-surface-alt,#eef1f3)}.gantt-cell:nth-child(n+3):nth-child(-n+5),.gantt-cell:nth-child(n+9):nth-child(-n+11){background:var(--zev-bg)}
+.gantt-mark{position:absolute;top:7px;width:14px;height:14px;margin-left:-7px;border-radius:50%;border:2px solid var(--zev-surface);box-shadow:0 0 0 1px #0002}
+.gantt-mark.status-completed,.chart-legend .mark.completed{background:var(--zev-primary)}.gantt-mark.status-due,.chart-legend .mark.due{background:#a22b2b}
+.gantt-mark.status-planned,.gantt-mark.status-inprogress,.chart-legend .mark.planned{background:#2563eb}.gantt-mark.projected,.chart-legend .mark.projected{background:transparent;border:2px dashed #2563eb;box-shadow:none}
+.gantt-mark.status-cancelled{background:#8a96a0}
+@media(max-width:900px){.report-charts{grid-template-columns:minmax(0,1fr)}.report-totals{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:800px){.topbar{height:auto;min-height:64px;padding:10px 16px;flex-wrap:wrap;gap:8px}.topbar>div{flex-wrap:wrap;gap:8px 14px;min-width:0}.topbar select{max-width:150px}}

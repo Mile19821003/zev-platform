@@ -10,6 +10,7 @@ import { calendarQuery, calendarStatusHandoffKey, CalendarFilters, canCompleteSc
   defaultCalendarFilters, planDeleteWarning, planFrequencyText, planStatusLabel, RangePreset, rangePresets,
   scheduleBadgeClass, scheduleStatusLabel, scheduleStatusLabels } from "../maintenanceCalendar.ts";
 import WorkOrderDossier from "./WorkOrderDossier";
+import MaintenanceReports from "./MaintenanceReports";
 
 type ZevOption = { id: string; code: string; name: string };
 type Unit = { id: string; zevId: string; code: string };
@@ -328,6 +329,7 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
         {plans.length === 0 && <p className="empty-inline">Nema periodičnih planova.</p>}
         <p className="empty-inline">Aktivnih planova: {plans.filter((plan) => plan.isActive).length} od {plans.length}.
           Plan s izvršenim radom ne može se obrisati — deaktivirajte ga.</p></section></>}
+    {zevId && role !== "owner" && <MaintenanceReports token={token} zevId={zevId} canExport={allowed("Maintenance.Export")} />}
     {dossierId && <WorkOrderDossier token={token} zevId={zevId} orderId={dossierId} suppliers={suppliers}
       canEdit={role === "manager" && allowed("Maintenance.Edit")} onClose={() => setDossierId(null)} />}
     {planToDelete && <div className="modal-backdrop" onClick={(event) => { if (event.target === event.currentTarget) setPlanToDelete(null); }}>
