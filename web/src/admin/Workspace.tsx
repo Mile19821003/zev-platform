@@ -18,13 +18,14 @@ import LookupsPage from "./LookupsPage";
 import IconSettingsPage from "./IconSettingsPage";
 import SystemErrorsPage from "./SystemErrorsPage";
 import VersionHistoryPage from "./VersionHistoryPage";
+import DeletedRecordsPage from "./DeletedRecordsPage";
 import { useChangeRevision } from "../useChangeRevision.ts";
 import WorkspaceNav, { useSidebarState } from "./WorkspaceNav";
 import ModuleDashboard from "./ModuleDashboard";
 import { moduleLabel } from "../navigationModel.ts";
 
 type MenuKey = "overview" | "organizations" | "zevs" | "buildings" | "entrances" | "units"
-  | "people" | "ownership" | "users" | "memberships" | "accountLinks" | "settings" | "lookups" | "icons" | "errors" | "versions" | "finance" | "payments" | "expenses" | "legal" | "maintenance" | "hodogram" | "community" | "reports";
+  | "people" | "ownership" | "users" | "memberships" | "accountLinks" | "settings" | "lookups" | "icons" | "errors" | "versions" | "deleted" | "finance" | "payments" | "expenses" | "legal" | "maintenance" | "hodogram" | "community" | "reports";
 
 const menu: { key: MenuKey; label: string }[] = [
   { key: "overview", label: "Pregled" },
@@ -43,6 +44,7 @@ const menu: { key: MenuKey; label: string }[] = [
   { key: "icons", label: "Prikazi i ikone" },
   { key: "errors", label: "Greške u sistemu" },
   { key: "versions", label: "Istorija verzija" },
+  { key: "deleted", label: "Obrisani redovi" },
   { key: "finance", label: "Finansije" },
   { key: "payments", label: "Uplate i izvodi" },
   { key: "expenses", label: "Rashodi i dugovanja" },
@@ -84,7 +86,7 @@ const resources: Partial<Record<MenuKey, ResourceConfig>> = {
       { key: "addressLine", label: "Adresa", maxLength: 250 },
     ],
     columns: [{ key: "code", label: "Šifra" }, { key: "name", label: "Naziv" }, { key: "zevName", label: "ZEV" }],
-    allowEdit: true, allowStatus: true, search: true,
+    allowEdit: true, allowStatus: true, allowDelete: true, search: true,
   },
   entrances: {
     title: "Ulazi", description: "Ulazi svake zgrade.", path: "/api/system/entrances",
@@ -99,7 +101,7 @@ const resources: Partial<Record<MenuKey, ResourceConfig>> = {
       { key: "name", label: "Naziv", required: true, maxLength: 200 },
     ],
     columns: [{ key: "code", label: "Šifra" }, { key: "name", label: "Naziv" }, { key: "buildingName", label: "Zgrada" }],
-    allowEdit: true, allowStatus: true, search: true,
+    allowEdit: true, allowStatus: true, allowDelete: true, search: true,
   },
   units: {
     title: "Posebni dijelovi", description: "Stanovi, poslovni prostori, garaže i podrumi.", path: "/api/system/property-units",
@@ -121,7 +123,7 @@ const resources: Partial<Record<MenuKey, ResourceConfig>> = {
     ],
     columns: [{ key: "code", label: "Oznaka" }, { key: "type", label: "Tip", lookupType: "PROPERTY_UNIT_TYPE" }, { key: "entranceName", label: "Ulaz" },
       { key: "areaSquareMeters", label: "m²" }],
-    allowEdit: true, allowStatus: true, search: true,
+    allowEdit: true, allowStatus: true, allowDelete: true, search: true,
   },
   people: {
     title: "Vlasnici / korisnici", description: "Fizička i pravna lica povezana sa organizacijom.", path: "/api/system/people",
@@ -137,7 +139,7 @@ const resources: Partial<Record<MenuKey, ResourceConfig>> = {
       { key: "phone", label: "Telefon", maxLength: 40 },
     ],
     columns: [{ key: "displayName", label: "Ime / naziv" }, { key: "kind", label: "Vrsta" }, { key: "email", label: "Email" }],
-    allowEdit: true, search: true,
+    allowEdit: true, allowDelete: true, search: true,
   },
   users: {
     title: "Korisnici sistema", description: "Prijavni nalozi i status pristupa.", path: "/api/system/users",
@@ -240,6 +242,7 @@ export default function Workspace({ token, profile, zevs, onLogout, onProfile }:
         {active === "icons" && <IconSettingsPage token={token} />}
         {active === "errors" && <SystemErrorsPage token={token} />}
         {active === "versions" && <VersionHistoryPage token={token} />}
+        {active === "deleted" && <DeletedRecordsPage token={token} />}
       </main>
     </div>
   </div>;

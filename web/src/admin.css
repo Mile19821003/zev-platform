@@ -82,3 +82,14 @@ tr.changed td{background:#fff8e6}.icon-changes{color:#8a5300;font-weight:700;fon
 .versions-table td{white-space:normal!important;vertical-align:top}
 @media(max-width:1000px){.errors-layout{grid-template-columns:minmax(0,1fr)}}
 .errors-layout td code{white-space:normal;overflow-wrap:anywhere;word-break:break-all}.errors-layout td:last-child{white-space:nowrap}
+
+.recycle-filters{display:flex;flex-wrap:wrap;gap:12px;align-items:end}.recycle-filters label{display:grid;gap:4px;font-weight:700;font-size:.8rem;color:#4f6070}
+.recycle-filters select,.recycle-filters input{min-width:160px;border:1px solid #cdd8dc;border-radius:8px;padding:8px 10px;font:inherit;background:white}
+.recycle-table .record-label{font-weight:700}.recycle-table code{font-size:.75rem;color:#4f6070}
+button.danger{background:white;color:#a22b2b;border:1px solid #e3b4b4}button.danger:hover:not(:disabled){background:#fdecec}
+.supplier-list{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:6px}.supplier-list li{display:flex;justify-content:space-between;align-items:center;gap:8px;border-top:1px solid #e6ecee;padding-top:6px}
+.toast-stack{position:fixed;right:20px;bottom:20px;display:grid;gap:8px;z-index:60;max-width:min(420px,calc(100vw - 32px))}
+.toast{display:flex;align-items:start;gap:12px;justify-content:space-between;padding:12px 14px;border-radius:10px;box-shadow:0 8px 24px rgba(16,40,48,.18);background:#176d50;color:white;font-weight:600}
+.toast.error{background:#a22b2b}.toast button{border:0;background:transparent;color:inherit;font-size:1.1rem;line-height:1;padding:0 2px;cursor:pointer}
+@media(max-width:640px){.recycle-filters select,.recycle-filters input{min-width:0;width:100%}.recycle-filters label{flex:1 1 140px}}
+.recycle-filters>button{border:0;border-radius:8px;background:#176d50;color:white;font:inherit;font-weight:700;padding:9px 18px;cursor:pointer}

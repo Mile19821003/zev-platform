@@ -135,7 +135,8 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
                 .HasPrincipalKey(zev => new { zev.OrganizationId, zev.Id })
                 .OnDelete(DeleteBehavior.Restrict);
             entity.HasAlternateKey(building => new { building.OrganizationId, building.ZevId, building.Id });
-            entity.HasIndex(building => new { building.OrganizationId, building.ZevId, building.Code }).IsUnique();
+            entity.HasIndex(building => new { building.OrganizationId, building.ZevId, building.Code }).IsUnique().HasFilter("[IsDeleted] = 0");
+            entity.HasQueryFilter(building => !building.IsDeleted);
             entity.HasIndex(building => new { building.ZevId, building.IsActive });
         });
 
@@ -151,7 +152,8 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
                 .HasPrincipalKey(building => new { building.OrganizationId, building.ZevId, building.Id })
                 .OnDelete(DeleteBehavior.Restrict);
             entity.HasAlternateKey(entrance => new { entrance.OrganizationId, entrance.ZevId, entrance.BuildingId, entrance.Id });
-            entity.HasIndex(entrance => new { entrance.OrganizationId, entrance.ZevId, entrance.BuildingId, entrance.Code }).IsUnique();
+            entity.HasIndex(entrance => new { entrance.OrganizationId, entrance.ZevId, entrance.BuildingId, entrance.Code }).IsUnique().HasFilter("[IsDeleted] = 0");
+            entity.HasQueryFilter(entrance => !entrance.IsDeleted);
             entity.HasIndex(entrance => new { entrance.ZevId, entrance.BuildingId, entrance.IsActive });
         });
 
@@ -174,7 +176,8 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
                 .HasPrincipalKey(entrance => new { entrance.OrganizationId, entrance.ZevId, entrance.BuildingId, entrance.Id })
                 .OnDelete(DeleteBehavior.Restrict);
             entity.HasAlternateKey(unit => new { unit.OrganizationId, unit.ZevId, unit.Id });
-            entity.HasIndex(unit => new { unit.OrganizationId, unit.ZevId, unit.EntranceId, unit.Code }).IsUnique();
+            entity.HasIndex(unit => new { unit.OrganizationId, unit.ZevId, unit.EntranceId, unit.Code }).IsUnique().HasFilter("[IsDeleted] = 0");
+            entity.HasQueryFilter(unit => !unit.IsDeleted);
             entity.HasIndex(unit => new { unit.ZevId, unit.IsActive });
             entity.HasIndex(unit => new { unit.ZevId, unit.EntranceId, unit.Code, unit.Id });
         });
@@ -197,7 +200,9 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
             entity.HasOne(person => person.User).WithMany().HasForeignKey(person => person.UserId).OnDelete(DeleteBehavior.Restrict);
             entity.HasAlternateKey(person => new { person.OrganizationId, person.Id });
             entity.HasIndex(person => new { person.OrganizationId, person.DisplayName });
-            entity.HasIndex(person => new { person.OrganizationId, person.UserId }).IsUnique().HasFilter("[UserId] IS NOT NULL");
+            entity.HasIndex(person => new { person.OrganizationId, person.UserId }).IsUnique()
+                .HasFilter("[UserId] IS NOT NULL AND [IsDeleted] = 0");
+            entity.HasQueryFilter(person => !person.IsDeleted);
         });
 
         modelBuilder.Entity<Ownership>(entity =>
@@ -669,6 +674,7 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
                 .OnDelete(DeleteBehavior.Restrict);
             entity.HasAlternateKey(supplier => new { supplier.OrganizationId, supplier.Id });
             entity.HasIndex(supplier => new { supplier.OrganizationId, supplier.Name });
+            entity.HasQueryFilter(supplier => !supplier.IsDeleted);
         });
 
         modelBuilder.Entity<Expense>(entity =>
@@ -1370,6 +1376,8 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
             item.Effect == AccessEffect.Deny ? "PermissionDenied" : "PermissionGranted",
         AccessOverride when entry.State == EntityState.Modified
             && entry.Property(nameof(AccessOverride.RevokedUtc)).IsModified => "PermissionRevoked",
+        ISoftDeletable item when entry.State == EntityState.Modified
+            && entry.Property(nameof(ISoftDeletable.IsDeleted)).IsModified => item.IsDeleted ? "RecordDeleted" : "RecordRestored",
         _ => entry.State.ToString()
     };
 

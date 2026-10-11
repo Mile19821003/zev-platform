@@ -111,7 +111,7 @@ public sealed class Zev : ITenantRecord
     Guid? ITenantRecord.ZevId => Id;
 }
 
-public sealed class Building : ITenantRecord
+public sealed class Building : ITenantRecord, ISoftDeletable
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid OrganizationId { get; set; }
@@ -121,12 +121,15 @@ public sealed class Building : ITenantRecord
     public string Name { get; set; } = string.Empty;
     public string? AddressLine { get; set; }
     public bool IsActive { get; set; } = true;
+    public bool IsDeleted { get; set; }
+    public DateTimeOffset? DeletedAt { get; set; }
+    public Guid? DeletedByUserId { get; set; }
     public byte[] RowVersion { get; set; } = [];
     Guid? ITenantRecord.OrganizationId => OrganizationId;
     Guid? ITenantRecord.ZevId => ZevId;
 }
 
-public sealed class Entrance : ITenantRecord
+public sealed class Entrance : ITenantRecord, ISoftDeletable
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid OrganizationId { get; set; }
@@ -136,6 +139,9 @@ public sealed class Entrance : ITenantRecord
     public string Code { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public bool IsActive { get; set; } = true;
+    public bool IsDeleted { get; set; }
+    public DateTimeOffset? DeletedAt { get; set; }
+    public Guid? DeletedByUserId { get; set; }
     public byte[] RowVersion { get; set; } = [];
     Guid? ITenantRecord.OrganizationId => OrganizationId;
     Guid? ITenantRecord.ZevId => ZevId;

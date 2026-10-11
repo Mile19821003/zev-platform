@@ -741,7 +741,16 @@ namespace Zev.Api.Data.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("DeletedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
                     b.Property<string>("Name")
@@ -766,7 +775,8 @@ namespace Zev.Api.Data.Migrations
                     b.HasIndex("ZevId", "IsActive");
 
                     b.HasIndex("OrganizationId", "ZevId", "Code")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("Buildings", (string)null);
                 });
@@ -884,7 +894,16 @@ namespace Zev.Api.Data.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("DeletedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
                     b.Property<string>("Name")
@@ -909,7 +928,8 @@ namespace Zev.Api.Data.Migrations
                     b.HasIndex("ZevId", "BuildingId", "IsActive");
 
                     b.HasIndex("OrganizationId", "ZevId", "BuildingId", "Code")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("Entrances", (string)null);
                 });
@@ -2667,6 +2687,13 @@ namespace Zev.Api.Data.Migrations
                             IconKey = "clipboard-check",
                             ModuleKey = "versions",
                             UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000037"),
+                            IconKey = "package",
+                            ModuleKey = "deleted",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
                         });
                 });
 
@@ -3123,6 +3150,12 @@ namespace Zev.Api.Data.Migrations
                         .HasMaxLength(120)
                         .HasColumnType("nvarchar(120)");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("DeletedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("DisplayName")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -3133,6 +3166,9 @@ namespace Zev.Api.Data.Migrations
                         .HasColumnType("nvarchar(320)");
 
                     b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
                     b.Property<string>("Kind")
@@ -3160,6 +3196,12 @@ namespace Zev.Api.Data.Migrations
                     b.Property<Guid?>("UserId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("UserLinkReviewedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("UserLinkReviewedUtc")
+                        .HasColumnType("datetimeoffset");
+
                     b.Property<string>("UserLinkStatus")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -3167,21 +3209,15 @@ namespace Zev.Api.Data.Migrations
                         .HasColumnType("nvarchar(20)")
                         .HasDefaultValue("Pending");
 
-                    b.Property<Guid?>("UserLinkReviewedByUserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTimeOffset?>("UserLinkReviewedUtc")
-                        .HasColumnType("datetimeoffset");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("UserId", "UserLinkStatus");
 
                     b.HasIndex("OrganizationId", "DisplayName");
 
                     b.HasIndex("OrganizationId", "UserId")
                         .IsUnique()
-                        .HasFilter("[UserId] IS NOT NULL");
+                        .HasFilter("[UserId] IS NOT NULL AND [IsDeleted] = 0");
+
+                    b.HasIndex("UserId", "UserLinkStatus");
 
                     b.ToTable("People", (string)null);
                 });
@@ -3208,6 +3244,12 @@ namespace Zev.Api.Data.Migrations
                         .HasPrecision(9, 4)
                         .HasColumnType("decimal(9,4)");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("DeletedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("EntranceId")
                         .HasColumnType("uniqueidentifier");
 
@@ -3215,6 +3257,9 @@ namespace Zev.Api.Data.Migrations
                         .HasColumnType("int");
 
                     b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
                     b.Property<Guid>("OrganizationId")
@@ -3244,12 +3289,13 @@ namespace Zev.Api.Data.Migrations
 
                     b.HasIndex("ZevId", "IsActive");
 
-                    b.HasIndex("ZevId", "EntranceId", "Code", "Id");
-
                     b.HasIndex("OrganizationId", "ZevId", "BuildingId", "EntranceId");
 
                     b.HasIndex("OrganizationId", "ZevId", "EntranceId", "Code")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.HasIndex("ZevId", "EntranceId", "Code", "Id");
 
                     b.ToTable("PropertyUnits", null, t =>
                         {
@@ -3589,11 +3635,20 @@ namespace Zev.Api.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("DeletedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Email")
                         .HasMaxLength(320)
                         .HasColumnType("nvarchar(320)");
 
                     b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
                     b.Property<string>("Name")

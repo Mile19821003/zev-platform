@@ -26,7 +26,7 @@ public enum OccupantKind
     OtherUser
 }
 
-public sealed class PropertyUnit : ITenantRecord
+public sealed class PropertyUnit : ITenantRecord, ISoftDeletable
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid OrganizationId { get; set; }
@@ -42,12 +42,15 @@ public sealed class PropertyUnit : ITenantRecord
     public int RegisteredMembers { get; set; }
     public bool IsActive { get; set; } = true;
     public int OwnershipRevision { get; set; }
+    public bool IsDeleted { get; set; }
+    public DateTimeOffset? DeletedAt { get; set; }
+    public Guid? DeletedByUserId { get; set; }
     public byte[] RowVersion { get; set; } = [];
     Guid? ITenantRecord.OrganizationId => OrganizationId;
     Guid? ITenantRecord.ZevId => ZevId;
 }
 
-public sealed class Person : ITenantRecord
+public sealed class Person : ITenantRecord, ISoftDeletable
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid OrganizationId { get; set; }
@@ -65,6 +68,9 @@ public sealed class Person : ITenantRecord
     public string? Email { get; set; }
     public string? Phone { get; set; }
     public bool IsActive { get; set; } = true;
+    public bool IsDeleted { get; set; }
+    public DateTimeOffset? DeletedAt { get; set; }
+    public Guid? DeletedByUserId { get; set; }
     public byte[] RowVersion { get; set; } = [];
     Guid? ITenantRecord.OrganizationId => OrganizationId;
     Guid? ITenantRecord.ZevId => null;

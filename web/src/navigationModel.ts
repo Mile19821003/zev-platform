@@ -52,6 +52,7 @@ const modules: Record<string, ModuleInfo> = {
   icons: { group: "admin", icon: "palette", catalog: "Prikazi i ikone" },
   errors: { group: "admin", icon: "activity", catalog: "Greške u sistemu" },
   versions: { group: "admin", icon: "clipboard-check", catalog: "Istorija verzija" },
+  deleted: { group: "admin", icon: "package", catalog: "Obrisani redovi" },
 };
 
 // Icons chosen by the system administrator (moduleKey or "category:<id>" → palette key).

@@ -33,6 +33,8 @@ export type ResourceConfig = {
   allowEdit?: boolean;
   allowCreate?: boolean;
   allowStatus?: boolean;
+  // "Obriši": DELETE {path}/{id}; the record moves to Administration → "Obrisani redovi".
+  allowDelete?: boolean;
   passwordReset?: boolean;
   search?: boolean;
   filters?: ResourceField[];
@@ -121,6 +123,19 @@ export default function ResourcePage({ config, token, onChanged, onCreated }: {
       }, token);
       if (!editingId && saved?.id) onCreated?.(saved.id);
       reset(); setNotice("Zapis je sačuvan.");
+      onChanged();
+    } catch (problem) { setError(errorText(problem)); }
+    finally { pending.current = false; setBusy(false); }
+  }
+
+  async function remove(item: ResourceRow) {
+    if (pending.current || !window.confirm("Obrisati ovaj zapis? Sistemski administrator ga može vratiti iz „Obrisani redovi“.")) return;
+    pending.current = true; setBusy(true);
+    setError(""); setNotice("");
+    try {
+      await callApi(`${config.path}/${item.id}`, { method: "DELETE" }, token);
+      if (editingId === item.id) reset();
+      setNotice("Zapis je obrisan.");
       onChanged();
     } catch (problem) { setError(errorText(problem)); }
     finally { pending.current = false; setBusy(false); }
@@ -233,7 +248,9 @@ export default function ResourcePage({ config, token, onChanged, onCreated }: {
                 {config.passwordReset && <button type="button" disabled={busy}
                   onClick={() => openReset(item)}>Resetuj lozinku</button>}
                 {config.allowStatus && <button type="button" disabled={busy} onClick={() => changeStatus(item)}>
-                  {item.isActive ? "Deaktiviraj" : "Aktiviraj"}</button>}</td></tr>)}</tbody></table></div>
+                  {item.isActive ? "Deaktiviraj" : "Aktiviraj"}</button>}
+                {config.allowDelete && <button type="button" className="danger" disabled={busy}
+                  onClick={() => void remove(item)}>Obriši</button>}</td></tr>)}</tbody></table></div>
           {data.items.length === 0 && <p className="empty-inline">Nema zapisa za prikaz.</p>}
           <Pager {...data} onPage={setPage} />
         </>}

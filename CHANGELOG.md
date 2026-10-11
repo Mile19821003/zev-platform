@@ -2,6 +2,44 @@
 
 Sve značajne izmjene ZEV Platforme. Ranija historija (faze do 4) je u `CLOUD_HANDOFF_STATUS.md` i git logu.
 
+## [v2.13] - 2026-10-11
+
+### Dodano (Added)
+- **Soft-delete („Obriši“)** za Zgrade, Ulaze, Posebne dijelove, Vlasnike/korisnike i Dobavljače
+  (`ISoftDeletable`: `IsDeleted`, `DeletedAt`, `DeletedByUserId`). Obrisani zapisi se ne vide nigdje u
+  aplikaciji (globalni filter upita), a podaci ostaju u bazi.
+  - Brisanje je dozvoljeno samo kada zapis ne koristi nijedan živi podatak; inače 409 s razlogom („Zapis se ne
+    može obrisati jer ga koriste: ulazi, vlasništva… Deaktivirajte ga umjesto brisanja.“). Provjera automatski
+    obuhvata sve strane ključeve iz EF modela i Guid kolone imenovane po tipu (npr. `PreviousPersonId`).
+  - Rute: upravnik `DELETE /api/zevs/{zevId}/registry/{buildings|entrances|units}/{id}` (prava `*.Edit`) i
+    `DELETE /api/zevs/{zevId}/expenses/suppliers/{id}` (`Expenses.Create`); sistemski administrator
+    `DELETE /api/system/{buildings|entrances|property-units|people}/{id}`.
+  - Dugme „Obriši“ (uz potvrdu) u tabelama registra sistemske administracije i upravnika te lista dobavljača
+    s brisanjem na ekranu Rashodi.
+  - Audit: `RecordDeleted` / `RecordRestored` (uz stanje prije/poslije).
+- **Obrisani redovi** (Administracija i sistem, samo sistemski administrator; `SoftDeleteAdminService`):
+  - `GET /api/admin/recycle-bin?module&entityType&from&to` — ID (audit zapis brisanja), Modul, Forma, zapis,
+    vrijeme brisanja, ko je obrisao; `POST /api/admin/recycle-bin/restore` `{ entityType, recordId }`.
+  - Vraćanje provjerava da roditelj nije obrisan („najprije vratite zgradu/ulaz“) i da šifra (ili veza s
+    korisničkim nalogom) u međuvremenu nije dodijeljena drugom zapisu.
+  - Ekran: filteri Modul (Sve forme / modul), Forma, datum brisanja od–do i „Osvježi“; tabela ID / Modul /
+    Forma / ID zapisa / Vrijeme brisanja / Obrisao / „Vrati“; nakon vraćanja red nestaje uz toast obavijest.
+  - Zadana ikonica modula `deleted`: package (paleta ima najviše 40 ikonica; oznake „arhiva“, „obrisano“).
+- Testovi: `RecycleBinApiTests` (4), `SqlRecycleBinTests` (filtrirani unique indeks na SQL Serveru),
+  `web/tests/recycleBin.test.mjs` (5); provjera u pregledniku 12/12.
+
+### Baza / Migracije
+- `20261011062921_AddSoftDeleteRecords`: kolone `IsDeleted`, `DeletedAt`, `DeletedByUserId` na `Buildings`,
+  `Entrances`, `PropertyUnits`, `People`, `Suppliers`; unique indeksi šifri (i veza osoba–korisnik) postaju
+  filtrirani `[IsDeleted] = 0`, pa šifra obrisanog zapisa može ponovo da se koristi; seed ikonice `deleted`.
+
+### Otvorene odluke (Open Decisions)
+- Planovi održavanja nisu uključeni: plan pri kreiranju odmah generiše termine, pa bi uvijek bio „u upotrebi“.
+  Potrebno je pravilo (npr. brisanje plana zajedno s neizvršenim terminima).
+- Brisanje koristi postojeća prava `*.Edit` / `Expenses.Create`; da li uvesti posebna prava `*.Delete`.
+- Upravnik ne može brisati osobe (osoba je vezana za ZEV samo preko vlasništva); briše ih sistemski administrator.
+- Trajno brisanje (purge) i rok čuvanja obrisanih zapisa nisu uvedeni.
+
 ## [v2.12] - 2026-10-11
 
 ### Dodano (Added)

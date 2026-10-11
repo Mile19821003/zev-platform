@@ -43,6 +43,7 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddSingleton<PasswordPolicy>();
 builder.Services.AddScoped<PasswordManagementService>();
 builder.Services.AddScoped<TenantAccess>();
+builder.Services.AddScoped<Zev.Api.RecycleBin.SoftDeleteAdminService>();
 builder.Services.AddScoped<EffectiveAccessService>();
 builder.Services.AddScoped<OwnershipService>();
 builder.Services.AddScoped<MonthlyBillingEngine>();
@@ -286,6 +287,8 @@ api.MapSystemSettingsEndpoints();
 api.MapLookupEndpoints();
 api.MapModuleIconEndpoints();
 api.MapClientErrorEndpoint();
+api.MapRecycleBinEndpoints();
+api.MapManagerDeleteEndpoints();
 api.MapGet("/me", async (TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
 {
     if (access.CurrentUserId is not Guid userId)
@@ -646,6 +649,7 @@ system.MapPost("/memberships", async (CreateMembershipRequest request, ZevDbCont
 
 system.MapPhase2AdminEndpoints();
 system.MapRegistryAdminEndpoints();
+system.MapSystemDeleteEndpoints();
 system.MapSystemErrorAdminEndpoints();
 system.MapVersionHistoryEndpoints();
 

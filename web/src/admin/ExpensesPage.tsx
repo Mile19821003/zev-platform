@@ -69,6 +69,17 @@ export default function ExpensesPage({ token, zevs, permissions }: { token: stri
     finally { pending.current = false; setBusy(false); }
   }
 
+  async function deleteSupplier(item: Supplier) {
+    if (pending.current || !window.confirm(`Obrisati dobavljača „${item.name}“?`)) return;
+    pending.current = true; setBusy(true); setError(""); setNotice("");
+    try {
+      await callApi(`/api/zevs/${zevId}/expenses/suppliers/${item.id}`, { method: "DELETE" }, token);
+      if (supplierId === item.id) setSupplierId("");
+      setNotice("Dobavljač je obrisan.");
+    } catch (problem) { setError(errorText(problem)); }
+    finally { pending.current = false; setBusy(false); }
+  }
+
   async function createExpense(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (pending.current) return; pending.current = true; setBusy(true); setError(""); setNotice("");
     try {
@@ -115,7 +126,10 @@ export default function ExpensesPage({ token, zevs, permissions }: { token: stri
     {zevId && <><div className="admin-layout">
       {allowed("Expenses.Create") && <section className="panel"><h2>Dobavljač</h2><form className="admin-form" onSubmit={createSupplier}>
         <label>Naziv<input required maxLength={200} value={supplierName} onChange={(event) => setSupplierName(event.target.value)} /></label>
-        <button disabled={busy}>Dodaj dobavljača</button></form></section>}
+        <button disabled={busy}>Dodaj dobavljača</button></form>
+        {suppliers.items.length > 0 && <ul className="supplier-list" aria-label="Dobavljači">{suppliers.items.map((item) =>
+          <li key={item.id}><span>{item.name}</span><button type="button" className="danger" disabled={busy}
+            aria-label={`Obriši dobavljača ${item.name}`} onClick={() => void deleteSupplier(item)}>Obriši</button></li>)}</ul>}</section>}
       {allowed("Expenses.Create") && <section className="panel"><h2>Novi ulazni račun</h2><form className="admin-form" onSubmit={createExpense}>
         <label>Fond<select required value={fundId} onChange={(event) => setFundId(event.target.value)}>
           <option value="">Odaberite</option>{funds.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>

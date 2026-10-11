@@ -10,7 +10,7 @@ export const iconPalette: PaletteIcon[] = [
   { key: "list", label: "Lista", tags: ["popis", "stavke", "šifarnik"], path: "M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01" },
   { key: "clipboard-check", label: "Kontrolna lista", tags: ["clipboard", "provjera", "zadaci"], path: "M9 4h6v3H9zM8 5H6v16h12V5h-2M9 14l2 2 4-4" },
   { key: "monitor", label: "Monitor", tags: ["oprema", "ekran", "računar"], path: "M3 4h18v12H3zM8 20h8M12 16v4" },
-  { key: "package", label: "Paket", tags: ["roba", "zalihe", "isporuka"], path: "M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12 4 7.5M12 12v9M8 5.2l8 4.6" },
+  { key: "package", label: "Paket", tags: ["roba", "zalihe", "isporuka", "arhiva", "obrisano"], path: "M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12 4 7.5M12 12v9M8 5.2l8 4.6" },
   { key: "user", label: "Osoba", tags: ["vlasnik", "korisnik", "radnik"], path: "M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21c0-4 3.6-7 8-7s8 3 8 7" },
   { key: "users", label: "Osobe", tags: ["korisnici", "zajednica", "tim"], path: "M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2 20c0-3.5 3-6 7-6s7 2.5 7 6M17 4.5a3.5 3.5 0 0 1 0 6.5M22 20c0-2.8-1.8-4.8-4.5-5.6" },
   { key: "hard-hat", label: "Radnik", tags: ["kaciga", "izvođač", "održavanje"], path: "M2 18h20M4 18v-3a8 8 0 0 1 16 0v3M10 7V5h4v2M9 10V7M15 10V7" },

@@ -20,7 +20,7 @@ public sealed class StoredFile : ITenantRecord
     Guid? ITenantRecord.ZevId => ZevId;
 }
 
-public sealed class Supplier : ITenantRecord
+public sealed class Supplier : ITenantRecord, ISoftDeletable
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid OrganizationId { get; set; }
@@ -29,6 +29,9 @@ public sealed class Supplier : ITenantRecord
     public string? Email { get; set; }
     public string? Phone { get; set; }
     public bool IsActive { get; set; } = true;
+    public bool IsDeleted { get; set; }
+    public DateTimeOffset? DeletedAt { get; set; }
+    public Guid? DeletedByUserId { get; set; }
     public byte[] RowVersion { get; set; } = [];
     Guid? ITenantRecord.OrganizationId => OrganizationId;
     Guid? ITenantRecord.ZevId => null;
