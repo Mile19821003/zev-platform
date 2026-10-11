@@ -6,17 +6,33 @@ import { useChangeRevision } from "../useChangeRevision.ts";
 import LookupSelect, { LookupLabel } from "./LookupSelect";
 import { formatDate, formatNumber } from "../displaySettings.ts";
 import { canSubmitTicket, handlesTickets, TicketPlace, ticketPlaces, ticketUnitId } from "../maintenanceTickets.ts";
-import { canCompleteSchedule, planDeleteWarning, planFrequencyText, planStatusLabel, scheduleBadgeClass,
-  scheduleStatusLabel } from "../maintenanceCalendar.ts";
+import { calendarQuery, calendarStatusHandoffKey, CalendarFilters, canCompleteSchedule, canStartWorkOrder,
+  defaultCalendarFilters, planDeleteWarning, planFrequencyText, planStatusLabel, RangePreset, rangePresets,
+  scheduleBadgeClass, scheduleStatusLabel, scheduleStatusLabels } from "../maintenanceCalendar.ts";
+import WorkOrderDossier from "./WorkOrderDossier";
 
 type ZevOption = { id: string; code: string; name: string };
 type Unit = { id: string; zevId: string; code: string };
 type Ticket = { id: string; propertyUnitId: string | null; category: string; description: string; isReadByAdmin: boolean;
   location: string; priority: string; status: string; rowVersion: string };
 type Order = { id: string; title: string; description: string; status: string; priority: string;
-  ticketId: string | null; costAmount: number | null; dueOn: string | null; rowVersion: string };
+  ticketId: string | null; costAmount: number | null; dueOn: string | null; rowVersion: string;
+  contractorName: string | null; supplierId: string | null; attachments: number; scheduleId: string | null };
+type Supplier = { id: string; name: string };
 type Plan = { id: string; title: string; category: string; frequencyDays: number; firstDueOn: string; isActive: boolean };
-type Schedule = { id: string; title: string; category: string; dueOn: string; status: string; workOrderId: string | null };
+type Schedule = { id: string | null; planId: string; title: string; category: string; dueOn: string; status: string;
+  workOrderId: string | null; projected?: boolean };
+// The work order form remembers where it was started from (calendar occurrence or fault report).
+type OrderSource = { kind: "schedule" | "ticket"; id: string; label: string } | null;
+const today = () => new Date().toISOString().slice(0, 10);
+function initialFilters(): CalendarFilters {
+  try {
+    const status = window.sessionStorage.getItem(calendarStatusHandoffKey);
+    window.sessionStorage.removeItem(calendarStatusHandoffKey);
+    if (status) return { ...defaultCalendarFilters, status };
+  } catch { /* storage is optional */ }
+  return defaultCalendarFilters;
+}
 
 export default function MaintenancePage({ token, zevs, role, permissions }: {
   token: string; zevs: ZevOption[]; role: "manager" | "representative" | "owner"; permissions?: string[];
@@ -41,6 +57,14 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
   const [orderDescription, setOrderDescription] = useState("");
   const [orderCost, setOrderCost] = useState("");
   const [orderDueOn, setOrderDueOn] = useState("");
+  const [orderSource, setOrderSource] = useState<OrderSource>(null);
+  const [orderSupplierId, setOrderSupplierId] = useState("");
+  const [contractorName, setContractorName] = useState("");
+  const [contractorPhone, setContractorPhone] = useState("");
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [filters, setFilters] = useState<CalendarFilters>(initialFilters);
+  const [dossierId, setDossierId] = useState<string | null>(null);
+  const orderForm = useRef<HTMLElement | null>(null);
   const [planTitle, setPlanTitle] = useState("");
   const [planCategory, setPlanCategory] = useState("");
   const [frequencyDays, setFrequencyDays] = useState("");
@@ -68,18 +92,20 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
           setTickets(ticketData); setUnits(owned.filter((item) => item.zevId === zevId));
         }
       } else {
-        const [orderData, planData, calendarData] = await Promise.all([
+        const [orderData, planData, calendarData, supplierData] = await Promise.all([
           callApi<Page<Order>>(`${prefix}/work-orders`, {}, token),
           callApi<Plan[]>(`${prefix}/plans`, {}, token),
-          callApi<Schedule[]>(`${prefix}/calendar`, {}, token),
+          callApi<Schedule[]>(`${prefix}${calendarQuery(filters, today())}`, {}, token),
+          callApi<Page<Supplier>>(`/api/zevs/${zevId}/expenses/suppliers?pageSize=100`, {}, token)
+            .catch(() => ({ page: 1, pageSize: 100, totalCount: 0, items: [] as Supplier[] })),
         ]);
         if (currentRequest === requestId.current) {
-          setTickets(ticketData); setOrders(orderData); setPlans(planData); setCalendar(calendarData);
+          setTickets(ticketData); setOrders(orderData); setPlans(planData); setCalendar(calendarData); setSuppliers(supplierData.items);
         }
       }
       if (currentRequest === requestId.current) setError("");
     } catch (problem) { if (currentRequest === requestId.current) setError(errorText(problem)); }
-  }, [zevId, ticketPage, role, token]);
+  }, [zevId, ticketPage, role, token, filters]);
 
   useEffect(() => { void refresh(); return () => { requestId.current++; }; }, [refresh, revision]);
 
@@ -167,10 +193,21 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
   }
 
   function createOrder(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); void submit("work-orders", { ticketId: orderTicketId || null, supplierId: null,
+    event.preventDefault(); void submit("work-orders", { ticketId: orderSource?.kind === "ticket" ? orderSource.id : orderTicketId || null,
+      scheduleId: orderSource?.kind === "schedule" ? orderSource.id : null, supplierId: orderSupplierId || null,
+      contractorName: orderSupplierId ? null : contractorName || null, contractorPhone: orderSupplierId ? null : contractorPhone || null,
       title: orderTitle, description: orderDescription, priority, costAmount: orderCost ? Number(orderCost) : null,
-      dueOn: orderDueOn || null }, "Radni nalog je kreiran.");
+      dueOn: orderDueOn || null }, "Radni nalog je kreiran.").then(() => { setOrderSource(null); setOrderTicketId(""); });
   }
+
+  // "Pokreni radni nalog" from a calendar occurrence or a fault report pre-fills the work order form.
+  function startOrder(source: NonNullable<OrderSource>, title: string, description: string, dueOn: string) {
+    setOrderSource(source); setOrderTitle(title); setOrderDescription(description); setOrderDueOn(dueOn);
+    if (source.kind === "ticket") setOrderTicketId(source.id);
+    orderForm.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  const setRange = (preset: RangePreset) => setFilters((current) => ({ ...current, preset }));
 
   function createPlan(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); void submit("plans", { title: planTitle, category: planCategory,
@@ -202,10 +239,16 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
         <button disabled={busy || (role === "owner" && !canSubmitTicket(place, unitId))}>Pošalji prijavu</button>
         {role === "owner" && <small>Prijava odmah stiže upravi zgrade (i e-mailom, ako je adresa podešena).</small>}
       </form></section>}
-      {role === "manager" && <>{allowed("Maintenance.Assign") && <section className="panel"><h2>Novi radni nalog</h2>
+      {role === "manager" && <>{allowed("Maintenance.Assign") && <section className="panel" ref={orderForm}><h2>Novi radni nalog</h2>
         <form className="admin-form" onSubmit={createOrder}>
-          <label>Prijava<select value={orderTicketId} onChange={(event) => setOrderTicketId(event.target.value)}>
-            <option value="">Bez prijave</option>{tickets.items.map((item) => <option key={item.id} value={item.id}>{item.category} · {item.location}</option>)}</select></label>
+          {orderSource && <p className="order-source">Iz {orderSource.kind === "schedule" ? "kalendara" : "prijave"}: <strong>{orderSource.label}</strong>
+            <button type="button" className="link-button" onClick={() => setOrderSource(null)} aria-label="Ukloni povezivanje">✕</button></p>}
+          {orderSource?.kind !== "schedule" && <label>Prijava<select value={orderTicketId} onChange={(event) => { setOrderTicketId(event.target.value); setOrderSource(null); }}>
+            <option value="">Bez prijave</option>{tickets.items.map((item) => <option key={item.id} value={item.id}>{item.category} · {item.location}</option>)}</select></label>}
+          <label>Izvođač — dobavljač iz šifarnika<select value={orderSupplierId} onChange={(event) => setOrderSupplierId(event.target.value)}>
+            <option value="">— vanjski izvođač —</option>{suppliers.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+          {!orderSupplierId && <><label>Naziv vanjskog izvođača<input maxLength={200} value={contractorName} onChange={(event) => setContractorName(event.target.value)} /></label>
+            <label>Telefon izvođača<input maxLength={40} value={contractorPhone} onChange={(event) => setContractorPhone(event.target.value)} /></label></>}
           <label>Naslov<input required maxLength={200} value={orderTitle} onChange={(event) => setOrderTitle(event.target.value)} /></label>
           <label>Opis<textarea required maxLength={4000} value={orderDescription} onChange={(event) => setOrderDescription(event.target.value)} /></label>
           <label>Trošak<input type="number" min="0" step="0.01" value={orderCost} onChange={(event) => setOrderCost(event.target.value)} /></label>
@@ -227,27 +270,50 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
       <td>{item.description}</td><td><LookupLabel typeCode="MAINTENANCE_PRIORITY" token={token} value={item.priority} /></td><td>{label(maintenanceStatusLabels, item.status)}</td><td className="actions">
         {role !== "owner" && !item.isReadByAdmin && handlesTickets(permissions, !permissions)
           && <button type="button" disabled={busy} onClick={() => void markRead(item)}>Označi pročitano</button>}
+        {role === "manager" && allowed("Maintenance.Assign") && item.status === "Open" && <button type="button"
+          onClick={() => startOrder({ kind: "ticket", id: item.id, label: `${item.category} · ${item.location}` },
+            `${item.category}: ${item.location}`, item.description, "")}>Pokreni radni nalog</button>}
         {role !== "owner" && (allowed("Maintenance.Edit") || allowed("Maintenance.Approve")) && item.status === "Open" && <button onClick={() => changeStatus("tickets", item, "InProgress")}>Započni</button>}
         {role !== "owner" && (allowed("Maintenance.Edit") || allowed("Maintenance.Approve")) && item.status === "InProgress" && <button onClick={() => changeStatus("tickets", item, "Completed")}>Završi</button>}
         {item.status === "Completed" && (role === "owner" || allowed("Maintenance.Approve")) && <button onClick={() => changeStatus("tickets", item, "Verified")}>Potvrdi</button>}
       </td></tr>)}</tbody></table></div><Pager {...tickets} onPage={setTicketPage} /></section>
     {role !== "owner" && <><section className="panel table-panel"><h2>Radni nalozi</h2><div className="table-scroll"><table><thead><tr>
-      <th>Naslov</th><th>Rok</th><th>Trošak</th><th>Status</th><th>Radnja</th>
-    </tr></thead><tbody>{orders.items.map((item) => <tr key={item.id}><td>{item.title}</td><td>{item.dueOn ? formatDate(item.dueOn) : "—"}</td>
-      <td>{item.costAmount === null || item.costAmount === undefined ? "—" : formatNumber(item.costAmount)}</td><td>{label(maintenanceStatusLabels, item.status)}</td><td className="actions">
+      <th>Naslov</th><th>Izvođač</th><th>Rok</th><th>Trošak</th><th>Prilozi</th><th>Status</th><th>Radnja</th>
+    </tr></thead><tbody>{orders.items.map((item) => <tr key={item.id}><td>{item.title}</td>
+      <td>{item.supplierId ? suppliers.find((supplier) => supplier.id === item.supplierId)?.name ?? "Dobavljač" : item.contractorName ?? "—"}</td>
+      <td>{item.dueOn ? formatDate(item.dueOn) : "—"}</td>
+      <td>{item.costAmount === null || item.costAmount === undefined ? "—" : formatNumber(item.costAmount)}</td><td>{item.attachments || "—"}</td>
+      <td>{label(maintenanceStatusLabels, item.status)}</td><td className="actions">
+        <button type="button" onClick={() => setDossierId(item.id)}>Dosije</button>
         {role === "manager" && allowed("Maintenance.Edit") && item.status === "Open" && <button onClick={() => changeStatus("work-orders", item, "InProgress")}>Započni</button>}
-        {role === "manager" && allowed("Maintenance.Edit") && item.status === "InProgress" && <button onClick={() => changeStatus("work-orders", item, "Completed")}>Završi</button>}
+        {role === "manager" && allowed("Maintenance.Edit") && item.status === "InProgress" && <button type="button" onClick={() => setDossierId(item.id)}>Završi</button>}
       </td></tr>)}</tbody></table></div></section>
       <section className="panel table-panel"><h2>Kalendar održavanja</h2>
-        <div className="table-scroll"><table className="calendar-table"><thead><tr><th>Obaveza</th><th>Datum</th><th>Status</th><th>Radnja</th></tr></thead><tbody>
-          {calendar.map((item) => <tr key={item.id} className={`schedule-row-${item.status.toLowerCase()}`}><td>{item.title}</td>
-            <td>{formatDate(item.dueOn)}</td>
+        <div className="calendar-filters" role="group" aria-label="Filteri kalendara">
+          <div className="filter-tabs">{rangePresets.map((preset) => <button type="button" key={preset.value}
+            className={filters.preset === preset.value ? "active" : ""} aria-pressed={filters.preset === preset.value}
+            onClick={() => setRange(preset.value)}>{preset.label}</button>)}</div>
+          {filters.preset === "custom" && <><label>Od<input type="date" value={filters.from} onChange={(event) => setFilters({ ...filters, from: event.target.value })} /></label>
+            <label>Do<input type="date" value={filters.to} onChange={(event) => setFilters({ ...filters, to: event.target.value })} /></label></>}
+          <label>Status<select value={filters.status} onChange={(event) => setFilters({ ...filters, status: event.target.value })}>
+            <option value="">Svi statusi</option>{Object.entries(scheduleStatusLabels).map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label>
+          <label>Kategorija<LookupSelect typeCode="MAINTENANCE_CATEGORY" token={token} valueBy="name" value={filters.category}
+            onChange={(value) => setFilters({ ...filters, category: value })} /></label>
+          {filters.category && <button type="button" className="link-button" onClick={() => setFilters({ ...filters, category: "" })}>Sve kategorije</button>}
+        </div>
+        <div className="table-scroll"><table className="calendar-table"><thead><tr><th>Obaveza</th><th>Kategorija</th><th>Datum</th><th>Status</th><th>Radnja</th></tr></thead><tbody>
+          {calendar.map((item) => <tr key={item.id ?? `${item.planId}-${item.dueOn}`} className={`schedule-row-${item.status.toLowerCase()}${item.projected ? " projected" : ""}`}><td>{item.title}</td>
+            <td>{item.category}</td><td>{formatDate(item.dueOn)}{item.projected && <small className="projected-note"> (projekcija)</small>}</td>
             <td><span className={scheduleBadgeClass(item.status)}>{scheduleStatusLabel(item.status)}</span></td>
-            <td className="actions">{role === "manager" && allowed("Maintenance.Edit") && canCompleteSchedule(item.status)
-              && <button type="button" disabled={busy} onClick={() => void completeSchedule(item)}>Završeno</button>}</td></tr>)}
+            <td className="actions">{role === "manager" && allowed("Maintenance.Edit") && item.id && !item.projected && canCompleteSchedule(item.status)
+              && <button type="button" disabled={busy} onClick={() => void completeSchedule(item)}>Završeno</button>}
+              {role === "manager" && allowed("Maintenance.Assign") && canStartWorkOrder(item) && <button type="button" disabled={busy}
+                onClick={() => startOrder({ kind: "schedule", id: item.id!, label: `${item.title} · ${formatDate(item.dueOn)}` },
+                  item.title, `Redovni servis po planu: ${item.title} (${formatDate(item.dueOn)})`, item.dueOn)}>Pokreni radni nalog</button>}
+              {item.workOrderId && <button type="button" onClick={() => setDossierId(item.workOrderId)}>Dosije</button>}</td></tr>)}
         </tbody></table></div>
-        {calendar.length === 0 && <p className="empty-inline">Nema termina u narednih 60 dana.</p>}
-        <p className="empty-inline">Prikazani su dospjeli termini i termini u narednih 60 dana.</p></section>
+        {calendar.length === 0 && <p className="empty-inline">Nema termina za odabrane filtere.</p>}
+        <p className="empty-inline">Termini dalje od 60 dana prikazuju se kao projekcija i kreiraju se kada se približe.</p></section>
       <section className="panel table-panel"><h2>Periodični planovi</h2>
         <div className="table-scroll"><table className="plans-table"><thead><tr><th>Plan</th><th>Kategorija</th><th>Učestalost</th>
           <th>Početak</th><th>Status</th><th>Radnje</th></tr></thead><tbody>
@@ -262,6 +328,8 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
         {plans.length === 0 && <p className="empty-inline">Nema periodičnih planova.</p>}
         <p className="empty-inline">Aktivnih planova: {plans.filter((plan) => plan.isActive).length} od {plans.length}.
           Plan s izvršenim radom ne može se obrisati — deaktivirajte ga.</p></section></>}
+    {dossierId && <WorkOrderDossier token={token} zevId={zevId} orderId={dossierId} suppliers={suppliers}
+      canEdit={role === "manager" && allowed("Maintenance.Edit")} onClose={() => setDossierId(null)} />}
     {planToDelete && <div className="modal-backdrop" onClick={(event) => { if (event.target === event.currentTarget) setPlanToDelete(null); }}>
       <div className="modal panel" role="dialog" aria-modal="true" aria-labelledby="plan-delete-title"
         onKeyDown={(event) => { if (event.key === "Escape") setPlanToDelete(null); }}>

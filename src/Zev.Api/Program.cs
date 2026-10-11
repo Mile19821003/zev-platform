@@ -297,6 +297,7 @@ api.MapClientErrorEndpoint();
 api.MapRecycleBinEndpoints();
 api.MapThemeEndpoint();
 api.MapZevImageEndpoints();
+api.MapWorkOrderDossierEndpoints();
 api.MapManagerDeleteEndpoints();
 api.MapGet("/me", async (TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
 {

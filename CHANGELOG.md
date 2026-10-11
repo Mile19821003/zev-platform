@@ -2,7 +2,7 @@
 
 Sve značajne izmjene ZEV Platforme. Ranija historija (faze do 4) je u `CLOUD_HANDOFF_STATUS.md` i git logu.
 
-## [v2.20] - 2026-10-11 (u izradi — faza A od 3)
+## [v2.20] - 2026-10-11 (u izradi — faze A i B od 3)
 
 ### Dodano (Added)
 - **Prijava kvara od stanara** (faza A modula održavanja):
@@ -20,17 +20,45 @@ Sve značajne izmjene ZEV Platforme. Ranija historija (faze do 4) je u `CLOUD_HA
   - Web: zvonce 🔔 u zaglavlju (broj novih prijava aktivnog ZEV-a, „9+“, osvježava se pri izmjeni i svake
     minute; klik otvara Održavanje), oznaka „Novo“ i dugme „Označi pročitano“ u listi prijava.
 - Testovi: `TicketNotificationApiTests` (4), `web/tests/maintenanceTickets.test.mjs` (4).
+- **Radni nalog kao dosije** (faza B):
+  - Izvođač: dobavljač iz šifarnika ili vanjski izvođač (`ContractorName`, `ContractorPhone`); finansije: broj
+    računa, iznos (KM), fond (redovni / rezervni), datum završetka, opis izvršenog posla.
+  - Prilozi `WorkOrderAttachment` (Račun, Slika prije, Slika poslije, Izvještaj): PDF / JPG / PNG do 10 MB u
+    postojećem storageu (`file-data`), provjera naziva, tipa i potpisa fajla; `POST / GET / DELETE
+    .../work-orders/{id}/attachments`. `GET .../work-orders/{id}` vraća cijeli dosije (povezani termin i prijava,
+    prilozi, revizija statusa s korisnikom).
+  - `POST .../work-orders` iz kalendara (`scheduleId`: termin prelazi u „U toku“, jedan nalog po terminu) ili iz
+    prijave (`ticketId`: otvorena prijava prelazi u „U radu“).
+  - `PUT .../work-orders/{id}/complete`: nalog, povezani termin i prijava prelaze u „Završeno“ (stanar zatim
+    potvrđuje prijavu); opcionalno upis troška u rashode kao nacrt (traži `Expenses.Create`, dobavljača iz
+    šifarnika, broj računa, iznos i aktivan fond odabrane vrste); audit `WorkOrderCompleted`. Završen nalog je
+    arhiviran dosije — prilozi se više ne dodaju ni ne brišu.
+  - Web: „Pokreni radni nalog“ u kalendaru i na prijavi (forma se predpopunjava), izbor izvođača, kolone Izvođač i
+    Prilozi, „Dosije“ (galerija slika prije/poslije, računi, finansije, revizija; „Završi nalog“ zamjenjuje raniji
+    „Završi“ bez podataka).
+- **Kalendar**: filteri Narednih 60 dana / Ovaj mjesec / Sljedeći mjesec / Tekući kvartal / Cijela godina /
+  Proizvoljno (od–do), status i kategorija (`GET .../calendar?from&to&status&category`, raspon do 366 dana);
+  termini dalje od 60 dana prikazuju se kao projekcija (nisu snimljeni, nemaju akcija).
+- **Početni ekran**: kartica „Održavanje: X dospjelih obaveza / Y u toku“ s bedžom (Dospjelo / U toku / Uredno),
+  brojem novih prijava i sljedećim terminom; klik otvara kalendar filtriran na „Dospjelo“
+  (`GET .../maintenance/dashboard-summary`).
+- Testovi: `WorkOrderDossierApiTests` (3), `web/tests/maintenanceWorkflow.test.mjs` (7).
 - Tekuća verzija `v2.20`.
 
 ### Baza / Migracije
 - `20261011123454_AddMaintenanceTicketNotifications`: `SystemSettings.DefaultAdminEmail`;
   `MaintenanceTickets.IsReadByAdmin` (postojeće prijave = pročitane, da zvonce ne počne sa starim kvarovima),
   `ReadByAdminAt`, `ReadByAdminUserId`, indeks (ZevId, IsReadByAdmin).
+- `20261011125900_AddMaintenanceCompleteWorkflow`: polja radnog naloga (izvođač, račun, fond, rashod, završetak,
+  opis rada) i tabela `WorkOrderAttachments`.
 
 ### Otvorene odluke (Open Decisions)
 - Fotografija prijave ostaje u postojećim prilozima prijave (`MaintenanceTicketFile` → `StoredFile`, više slika)
   umjesto jednog polja `AttachmentImageUrl`.
 - SMTP pristupni podaci se podešavaju u konfiguraciji servera (`Smtp:*`), ne u aplikaciji.
+- Veza termin ↔ nalog ostaje `ScheduledMaintenance.WorkOrderId` (na nju se oslanjaju v2.16 i v2.18) umjesto nove
+  kolone `WorkOrder.MaintenanceScheduleId`; dosije vraća povezani termin.
+- Upisan rashod je nacrt; knjiženje ostaje u modulu Rashodi (provjera i odobrenje).
 
 ## [v2.19] - 2026-10-11
 

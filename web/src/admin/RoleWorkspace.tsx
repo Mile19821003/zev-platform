@@ -13,6 +13,7 @@ import OwnerFinancePage from "./OwnerFinancePage";
 import ManagerRegistryPage from "./ManagerRegistryPage";
 import ZevCardGrid from "./ZevCards";
 import NotificationBell from "./NotificationBell";
+import MaintenanceWidget from "./MaintenanceWidget";
 import { handlesTickets } from "../maintenanceTickets.ts";
 import { hasStaffPermission } from "../permissionUi.ts";
 import ZevPermissionPage from "./ZevPermissionPage";
@@ -125,6 +126,8 @@ export default function RoleWorkspace({ token, profile, zevs, onLogout, onProfil
       <ZevCardGrid token={token} zevs={zevs} activeId={activeZev?.id ?? null} onSelect={selectZev}
         detail={(zev) => zev.historicalSelfAccess ? "Samo istorijski finansijski podaci" : zev.sources?.join(", ")} />
       {zevs.length === 0 && <div className="empty-state">Nema dodijeljenih zajednica.</div>}
+      {activeZev?.isStaff && activeZev.permissions?.includes("Maintenance.View") && <MaintenanceWidget token={token} zevId={activeZev.id}
+        onOpen={() => setActive(navigation.some((item) => item.key === "maintenance") ? "maintenance" : "representative-maintenance")} />}
       {activeZev && <ModuleDashboard key={activeZev.id} items={navigation} onSelect={(key) => setActive(key as PageKey)}
         title={`Moduli · ${activeZev.name}`} />}</>}
     {active === "finance" && <FinancePage key={activeZev?.id} token={token} zevs={financeZevs} permissions={activeZev?.permissions} />}

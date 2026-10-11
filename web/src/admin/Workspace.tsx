@@ -22,6 +22,7 @@ import DeletedRecordsPage from "./DeletedRecordsPage";
 import ThemeSettingsPage from "./ThemeSettingsPage";
 import ZevCardGrid from "./ZevCards";
 import NotificationBell from "./NotificationBell";
+import MaintenanceWidget from "./MaintenanceWidget";
 import { useChangeRevision } from "../useChangeRevision.ts";
 import WorkspaceNav, { useSidebarState } from "./WorkspaceNav";
 import ModuleDashboard from "./ModuleDashboard";
@@ -220,6 +221,7 @@ export default function Workspace({ token, profile, zevs, onLogout, onProfile }:
             <ZevCardGrid token={token} zevs={zevs} activeId={activeZev?.id ?? null} onSelect={selectZev} />
             {zevs.length === 0 && <div className="empty-state">Još nema aktivnih zajednica.</div>}
           </section>
+          {activeZev && <MaintenanceWidget token={token} zevId={activeZev.id} onOpen={() => setActive("maintenance")} />}
           <ModuleDashboard items={menu} onSelect={(key) => setActive(key as MenuKey)}
             title={activeZev ? `Moduli · ${activeZev.name}` : "Moduli"} />
           <p className="eyebrow">SISTEM</p><h1>Pregled platforme</h1>

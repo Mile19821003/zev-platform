@@ -46,6 +46,7 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
     public DbSet<MaintenanceTicketFile> MaintenanceTicketFiles => Set<MaintenanceTicketFile>();
     public DbSet<WorkOrder> WorkOrders => Set<WorkOrder>();
     public DbSet<WorkOrderFile> WorkOrderFiles => Set<WorkOrderFile>();
+    public DbSet<WorkOrderAttachment> WorkOrderAttachments => Set<WorkOrderAttachment>();
     public DbSet<MaintenanceStatusEvent> MaintenanceStatusEvents => Set<MaintenanceStatusEvent>();
     public DbSet<MaintenancePlan> MaintenancePlans => Set<MaintenancePlan>();
     public DbSet<ScheduledMaintenance> ScheduledMaintenances => Set<ScheduledMaintenance>();
@@ -820,6 +821,26 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
                 .HasPrincipalKey(supplier => new { supplier.OrganizationId, supplier.Id }).OnDelete(DeleteBehavior.Restrict);
             entity.HasAlternateKey(order => new { order.OrganizationId, order.ZevId, order.Id });
             entity.HasIndex(order => new { order.ZevId, order.Status, order.DueOn });
+            entity.Property(order => order.ContractorName).HasMaxLength(200);
+            entity.Property(order => order.ContractorPhone).HasMaxLength(40);
+            entity.Property(order => order.InvoiceNumber).HasMaxLength(100);
+            entity.Property(order => order.ExpenseFundKind).HasConversion<string>().HasMaxLength(20);
+            entity.Property(order => order.WorkDescription).HasMaxLength(4000);
+            entity.HasOne<Expense>().WithMany().HasForeignKey(order => order.ExpenseId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<WorkOrderAttachment>(entity =>
+        {
+            entity.ToTable("WorkOrderAttachments");
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.AttachmentType).HasConversion<string>().HasMaxLength(20);
+            entity.Property(item => item.FileName).HasMaxLength(255).IsRequired();
+            entity.Property(item => item.StorageKey).HasMaxLength(40).IsRequired();
+            entity.Property(item => item.ContentType).HasMaxLength(40).IsRequired();
+            entity.HasOne<WorkOrder>().WithMany()
+                .HasForeignKey(item => new { item.OrganizationId, item.ZevId, item.WorkOrderId })
+                .HasPrincipalKey(order => new { order.OrganizationId, order.ZevId, order.Id }).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(item => new { item.WorkOrderId, item.AttachmentType });
         });
 
         modelBuilder.Entity<MaintenanceTicketFile>(entity =>
@@ -1390,6 +1411,8 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
     // Permission overrides get business event names so the access history reads without diffing JSON.
     private static string AuditAction(EntityEntry entry) => entry.Entity switch
     {
+        WorkOrder order when entry.State == EntityState.Modified && entry.Property(nameof(WorkOrder.Status)).IsModified
+            && order.Status == MaintenanceStatus.Completed => "WorkOrderCompleted",
         AccessOverride item when entry.State == EntityState.Added =>
             item.Effect == AccessEffect.Deny ? "PermissionDenied" : "PermissionGranted",
         AccessOverride when entry.State == EntityState.Modified

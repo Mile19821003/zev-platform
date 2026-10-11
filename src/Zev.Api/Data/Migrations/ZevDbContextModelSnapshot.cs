@@ -4122,6 +4122,20 @@ namespace Zev.Api.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("CompletedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateOnly?>("CompletedDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("ContractorName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ContractorPhone")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
                     b.Property<decimal?>("CostAmount")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
@@ -4136,6 +4150,17 @@ namespace Zev.Api.Data.Migrations
 
                     b.Property<DateOnly?>("DueOn")
                         .HasColumnType("date");
+
+                    b.Property<string>("ExpenseFundKind")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid?>("ExpenseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("InvoiceNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<Guid>("OrganizationId")
                         .HasColumnType("uniqueidentifier");
@@ -4167,10 +4192,16 @@ namespace Zev.Api.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("WorkDescription")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
                     b.Property<Guid>("ZevId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ExpenseId");
 
                     b.HasIndex("OrganizationId", "SupplierId");
 
@@ -4182,6 +4213,59 @@ namespace Zev.Api.Data.Migrations
                         {
                             t.HasCheckConstraint("CK_WorkOrders_Cost", "[CostAmount] IS NULL OR [CostAmount] >= 0");
                         });
+                });
+
+            modelBuilder.Entity("Zev.Api.Domain.WorkOrderAttachment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AttachmentType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<int>("Length")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("StorageKey")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<DateTimeOffset>("UploadedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("UploadedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("WorkOrderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ZevId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkOrderId", "AttachmentType");
+
+                    b.HasIndex("OrganizationId", "ZevId", "WorkOrderId");
+
+                    b.ToTable("WorkOrderAttachments", (string)null);
                 });
 
             modelBuilder.Entity("Zev.Api.Domain.WorkOrderFile", b =>
@@ -5120,6 +5204,11 @@ namespace Zev.Api.Data.Migrations
 
             modelBuilder.Entity("Zev.Api.Domain.WorkOrder", b =>
                 {
+                    b.HasOne("Zev.Api.Domain.Expense", null)
+                        .WithMany()
+                        .HasForeignKey("ExpenseId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Zev.Api.Domain.Supplier", null)
                         .WithMany()
                         .HasForeignKey("OrganizationId", "SupplierId")
@@ -5138,6 +5227,16 @@ namespace Zev.Api.Data.Migrations
                         .HasForeignKey("OrganizationId", "ZevId", "TicketId")
                         .HasPrincipalKey("OrganizationId", "ZevId", "Id")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Zev.Api.Domain.WorkOrderAttachment", b =>
+                {
+                    b.HasOne("Zev.Api.Domain.WorkOrder", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "ZevId", "WorkOrderId")
+                        .HasPrincipalKey("OrganizationId", "ZevId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Zev.Api.Domain.WorkOrderFile", b =>

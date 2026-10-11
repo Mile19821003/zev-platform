@@ -3,6 +3,7 @@ namespace Zev.Api.Domain;
 public enum MaintenanceStatus { Open, InProgress, Completed, Verified, Cancelled }
 public enum MaintenancePriority { Low, Normal, High, Urgent }
 public enum ScheduleStatus { Due, InProgress, Completed, Cancelled }
+public enum WorkOrderAttachmentType { Invoice, PhotoBefore, PhotoAfter, WorkReport }
 
 public sealed class MaintenanceTicket : ITenantRecord
 {
@@ -50,8 +51,37 @@ public sealed class WorkOrder : ITenantRecord
     public MaintenanceStatus Status { get; set; } = MaintenanceStatus.Open;
     public decimal? CostAmount { get; set; }
     public DateOnly? DueOn { get; set; }
+    // Contractor: a supplier from the code list, or an external contractor by name and phone.
+    public string? ContractorName { get; set; }
+    public string? ContractorPhone { get; set; }
+    // Finance of the job; the expense is created on completion when requested (ExpenseId then points to it).
+    public string? InvoiceNumber { get; set; }
+    public FundKind? ExpenseFundKind { get; set; }
+    public Guid? ExpenseId { get; set; }
+    public DateOnly? CompletedDate { get; set; }
+    public string? WorkDescription { get; set; }
+    public Guid? CompletedByUserId { get; set; }
     public DateTimeOffset CreatedUtc { get; set; } = DateTimeOffset.UtcNow;
     public byte[] RowVersion { get; set; } = [];
+    Guid? ITenantRecord.OrganizationId => OrganizationId;
+    Guid? ITenantRecord.ZevId => ZevId;
+}
+
+// Documents of a work order (invoice PDF, photos before / after, work report), up to 10 MB each, in the file storage.
+public sealed class WorkOrderAttachment : ITenantRecord
+{
+    public const int MaxBytes = 10_000_000;
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid OrganizationId { get; set; }
+    public Guid ZevId { get; set; }
+    public Guid WorkOrderId { get; set; }
+    public WorkOrderAttachmentType AttachmentType { get; set; }
+    public string FileName { get; set; } = string.Empty;
+    public string StorageKey { get; set; } = string.Empty;
+    public string ContentType { get; set; } = string.Empty;
+    public int Length { get; set; }
+    public DateTimeOffset UploadedAt { get; set; } = DateTimeOffset.UtcNow;
+    public Guid UploadedByUserId { get; set; }
     Guid? ITenantRecord.OrganizationId => OrganizationId;
     Guid? ITenantRecord.ZevId => ZevId;
 }

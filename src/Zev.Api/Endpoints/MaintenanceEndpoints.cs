@@ -154,7 +154,11 @@ public static class MaintenanceEndpoints
             var items = await query.OrderByDescending(item => item.CreatedUtc).Skip((currentPage - 1) * currentSize)
                 .Take(currentSize).Select(item => new { item.Id, item.TicketId, item.SupplierId, item.Title,
                     item.Description, priority = item.Priority.ToString(), status = item.Status.ToString(),
-                    item.CostAmount, item.DueOn, rowVersion = Convert.ToBase64String(item.RowVersion) })
+                    item.CostAmount, item.DueOn, item.ContractorName, item.InvoiceNumber, item.CompletedDate, item.ExpenseId,
+                    scheduleId = database.ScheduledMaintenances.Where(schedule => schedule.WorkOrderId == item.Id)
+                        .Select(schedule => (Guid?)schedule.Id).FirstOrDefault(),
+                    attachments = database.WorkOrderAttachments.Count(file => file.WorkOrderId == item.Id),
+                    rowVersion = Convert.ToBase64String(item.RowVersion) })
                 .ToListAsync(cancellationToken);
             return Results.Ok(new { page = currentPage, pageSize = currentSize, totalCount, items });
         });
@@ -166,23 +170,50 @@ public static class MaintenanceEndpoints
             if (await access.RequirePermissionAsync(zevId, "Maintenance.Assign", cancellationToken) is { } denied) return denied;
             if (!AdminValidation.Required(request.Title, 200) || !AdminValidation.Required(request.Description, 4000)
                 || request.CostAmount < 0m || !Enum.TryParse<MaintenancePriority>(request.Priority, true, out var priority)
-                || !Enum.IsDefined(priority)) return Results.BadRequest();
+                || !Enum.IsDefined(priority) || !AdminValidation.Optional(request.ContractorName, 200)
+                || !AdminValidation.Optional(request.ContractorPhone, 40)) return Results.BadRequest();
             var organizationId = await database.Zevs.Where(item => item.Id == zevId)
                 .Select(item => item.OrganizationId).SingleAsync(cancellationToken);
-            if ((request.TicketId is Guid ticketId && !await database.MaintenanceTickets.AnyAsync(item => item.Id == ticketId
-                    && item.ZevId == zevId, cancellationToken))
+            // Started from the calendar: an occurrence that is not done and has no work order yet.
+            var schedule = request.ScheduleId is Guid scheduleId
+                ? await database.ScheduledMaintenances.SingleOrDefaultAsync(item => item.Id == scheduleId && item.ZevId == zevId, cancellationToken)
+                : null;
+            if (request.ScheduleId is not null && schedule is null) return Results.NotFound();
+            if (schedule is not null && (schedule.WorkOrderId is not null
+                || schedule.Status is ScheduleStatus.Completed or ScheduleStatus.Cancelled))
+                return Results.Conflict(new { error = "Za ovaj termin radni nalog već postoji ili je termin zatvoren." });
+            var ticket = request.TicketId is Guid linkedTicketId
+                ? await database.MaintenanceTickets.SingleOrDefaultAsync(item => item.Id == linkedTicketId && item.ZevId == zevId, cancellationToken)
+                : null;
+            if ((request.TicketId is not null && ticket is null)
                 || (request.SupplierId is Guid supplierId && !await database.Suppliers.AnyAsync(item => item.Id == supplierId
                     && item.OrganizationId == organizationId && item.IsActive, cancellationToken))) return Results.NotFound();
             var order = new WorkOrder { OrganizationId = organizationId, ZevId = zevId,
                 TicketId = request.TicketId, SupplierId = request.SupplierId, Title = request.Title.Trim(),
                 Description = request.Description.Trim(), Priority = priority, CostAmount = request.CostAmount,
-                DueOn = request.DueOn };
+                DueOn = request.DueOn ?? schedule?.DueOn, ContractorName = AdminValidation.Clean(request.ContractorName),
+                ContractorPhone = AdminValidation.Clean(request.ContractorPhone) };
             database.WorkOrders.Add(order);
             database.MaintenanceStatusEvents.Add(new MaintenanceStatusEvent
             {
                 OrganizationId = organizationId, ZevId = zevId, WorkOrderId = order.Id,
                 Status = MaintenanceStatus.Open, ActorUserId = userId
             });
+            // The occurrence is now being worked on; an open report goes "U radu".
+            if (schedule is not null)
+            {
+                schedule.WorkOrderId = order.Id;
+                schedule.Status = ScheduleStatus.InProgress;
+            }
+            if (ticket is { Status: MaintenanceStatus.Open })
+            {
+                ticket.Status = MaintenanceStatus.InProgress;
+                database.MaintenanceStatusEvents.Add(new MaintenanceStatusEvent
+                {
+                    OrganizationId = organizationId, ZevId = zevId, TicketId = ticket.Id,
+                    Status = MaintenanceStatus.InProgress, ActorUserId = userId
+                });
+            }
             await database.SaveChangesAsync(cancellationToken);
             return Results.Created($"/api/zevs/{zevId}/maintenance/work-orders/{order.Id}", new { order.Id });
         });
@@ -337,7 +368,7 @@ public static class MaintenanceEndpoints
         });
 
         // Default view: everything still open (also overdue from earlier dates) plus the next HorizonDays days.
-        group.MapGet("/calendar", async (Guid zevId, DateOnly? from, DateOnly? to,
+        group.MapGet("/calendar", async (Guid zevId, DateOnly? from, DateOnly? to, string? status, string? category,
             TenantAccess access, ZevDbContext database, MaintenanceScheduleService scheduleService,
             CancellationToken cancellationToken) =>
         {
@@ -345,16 +376,23 @@ public static class MaintenanceEndpoints
             var today = MaintenanceScheduleService.Today();
             var end = to ?? today.AddDays(MaintenanceScheduleService.HorizonDays);
             if (from is DateOnly first && (end < first || end.DayNumber - first.DayNumber > 366)) return Results.BadRequest();
+            if (from is null && end.DayNumber - today.DayNumber > 366) return Results.BadRequest();
             await scheduleService.EnsureHorizonAsync(zevId, cancellationToken);
             var query = database.ScheduledMaintenances.AsNoTracking().Where(item => item.ZevId == zevId && item.DueOn <= end);
             query = from is DateOnly start ? query.Where(item => item.DueOn >= start)
                 : query.Where(item => item.DueOn >= today || item.Status == ScheduleStatus.Due || item.Status == ScheduleStatus.InProgress);
-            var items = await query.OrderBy(item => item.DueOn).ThenBy(item => item.Plan.Title)
+            if (status is not null && !MaintenanceScheduleService.CalendarStatuses.Contains(status)) return Results.BadRequest();
+            if (!string.IsNullOrWhiteSpace(category)) query = query.Where(item => item.Plan.Category == category.Trim());
+            var stored = (await query.OrderBy(item => item.DueOn).ThenBy(item => item.Plan.Title)
                 .Select(item => new { item.Id, item.PlanId, title = item.Plan.Title, category = item.Plan.Category,
                     item.DueOn, item.Status, item.WorkOrderId })
-                .ToListAsync(cancellationToken);
-            return Results.Ok(items.Select(item => new { item.Id, item.PlanId, item.title, item.category, item.DueOn,
-                status = MaintenanceScheduleService.EffectiveStatus(item.Status, item.DueOn, today), item.WorkOrderId }));
+                .ToListAsync(cancellationToken))
+                .Select(item => new CalendarItem(item.Id, item.PlanId, item.title, item.category, item.DueOn,
+                    MaintenanceScheduleService.EffectiveStatus(item.Status, item.DueOn, today), item.WorkOrderId, false));
+            var projected = await scheduleService.ProjectAsync(zevId, today.AddDays(MaintenanceScheduleService.HorizonDays + 1),
+                end, string.IsNullOrWhiteSpace(category) ? null : category.Trim(), cancellationToken);
+            return Results.Ok(stored.Concat(projected).Where(item => status is null || item.Status == status)
+                .OrderBy(item => item.DueOn).ThenBy(item => item.Title));
         });
 
         group.MapPatch("/calendar/{scheduleId:guid}/status", async (Guid zevId, Guid scheduleId,
@@ -382,7 +420,8 @@ public sealed record CreateMaintenanceTicketRequest(Guid? PropertyUnitId, string
     string Description, string Location, string Priority, List<Guid>? FileIds);
 public sealed record ChangeMaintenanceStatusRequest(string Status, string RowVersion);
 public sealed record CreateWorkOrderRequest(Guid? TicketId, Guid? SupplierId, string Title,
-    string Description, string Priority, decimal? CostAmount, DateOnly? DueOn);
+    string Description, string Priority, decimal? CostAmount, DateOnly? DueOn, Guid? ScheduleId = null,
+    string? ContractorName = null, string? ContractorPhone = null);
 public sealed record LinkWorkOrderFileRequest(Guid FileId);
 public sealed record CreateMaintenancePlanRequest(string Title, string Category, int FrequencyDays, DateOnly FirstDueOn);
 public sealed record GenerateScheduleRequest(DateOnly Through);

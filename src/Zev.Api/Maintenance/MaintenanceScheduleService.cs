@@ -4,10 +4,14 @@ using Zev.Api.Domain;
 
 namespace Zev.Api.Maintenance;
 
+public sealed record CalendarItem(Guid? Id, Guid PlanId, string Title, string Category, DateOnly DueOn, string Status,
+    Guid? WorkOrderId, bool Projected);
+
 public sealed class MaintenanceScheduleService(ZevDbContext database)
 {
     // Occurrences are created only this far ahead; the calendar tops the window up as time passes.
     public const int HorizonDays = 60;
+    public static readonly string[] CalendarStatuses = ["Planned", "Due", "InProgress", "Completed", "Cancelled"];
 
     public static DateOnly Today() => DateOnly.FromDateTime(DateTime.UtcNow);
 
@@ -82,6 +86,24 @@ public sealed class MaintenanceScheduleService(ZevDbContext database)
             else database.ScheduledMaintenances.Remove(item);
         }
         return open.Count;
+    }
+
+    // Coming dates of active plans in a period beyond the stored window (e.g. "Cijela godina"): shown as Planned,
+    // marked Projected, never stored — they are created when they enter the 60-day window.
+    public async Task<IReadOnlyList<CalendarItem>> ProjectAsync(Guid zevId, DateOnly from, DateOnly to, string? category,
+        CancellationToken cancellationToken)
+    {
+        if (to < from) return [];
+        var plans = await database.MaintenancePlans.AsNoTracking().Where(item => item.ZevId == zevId && item.IsActive
+            && (category == null || item.Category == category)).ToListAsync(cancellationToken);
+        var items = new List<CalendarItem>();
+        foreach (var plan in plans.Where(item => item.FrequencyDays > 0))
+        {
+            var start = WindowStart(plan.FirstDueOn, plan.FrequencyDays, from);
+            for (var due = start < from ? start.AddDays(plan.FrequencyDays) : start; due <= to; due = due.AddDays(plan.FrequencyDays))
+                if (due >= from) items.Add(new CalendarItem(null, plan.Id, plan.Title, plan.Category, due, "Planned", null, true));
+        }
+        return items;
     }
 
     // Keeps every active plan of the ZEV filled up to today + HorizonDays (called when the calendar is read).

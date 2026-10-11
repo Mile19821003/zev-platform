@@ -29,7 +29,7 @@ test("calendar and work order dates follow the system date format", () => {
   setDisplaySettings({ ...defaultDisplaySettings, dateFormat: "DD.MM.YYYY" });
   assert.equal(formatDate("2026-10-14"), "14.10.2026");
   const page = source("../src/admin/MaintenancePage.tsx");
-  assert.ok(page.includes("<td>{formatDate(item.dueOn)}</td>"));
+  assert.ok(page.includes("<td>{item.category}</td><td>{formatDate(item.dueOn)}{item.projected && "));
   assert.ok(page.includes('<td>{item.dueOn ? formatDate(item.dueOn) : "—"}</td>'));
   assert.doesNotMatch(page, /<td>\{item\.dueOn\}<\/td>/, "no raw YYYY-MM-DD dates");
   assert.ok(page.includes("<span className={scheduleBadgeClass(item.status)}>{scheduleStatusLabel(item.status)}</span>"));

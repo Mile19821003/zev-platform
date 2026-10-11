@@ -14,7 +14,7 @@ public sealed class LocalFileStorage(IConfiguration configuration) : IFileStorag
 
     public async Task<string> SaveAsync(byte[] content, string contentType, CancellationToken cancellationToken)
     {
-        if (!ValidContent(content, contentType)) throw new InvalidDataException("Unsupported file content.");
+        if (!ValidContent(content, contentType, int.MaxValue)) throw new InvalidDataException("Unsupported file content.");
         Directory.CreateDirectory(root);
         var extension = contentType switch
         {
@@ -49,9 +49,10 @@ public sealed class LocalFileStorage(IConfiguration configuration) : IFileStorag
         return Path.Combine(root, key);
     }
 
-    public static bool ValidContent(byte[] content, string contentType)
+    // Size limits are checked by the callers too (5 MB by default; work order attachments allow 10 MB).
+    public static bool ValidContent(byte[] content, string contentType, int maxBytes = 5_000_000)
     {
-        if (content.Length is 0 or > 5_000_000) return false;
+        if (content.Length == 0 || content.Length > maxBytes) return false;
         return contentType switch
         {
             "application/pdf" => content.AsSpan().StartsWith("%PDF-"u8),
