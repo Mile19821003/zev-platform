@@ -24,7 +24,7 @@ public sealed class SqlLookupTests
         {
             await database.Database.MigrateAsync();
             Assert.Equal(7, await database.LookupTypes.CountAsync());
-            Assert.Equal(31, await database.LookupItems.CountAsync());
+            Assert.Equal(34, await database.LookupItems.CountAsync());
             Assert.Equal("Transfer", await database.LookupItems.Where(item => item.LookupTypeCode == "PAYMENT_METHOD"
                 && item.IsDefault).Select(item => item.Code).SingleAsync());
 
@@ -42,7 +42,7 @@ public sealed class SqlLookupTests
             database.ChangeTracker.Clear();
             Assert.Equal(["CARD"], await database.LookupItems.Where(item => item.LookupTypeCode == "PAYMENT_METHOD"
                 && item.IsDefault).Select(item => item.Code).ToListAsync());
-            Assert.Equal(40, created.Item!.SortOrder);
+            Assert.Equal(60, created.Item!.SortOrder);
             Assert.Equal(LookupChangeStatus.Conflict, (await service.DeleteAsync(cash, null, null, CancellationToken.None)).Status);
         }
         finally

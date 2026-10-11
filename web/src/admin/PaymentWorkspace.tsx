@@ -3,6 +3,8 @@ import { callApi, errorText, Page } from "../api";
 import { Pager } from "./shared";
 import { canShowPaymentAction } from "../permissionUi.ts";
 import { formatDateTime, formatNumber } from "../displaySettings.ts";
+import { reasonText } from "../lookupOptions.ts";
+import LookupSelect, { ReasonFields } from "./LookupSelect";
 import { activeAllocationCount, allocationStatusLabel, canSubmitPayerCorrection,
   matchRuleLabel } from "../paymentUi.ts";
 import { formatMoney } from "../currency.ts";
@@ -58,6 +60,10 @@ export default function PaymentWorkspace({ zevId, token, permissions, funds, acc
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [autoPreview, setAutoPreview] = useState<AutoPreview | null>(null);
   const [reverseReason, setReverseReason] = useState("");
+  const [reverseNote, setReverseNote] = useState("");
+  const [stornoOpen, setStornoOpen] = useState(false);
+  const [stornoReason, setStornoReason] = useState("");
+  const [stornoNote, setStornoNote] = useState("");
   const [changePayerOpen, setChangePayerOpen] = useState(false);
   const [newPayerId, setNewPayerId] = useState("");
   const [payerReason, setPayerReason] = useState("");
@@ -264,6 +270,21 @@ export default function PaymentWorkspace({ zevId, token, permissions, funds, acc
         {detail.identificationHistory.length > 0 && <details><summary>Istorija identifikacije uplatioca</summary>
           <ul>{detail.identificationHistory.map((entry) => <li key={entry.id}>{formatDateTime(entry.changedUtc)} · {entry.previousPersonName ?? "Neprepoznat"} → {entry.newPersonName}
             · {entry.reason} · {entry.actorName ?? "Sistem"}</li>)}</ul></details>}
+        {detail.payment.sourceType === "Manual" && detail.payment.status === "Posted" && allowed("Payments.Reverse")
+          && <button type="button" disabled={busy} onClick={() => setStornoOpen(true)}>STORNIRAJ RUČNU UPLATU</button>}
+        {stornoOpen && <div className="modal-backdrop" onClick={(event) => { if (event.target === event.currentTarget) setStornoOpen(false); }}>
+          <div className="modal panel" role="dialog" aria-modal="true" aria-labelledby="manual-storno-title"
+            onKeyDown={(event) => { if (event.key === "Escape") setStornoOpen(false); }}>
+            <h2 id="manual-storno-title">Storno ručne uplate · {formatMoney(detail.payment.amount, detail.payment.currencyCode)}</h2>
+            <p>Uplata postaje stornirana, njene raspodjele se oslobađaju, a knjiga fonda dobija storno zapis. Ništa se ne briše.</p>
+            <div className="admin-form"><ReasonFields token={token} reason={stornoReason} note={stornoNote}
+              onReason={setStornoReason} onNote={setStornoNote} /></div>
+            <div className="form-actions"><button type="button" disabled={busy || !stornoReason} onClick={() => {
+              void mutate(`/${selectedId}/reverse`, { reason: reasonText(stornoReason, stornoNote) }, "Ručna uplata je stornirana.")
+                .then((success) => { if (success) { setStornoOpen(false); setStornoReason(""); setStornoNote(""); } });
+            }}>POTVRDI STORNO</button>
+              <button type="button" className="secondary" onClick={() => setStornoOpen(false)}>Odustani</button></div>
+          </div></div>}
         <h4>Detalji alokacija</h4><ul>{detail.allocations.map((item) => <li key={item.id}>
           {item.invoiceNumber ?? item.releaseInvoiceNumber ?? "Legacy"} / {item.unitCode} / {item.description ?? item.period}
           · {formatMoney(item.amount, detail.payment.currencyCode)} {item.reversesAllocationId ? "· OSLOBOĐEN KREDIT / ISPRAVKA" : ""}
@@ -271,10 +292,12 @@ export default function PaymentWorkspace({ zevId, token, permissions, funds, acc
           {activeAllocations.some((active) => active.id === item.id) && allowed("Payments.ReverseAllocation")
             && <button type="button" disabled={busy}
             onClick={() => { if (!reverseReason.trim()) { setError("Unesite razlog ispravke raspoređivanja."); return; }
-              void mutate(`/allocations/${item.id}/reverse`, { reason: reverseReason }, "Alokacija je append-only reverzirana."); }}>
+              void mutate(`/allocations/${item.id}/reverse`, { reason: reasonText(reverseReason, reverseNote) },
+                "Alokacija je append-only reverzirana."); }}>
             ISPRAVI RASPOREĐIVANJE</button>}</li>)}</ul>
-        {allowed("Payments.ReverseAllocation") && <label>Razlog ispravke<input value={reverseReason}
-          onChange={(event) => setReverseReason(event.target.value)} maxLength={500} /></label>}
+        {allowed("Payments.ReverseAllocation") && activeAllocations.length > 0 && <div className="admin-form">
+          <ReasonFields token={token} label="Razlog ispravke" reason={reverseReason} note={reverseNote}
+            onReason={setReverseReason} onNote={setReverseNote} /></div>}
         {detail.credit > 0 && detail.payment.personId && allowed("Payments.ReconcileManual") && <><button type="button"
           onClick={() => void callApi<AutoPreview>(`/api/zevs/${zevId}/payments/${selectedId}/automatic-preview`, {}, token)
             .then(setAutoPreview).catch((problem) => setError(errorText(problem)))}>RASPOREDI AUTOMATSKI · preview</button>
@@ -302,9 +325,8 @@ export default function PaymentWorkspace({ zevId, token, permissions, funds, acc
           onChange={(event) => setManualAmount(event.target.value)} /></label>
         <label>Valuta *<input maxLength={3} value={manualCurrency}
           onChange={(event) => setManualCurrency(event.target.value.toUpperCase())} /></label>
-        <label>Način plaćanja *<select value={manualMethod} onChange={(event) => setManualMethod(event.target.value)}>
-          <option value="">Odaberite</option>{creditPolicy?.allowManualCash && <option value="Cash">Gotovina</option>}
-          <option value="Migration">Migraciona uplata</option><option value="Other">Drugo</option></select></label>
+        <label>Način plaćanja *<LookupSelect typeCode="PAYMENT_METHOD" token={token} value={manualMethod}
+          onChange={setManualMethod} required accept={(item) => item.code !== "Cash" || creditPolicy?.allowManualCash === true} /></label>
         <label>Referenca<input value={manualReference} onChange={(event) => setManualReference(event.target.value)} /></label>
         <label>Opis<input value={manualDescription} onChange={(event) => setManualDescription(event.target.value)} /></label>
         <label>Razlog *<input maxLength={500} value={manualReason}

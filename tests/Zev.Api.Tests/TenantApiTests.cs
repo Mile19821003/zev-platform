@@ -1370,6 +1370,13 @@ public sealed class TenantApiTests
         Assert.Equal(HttpStatusCode.Created, unit.StatusCode);
         var unitId = (await unit.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
             .GetProperty("id").GetGuid();
+        // Every PROPERTY_UNIT_TYPE code from the code list is a valid unit type (ParkingSpace added with PR 8).
+        var parking = await client.PostAsJsonAsync($"{prefix}/units", new {
+            entranceId, code = "P1", type = "ParkingSpace", floor = -1,
+            areaSquareMeters = 12.5m, coefficient = 1m, registeredMembers = 0 });
+        Assert.Equal(HttpStatusCode.Created, parking.StatusCode);
+        Assert.Equal("ParkingSpace", (await parking.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
+            .GetProperty("type").GetString());
         var person = await client.PostAsJsonAsync($"{prefix}/people", new {
             kind = "Individual", displayName = "Own person" });
         Assert.Equal(HttpStatusCode.Created, person.StatusCode);

@@ -1,8 +1,9 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { callApi, errorText, Page } from "../api";
 import { Pager, SectionTitle } from "./shared";
-import { label, maintenanceStatusLabels, priorityLabels } from "../uiLabels.ts";
+import { label, maintenanceStatusLabels } from "../uiLabels.ts";
 import { useChangeRevision } from "../useChangeRevision.ts";
+import LookupSelect, { LookupLabel } from "./LookupSelect";
 import { formatNumber } from "../displaySettings.ts";
 
 type ZevOption = { id: string; code: string; name: string };
@@ -145,11 +146,12 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
       <form className="admin-form" onSubmit={createTicket}>
         {role === "owner" && <label>Nekretnina<select required value={unitId} onChange={(event) => setUnitId(event.target.value)}>
           <option value="">Odaberite</option>{units.map((unit) => <option key={unit.id} value={unit.id}>{unit.code}</option>)}</select></label>}
-        <label>Kategorija<input required maxLength={100} value={category} onChange={(event) => setCategory(event.target.value)} /></label>
+        <label>Kategorija<LookupSelect typeCode="MAINTENANCE_CATEGORY" token={token} valueBy="name" required
+          value={category} onChange={setCategory} /></label>
         <label>Opis<textarea required maxLength={4000} value={description} onChange={(event) => setDescription(event.target.value)} /></label>
         <label>Lokacija<input required maxLength={250} value={location} onChange={(event) => setLocation(event.target.value)} /></label>
-        <label>Prioritet<select value={priority} onChange={(event) => setPriority(event.target.value)}>
-          {['Low', 'Normal', 'High', 'Urgent'].map((item) => <option key={item} value={item}>{label(priorityLabels, item)}</option>)}</select></label>
+        <label>Prioritet<LookupSelect typeCode="MAINTENANCE_PRIORITY" token={token} required preselectDefault
+          value={priority} onChange={setPriority} /></label>
         <label>Fotografija<input type="file" accept="image/png,image/jpeg" onChange={(event) => setPhoto(event.target.files?.[0] ?? null)} /></label>
         <button disabled={busy || (role === "owner" && !unitId)}>Pošalji prijavu</button>
       </form></section>}
@@ -165,7 +167,8 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
         </form></section>}
         {allowed("Maintenance.Create") && <section className="panel"><h2>Periodični plan</h2><form className="admin-form" onSubmit={createPlan}>
           <label>Naslov<input required maxLength={200} value={planTitle} onChange={(event) => setPlanTitle(event.target.value)} /></label>
-          <label>Kategorija<input required maxLength={100} value={planCategory} onChange={(event) => setPlanCategory(event.target.value)} /></label>
+          <label>Kategorija<LookupSelect typeCode="MAINTENANCE_CATEGORY" token={token} valueBy="name" required
+            value={planCategory} onChange={setPlanCategory} /></label>
           <label>Interval (dani)<input required type="number" min="1" value={frequencyDays} onChange={(event) => setFrequencyDays(event.target.value)} /></label>
           <label>Prvi termin<input required type="date" value={firstDueOn} onChange={(event) => setFirstDueOn(event.target.value)} /></label>
           <button disabled={busy}>Dodaj plan</button></form></section>}</>}
@@ -173,7 +176,7 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
     <section className="panel table-panel"><h2>Prijave kvarova</h2><div className="table-scroll"><table><thead><tr>
       <th>Kategorija</th><th>Lokacija</th><th>Opis</th><th>Prioritet</th><th>Status</th><th>Radnja</th>
     </tr></thead><tbody>{tickets.items.map((item) => <tr key={item.id}><td>{item.category}</td><td>{item.location}</td>
-      <td>{item.description}</td><td>{label(priorityLabels, item.priority)}</td><td>{label(maintenanceStatusLabels, item.status)}</td><td className="actions">
+      <td>{item.description}</td><td><LookupLabel typeCode="MAINTENANCE_PRIORITY" token={token} value={item.priority} /></td><td>{label(maintenanceStatusLabels, item.status)}</td><td className="actions">
         {role !== "owner" && (allowed("Maintenance.Edit") || allowed("Maintenance.Approve")) && item.status === "Open" && <button onClick={() => changeStatus("tickets", item, "InProgress")}>Započni</button>}
         {role !== "owner" && (allowed("Maintenance.Edit") || allowed("Maintenance.Approve")) && item.status === "InProgress" && <button onClick={() => changeStatus("tickets", item, "Completed")}>Završi</button>}
         {item.status === "Completed" && (role === "owner" || allowed("Maintenance.Approve")) && <button onClick={() => changeStatus("tickets", item, "Verified")}>Potvrdi</button>}

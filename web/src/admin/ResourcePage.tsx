@@ -5,6 +5,8 @@ import { useChangeRevision } from "../useChangeRevision.ts";
 import { updateDependentForm } from "../formDependencies.ts";
 import { Lookup, Pager, SectionTitle, Status } from "./shared";
 import { generateStrongPassword } from "../passwords.ts";
+import type { LookupTypeCode } from "../lookupOptions.ts";
+import LookupSelect, { LookupLabel } from "./LookupSelect";
 
 export type ResourceRow = { id: string; rowVersion?: string; isActive?: boolean; [key: string]: unknown };
 export type ResourceField = {
@@ -14,6 +16,8 @@ export type ResourceField = {
   kind?: "text" | "email" | "password" | "number" | "date" | "select" | "lookup";
   options?: string[];
   lookupPath?: (form: Record<string, string>) => string;
+  // Options from GET /api/lookups/{lookupType}; the stored value is the item code.
+  lookupType?: LookupTypeCode;
   dependsOn?: string;
   formOnly?: boolean;
   createOnly?: boolean;
@@ -25,7 +29,7 @@ export type ResourceConfig = {
   description: string;
   path: string;
   fields: ResourceField[];
-  columns: { key: string; label: string }[];
+  columns: { key: string; label: string; lookupType?: LookupTypeCode }[];
   allowEdit?: boolean;
   allowCreate?: boolean;
   allowStatus?: boolean;
@@ -178,7 +182,9 @@ export default function ResourcePage({ config, token, onChanged, onCreated }: {
               path={field.lookupPath?.(form) ?? ""} disabled={!field.lookupPath?.(form)} value={form[field.key] ?? ""}
               onChange={(value) => updateForm(field.key, value)} />
               : <label key={field.key}>{field.label}
-                {field.kind === "select" ? <select required={field.required} value={form[field.key] ?? ""}
+                {field.lookupType ? <LookupSelect typeCode={field.lookupType} token={token} required={field.required}
+                  value={form[field.key] ?? ""} onChange={(value) => updateForm(field.key, value)} />
+                : field.kind === "select" ? <select required={field.required} value={form[field.key] ?? ""}
                   onChange={(event) => updateForm(field.key, event.target.value)}>
                   <option value="">Odaberite</option>{field.options?.map((option) => <option key={option} value={option}>{option}</option>)}
                 </select> : <input type={field.kind === "password" && showCreatePassword ? "text" : field.kind ?? "text"}
@@ -219,7 +225,9 @@ export default function ResourcePage({ config, token, onChanged, onCreated }: {
         {loading ? <p className="empty-inline">Učitavanje…</p> : <>
           <div className="table-scroll"><table><thead><tr>{config.columns.map((column) => <th key={column.key}>{column.label}</th>)}
             <th>Status</th><th>Radnje</th></tr></thead><tbody>{data.items.map((item) => <tr key={item.id}>
-              {config.columns.map((column) => <td key={column.key}>{String(item[column.key] ?? "—")}</td>)}
+              {config.columns.map((column) => <td key={column.key}>{column.lookupType
+                ? <LookupLabel typeCode={column.lookupType} token={token} value={item[column.key] as string | null} />
+                : String(item[column.key] ?? "—")}</td>)}
               <td>{item.isActive === undefined ? "—" : <Status active={item.isActive} />}</td>
               <td className="actions">{config.allowEdit && <button type="button" disabled={busy} onClick={() => edit(item)}>Uredi</button>}
                 {config.passwordReset && <button type="button" disabled={busy}

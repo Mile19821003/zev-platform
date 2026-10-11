@@ -3,6 +3,7 @@ import { callApi, errorText, Page } from "../api";
 import { Pager, SectionTitle } from "./shared";
 import { useChangeRevision } from "../useChangeRevision.ts";
 import { formatMoney } from "../currency.ts";
+import LookupSelect from "./LookupSelect";
 
 type ZevOption = { id: string; code: string; name: string };
 type Fund = { id: string; name: string };
@@ -123,7 +124,8 @@ export default function ExpensesPage({ token, zevs, permissions }: { token: stri
         <label>Broj računa<input required maxLength={100} value={invoiceNumber} onChange={(event) => setInvoiceNumber(event.target.value)} /></label>
         <label>Datum<input required type="date" value={invoiceDate} onChange={(event) => setInvoiceDate(event.target.value)} /></label>
         <label>Iznos<input required type="number" min="0.01" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} /></label>
-        <label>Kategorija<input required maxLength={100} value={category} onChange={(event) => setCategory(event.target.value)} /></label>
+        <label>Kategorija<LookupSelect typeCode="EXPENSE_CATEGORY" token={token} valueBy="name" required
+          value={category} onChange={setCategory} /></label>
         <label>Opis<input maxLength={1000} value={description} onChange={(event) => setDescription(event.target.value)} /></label>
         <label>Prilog (PDF, PNG, JPG; do 5 MB)<input type="file" accept=".pdf,.png,.jpg,.jpeg"
           onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></label>

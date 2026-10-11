@@ -20,6 +20,7 @@ export function resourceKey(path: string): string | null {
   const parts = new URL(path, "http://local").pathname.split("/").filter(Boolean);
   if (parts[0] !== "api") return null;
   if (parts[1] === "system") return parts[2] === "property-units" ? "propertyUnits" : parts[2] ?? null;
+  if (parts[1] === "admin") return parts[2] ?? null;
   if (parts[1] === "zevs") {
     if (parts[3] === "registry") return parts[4] ?? null;
     return parts[3] ?? null;

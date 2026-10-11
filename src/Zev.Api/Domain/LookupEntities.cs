@@ -78,6 +78,10 @@ public static class LookupSeed
         ("REVERSAL_REASON", "DUPLICATE", "Dvostruka uplata", false),
         ("REVERSAL_REASON", "COMPLAINT", "Reklamacija", false),
         ("REVERSAL_REASON", "AMOUNT_CORRECTION", "Ispravak iznosa", false),
+        // Added when the forms moved to code lists: values the forms already offered (appended to keep ids stable).
+        ("PROPERTY_UNIT_TYPE", "Other", "Ostalo", false),
+        ("PAYMENT_METHOD", "Migration", "Migraciona uplata", false),
+        ("PAYMENT_METHOD", "Other", "Drugo", false),
     ];
 
     public static LookupItem[] Items => ItemRows.Select((row, index) => new LookupItem

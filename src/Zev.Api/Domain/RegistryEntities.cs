@@ -6,7 +6,9 @@ public enum PropertyUnitType
     Commercial,
     Garage,
     Basement,
-    Other
+    Other,
+    // Stored as text, so a new value needs no data migration; matches the PROPERTY_UNIT_TYPE code list.
+    ParkingSpace
 }
 
 public enum PersonKind

@@ -1859,6 +1859,39 @@ namespace Zev.Api.Data.Migrations
                             LookupTypeCode = "REVERSAL_REASON",
                             Name = "Ispravak iznosa",
                             SortOrder = 40
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000032"),
+                            Code = "Other",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "PROPERTY_UNIT_TYPE",
+                            Name = "Ostalo",
+                            SortOrder = 60
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000033"),
+                            Code = "Migration",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "PAYMENT_METHOD",
+                            Name = "Migraciona uplata",
+                            SortOrder = 40
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000034"),
+                            Code = "Other",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "PAYMENT_METHOD",
+                            Name = "Drugo",
+                            SortOrder = 50
                         });
                 });
 

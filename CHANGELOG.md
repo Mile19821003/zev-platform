@@ -2,6 +2,46 @@
 
 Sve značajne izmjene ZEV Platforme. Ranija historija (faze do 4) je u `CLOUD_HANDOFF_STATUS.md` i git logu.
 
+## [v2.11] - 2026-10-10
+
+### Dodano (Added)
+- Forme čitaju opcije iz šifarnika (`GET /api/lookups/{typeCode}`):
+  - Posebni dijelovi (radni prostor upravnika i sistemska administracija): tip iz `PROPERTY_UNIT_TYPE`; čuva se
+    šifra (`Apartment`, `Commercial`, `Garage`, `ParkingSpace`, `Basement`, `Other`), tabela prikazuje naziv.
+  - Rashodi: kategorija iz `EXPENSE_CATEGORY`.
+  - Održavanje: kategorija prijave i plana iz `MAINTENANCE_CATEGORY`, prioritet iz `MAINTENANCE_PRIORITY`
+    (zadano „Standardni“), tabela prijava prikazuje naziv prioriteta.
+  - Ručna uplata: način plaćanja iz `PAYMENT_METHOD` (gotovina samo kad je dozvoljena podešavanjem).
+  - Storno ručne uplate (novi dijalog „STORNIRAJ RUČNU UPLATU“ u detalju uplate, API iz v2.2) i ispravka
+    raspoređivanja: razlog iz `REVERSAL_REASON` + opciona napomena („Dvostruka uplata: knjiženo dva puta“).
+- `useLookup(typeCode)`: keš u memoriji za cijelu sesiju (jedan zahtjev po šifarniku za sve forme), fallback na
+  sistemske opcije odmah (forma nikad ne čeka API) i kada API ne odgovori; keš se prazni kad administrator izmijeni
+  šifarnik (dataSync ključ `lookups`, `/api/admin/...` sada objavljuje izmjene). Komponente `LookupSelect`,
+  `LookupLabel`, `ReasonFields`; logika u `web/src/lookupOptions.ts`.
+- Testovi: `web/tests/lookupOptions.test.mjs` (6, uključujući da je fallback jednak backend seedu), slučaj
+  `ParkingSpace` u `ManagerRegistryCrudIsScopedAndInactiveMembershipIsDenied`; provjera u pregledniku 9/9.
+
+### Ispravljeno (Fixed)
+- `PropertyUnitType` dobija `ParkingSpace` (šifarnik ga je nudio, a API ga nije prihvatao); čuva se kao tekst,
+  postojeći podaci nepromijenjeni.
+- Postojeća vrijednost koja više nije ponuđena (deaktivirana stavka ili ranije upisan slobodan tekst, npr.
+  kategorija „Rasvjeta“) ostaje izabrana i označena „(postojeća vrijednost)“ — uređivanje je ne mijenja tiho.
+
+### Baza / Migracije
+- `20261010213421_AddLookupCompatibilityItems`: stavke koje su forme već nudile — `PROPERTY_UNIT_TYPE` „Ostalo“
+  (`Other`), `PAYMENT_METHOD` „Migraciona uplata“ (`Migration`) i „Drugo“ (`Other`).
+
+### Otvorene odluke (Open Decisions)
+- Kategorije rashoda i kvarova čuvaju **naziv** stavke (polja su slobodan tekst i postojeći zapisi/izvještaji
+  ostaju čitljivi); preimenovanje stavke u šifarniku ne mijenja već snimljene zapise. Prelazak na šifre traži
+  migraciju postojećih podataka.
+- Tip dokumenta zajednice (`ManagedDocumentType`) još koristi fiksnu listu; šifarnik `DOCUMENT_CATEGORY` ima
+  stavke kojih nema u enumu (`INSURANCE_POLICY`, `DECISION`) — potrebna odluka o proširenju enuma.
+- Nova šifra u `PROPERTY_UNIT_TYPE` ili `MAINTENANCE_PRIORITY` traži i proširenje enuma na backendu.
+- SQL integracijski testovi: prvi prolaz nakon dužeg mirovanja SQL Server instance može imati timeoute u testovima
+  performansi/konkurentnosti (isti testovi odmah zatim prolaze); zaostale testne baze iz prekinutih prolaza treba
+  povremeno obrisati.
+
 ## [v2.10] - 2026-10-10
 
 ### Dodano (Added)
