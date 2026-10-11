@@ -10,6 +10,7 @@ import { manualLineAmount } from "../billingUi.ts";
 import { formatMoney, ownerLedgerLabel } from "../currency.ts";
 import { fundKindLabels, label } from "../uiLabels.ts";
 import type { BillingAdjustment, BillingIssue, BillingItem, BillingManualLine } from "../billingUi.ts";
+import { apiBase } from "../apiBase.ts";
 
 type Fund = { id: string; kind: string; name: string; balance: number | null;
   currencyCode: string | null; balancesByCurrency: { currencyCode: string; balance: number }[];
@@ -334,7 +335,7 @@ export default function FinancePage({ token, zevs, permissions }: { token: strin
     if (pending.current) return;
     pending.current = true; setBusy(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL ?? "http://localhost:8080"}/api/zevs/${zevId}/finance/invoices/${invoice.propertyUnitId}/${invoice.personId}.pdf?period=${period}-01`,
+      const response = await fetch(`${apiBase}/api/zevs/${zevId}/finance/invoices/${invoice.propertyUnitId}/${invoice.personId}.pdf?period=${period}-01`,
         { headers: { Authorization: `Bearer ${token}` } });
       if (!response.ok) throw new Error("PDF račun nije dostupan.");
       const url = URL.createObjectURL(await response.blob());
@@ -353,7 +354,7 @@ export default function FinancePage({ token, zevs, permissions }: { token: strin
     if (pending.current) return;
     pending.current = true; setBusy(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL ?? "http://localhost:8080"}/api/zevs/${zevId}/finance/invoices/${invoice.propertyUnitId}/${invoice.personId}/payment-slip.pdf?period=${period}-01&fundId=${fundId}`,
+      const response = await fetch(`${apiBase}/api/zevs/${zevId}/finance/invoices/${invoice.propertyUnitId}/${invoice.personId}/payment-slip.pdf?period=${period}-01&fundId=${fundId}`,
         { headers: { Authorization: `Bearer ${token}` } });
       if (!response.ok) throw new Error("Uplatnica nije dostupna za otvoreni iznos fonda.");
       const url = URL.createObjectURL(await response.blob());

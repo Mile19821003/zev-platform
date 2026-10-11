@@ -69,6 +69,19 @@ kartica na početnom ekranu, C — Reporting centar. Opis toka: `MAINTENANCE_WOR
 - Tekuća verzija `v2.20`.
 
 ### Ispravljeno (Fixed)
+- **Prijava s mobitela preko lokalne IP adrese** (`http://192.168.x.x:5173`): frontend je API zvao na
+  `http://localhost:8080`, pa je preglednik na telefonu gađao sam sebe.
+  - API pozivi su sada relativni (`/api` na istom porijeklu). Adresa je na jednom mjestu, u `web/src/apiBase.ts`,
+    a `VITE_API_URL` je samo opcija za API na posebnom hostu.
+  - `/api` prosljeđuju bekendu: nginx u web kontejneru (`proxy_pass` na `api:8080`, `client_max_body_size 30m`)
+    i Vite dev server (novi `web/vite.config.ts`, cilj se mijenja preko `VITE_PROXY_TARGET`).
+  - `compose.yaml`, `web/Dockerfile` i `.env.example` podrazumijevano koriste prazan `VITE_API_URL`, kao i
+    produkcija.
+  - CORS u Development režimu dozvoljava bilo koje porijeklo; van Developmenta ostaje samo `Web:Origin`.
+  - U Developmentu API vjeruje `X-Forwarded-For` iz Docker mreže (172.16.0.0/12), pa limit prijava i audit vide
+    stvarnu adresu uređaja.
+
+  Testovi: `CorsPolicyTests` (1) i `web/tests/lanAccess.test.mjs` (2).
 - Zaglavlje se na mobilnoj širini prelama (ZEV, zvonce, profil, odjava), pa stranica ne izlazi izvan ekrana.
 - Forma „Novi radni nalog“ se nakon uspješnog kreiranja prazni (izvođač, naslov, opis, trošak, rok, veza na termin
   ili prijavu); ako kreiranje ne uspije, uneseni podaci ostaju za ispravku (ranije se veza brisala i pri grešci).
@@ -91,6 +104,18 @@ kartica na početnom ekranu, C — Reporting centar. Opis toka: `MAINTENANCE_WOR
   `personKindLabels`, `occupantKindLabels` i `activeFilterLabels` su u `uiLabels.ts`. API i baza i dalje koriste
   `Individual` / `LegalEntity` / `Tenant`…. Tip posebnog dijela već je bio preveden kroz šifrarnik `PROPERTY_UNIT_TYPE`.
   Test: `web/tests/registryLabels.test.mjs` (2), koji provjerava i da mapiranja pokrivaju sve članove bekend enuma.
+- **Finansijski ekrani bez engleskih šifri**:
+  - Troškovi: status Nacrt / Proknjiženo / Stornirano.
+  - Pravni postupci: vrsta opomene i status predmeta, u tabeli i u padajućem meniju (Otvoren, Tužba podnesena,
+    U toku, Riješen nagodbom, Zatvoren).
+  - Banka: filter i status transakcija (Na čekanju, Povezano, Za provjeru…) i status uvezenih izvoda (Uvezen,
+    Djelimično usklađen, Usklađen).
+  - Uplate: izvor Bankovni izvod / Ručna uplata.
+  - Finansije: vrsta fonda Redovni / Rezervni.
+
+  Mapiranja su u `uiLabels.ts`, a padajući meniji iz njih grade opcije. API i baza i dalje koriste iste šifre.
+  Test: `web/tests/financeLabels.test.mjs` (2) provjerava da mapiranja pokrivaju sve članove bekend enuma i da
+  tabele ne prikazuju sirove šifre.
   `ResourcePage` dobija `optionLabels` za polja i `labels` za kolone.
 
 ### Baza / Migracije

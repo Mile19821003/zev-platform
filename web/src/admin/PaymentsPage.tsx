@@ -8,6 +8,7 @@ import { formatMoney } from "../currency.ts";
 import { formatDate } from "../bankBalanceUi.ts";
 import BankAccountBalanceCard from "./BankAccountBalanceCard";
 import { bankImportStatusLabels, bankTransactionStatusLabels, label } from "../uiLabels.ts";
+import { apiBase } from "../apiBase.ts";
 
 type ZevOption = { id: string; code: string; name: string };
 type Fund = { id: string; name: string };
@@ -138,7 +139,7 @@ export default function PaymentsPage({ token, zevs, permissions }: { token: stri
 
   async function exportPayments() {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL ?? "http://localhost:8080"}/api/zevs/${zevId}/payments/export`,
+      const response = await fetch(`${apiBase}/api/zevs/${zevId}/payments/export`,
         { headers: { Authorization: `Bearer ${token}` } });
       if (!response.ok) throw new Error("Izvoz uplata nije dostupan.");
       const url = URL.createObjectURL(await response.blob());

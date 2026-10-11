@@ -34,6 +34,12 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     {
         options.KnownProxies.Add(IPAddress.Parse(proxy));
     }
+    // Local Docker stack: nginx in the web container forwards /api from the Docker network (dynamic address), so
+    // the login limit and audit see the real device address (e.g. a phone on the LAN), not nginx's.
+    if (builder.Environment.IsDevelopment())
+    {
+        options.KnownIPNetworks.Add(System.Net.IPNetwork.Parse("172.16.0.0/12"));
+    }
 });
 builder.Services.AddDbContext<ZevDbContext>(options => options.UseSqlServer(
     builder.Configuration.GetConnectionString("Default")
@@ -148,9 +154,14 @@ builder.Services.AddRateLimiter(options =>
         }));
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
-builder.Services.AddCors(options => options.AddPolicy("web", policy => policy
-    .WithOrigins(builder.Configuration["Web:Origin"] ?? "http://localhost:5173")
-    .AllowAnyHeader().AllowAnyMethod().AllowCredentials()));
+// Production: only the configured web origin. Development: any origin, so the app also works when opened through
+// the computer's LAN IP (a phone at http://192.168.x.x:5173) or a separate dev server talking to the API directly.
+builder.Services.AddCors(options => options.AddPolicy("web", policy =>
+{
+    if (builder.Environment.IsDevelopment()) policy.SetIsOriginAllowed(_ => true);
+    else policy.WithOrigins(builder.Configuration["Web:Origin"] ?? "http://localhost:5173");
+    policy.AllowAnyHeader().AllowAnyMethod().AllowCredentials();
+}));
 builder.Services.AddOpenApi();
 
 var app = builder.Build();

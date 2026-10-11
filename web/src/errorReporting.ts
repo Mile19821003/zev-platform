@@ -1,3 +1,4 @@
+import { apiBase } from "./apiBase.ts";
 // Sends unhandled web app errors to POST /api/system/errors/client. Reports are throttled and deduplicated in the
 // browser (the API also rate limits), and reporting itself can never throw or report its own failures.
 export type ClientErrorReport = { title: string; errorType: string; message: string; stackTrace: string | null; url: string | null };
@@ -28,7 +29,6 @@ export function createReporter(send: Send, now: () => number = Date.now, limit =
   };
 }
 
-const apiBase = (import.meta as { env?: Record<string, string | undefined> }).env?.VITE_API_URL ?? "http://localhost:8080";
 export const reportClientError = createReporter((report) => fetch(`${apiBase}/api/system/errors/client`, {
   method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(report), keepalive: true,
 }));

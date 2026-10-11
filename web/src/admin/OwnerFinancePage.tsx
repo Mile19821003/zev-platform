@@ -5,6 +5,7 @@ import InvoiceDocuments from "./InvoiceDocuments.tsx";
 import { primaryInvoiceStatus } from "../invoiceLifecycleUi.ts";
 import { useChangeRevision } from "../useChangeRevision.ts";
 import { formatMoney, ownerLedgerLabel } from "../currency.ts";
+import { apiBase } from "../apiBase.ts";
 
 type ZevOption = { id: string; code: string; name: string; historicalSelfAccess?: boolean };
 type Card = { personId: string; totalCharged: number | null; totalPaid: number | null; balance: number | null;
@@ -71,7 +72,7 @@ export default function OwnerFinancePage({ token, zevs }: { token: string; zevs:
     if (downloadPending.current) return;
     downloadPending.current = true; setDownloading(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL ?? "http://localhost:8080"}${path}`,
+      const response = await fetch(`${apiBase}${path}`,
         { headers: { Authorization: `Bearer ${token}` } });
       if (!response.ok) throw new Error("PDF nije dostupan.");
       const url = URL.createObjectURL(await response.blob());

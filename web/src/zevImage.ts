@@ -1,3 +1,4 @@
+import { apiBase } from "./apiBase.ts";
 // ZEV cover photos. The API serves them only to signed-in readers (GET /api/zevs/{id}/image), and an <img> cannot
 // send the access token, so photos are fetched with it and shown from blob URLs (cached for the session, per
 // versioned URL — a new photo has a new URL).
@@ -29,7 +30,6 @@ export function primeZevImage(url: string, src: string): void {
   cache.set(url, { src, failed: false });
 }
 
-const apiBase = (import.meta as { env?: Record<string, string | undefined> }).env?.VITE_API_URL ?? "http://localhost:8080";
 
 export function loadZevImage(url: string, token: string): Promise<Loaded> {
   const known = cache.get(url);

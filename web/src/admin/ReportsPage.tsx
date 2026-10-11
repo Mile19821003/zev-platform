@@ -3,6 +3,7 @@ import { callApi, errorText, Page } from "../api";
 import { Pager, SectionTitle } from "./shared";
 import { useChangeRevision } from "../useChangeRevision.ts";
 import { formatMoney } from "../currency.ts";
+import { apiBase } from "../apiBase.ts";
 
 type ZevOption = { id: string; code: string; name: string };
 type Summary = { billed: number | null; received: number | null; spent: number | null; netCash: number | null;
@@ -54,7 +55,7 @@ export default function ReportsPage({ token, zevs, permissions }: { token: strin
 
   async function download(path: string, fileName: string) {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL ?? "http://localhost:8080"}/api/zevs/${zevId}/reports/${path}`,
+      const response = await fetch(`${apiBase}/api/zevs/${zevId}/reports/${path}`,
         { headers: { Authorization: `Bearer ${token}` } });
       if (!response.ok) throw new Error("Export failed");
       const url = URL.createObjectURL(await response.blob());

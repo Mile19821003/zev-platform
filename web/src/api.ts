@@ -1,4 +1,5 @@
 import { createApiClient } from "./apiClient.ts";
+import { apiBase } from "./apiBase.ts";
 
 export { ApiError, errorText } from "./apiClient.ts";
 export type Page<T> = { page: number; pageSize: number; totalCount: number; items: T[] };
@@ -94,4 +95,4 @@ export type Membership = {
   rowVersion: string;
 };
 
-export const callApi = createApiClient(import.meta.env.VITE_API_URL ?? "http://localhost:8080");
+export const callApi = createApiClient(apiBase);

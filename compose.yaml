@@ -31,7 +31,8 @@ services:
     build:
       context: ./web
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:8080}
+        # Empty = same origin: nginx in the web container forwards /api, so the app also works via the LAN IP.
+        VITE_API_URL: ${VITE_API_URL:-}
     depends_on:
       - api
     ports:

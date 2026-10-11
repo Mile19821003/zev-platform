@@ -5,6 +5,7 @@ import { announcementScopeLabels, ballotKindLabels, ballotModeLabels, ballotStat
   membershipRoleLabels, visibilityLabels } from "../uiLabels.ts";
 import { useChangeRevision } from "../useChangeRevision.ts";
 import LookupSelect, { LookupLabel } from "./LookupSelect";
+import { apiBase } from "../apiBase.ts";
 
 type ZevOption = { id: string; code: string; name: string };
 type Announcement = { id: string; title: string; content: string; scope: string; publishedFromUtc: string };
@@ -131,7 +132,7 @@ export default function CommunityPage({ token, zevs, role, permissions }: {
 
   async function download(document: Document) {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL ?? "http://localhost:8080"}/api/zevs/${zevId}/community/documents/${document.id}/download`,
+      const response = await fetch(`${apiBase}/api/zevs/${zevId}/community/documents/${document.id}/download`,
         { headers: { Authorization: `Bearer ${token}` } });
       if (!response.ok) throw new Error();
       const url = URL.createObjectURL(await response.blob());

@@ -4,6 +4,7 @@ import { Pager, SectionTitle } from "./shared";
 import { useChangeRevision } from "../useChangeRevision.ts";
 import { formatMoney } from "../currency.ts";
 import { label, legalCaseStatusLabels, reminderKindLabels } from "../uiLabels.ts";
+import { apiBase } from "../apiBase.ts";
 
 type ZevOption = { id: string; code: string; name: string };
 type Person = { id: string; displayName: string };
@@ -86,7 +87,7 @@ export default function LegalPage({ token, zevs, permissions }: { token: string;
 
   async function downloadReminder(reminderId: string) {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL ?? "http://localhost:8080"}/api/zevs/${zevId}/legal/reminders/${reminderId}.pdf`,
+      const response = await fetch(`${apiBase}/api/zevs/${zevId}/legal/reminders/${reminderId}.pdf`,
         { headers: { Authorization: `Bearer ${token}` } });
       if (!response.ok) throw new Error("PDF nije dostupan.");
       const url = URL.createObjectURL(await response.blob());

@@ -6,6 +6,7 @@ import type { CorrectionLineDraft, CorrectionType } from "../invoiceLifecycleUi.
 import { useChangeRevision } from "../useChangeRevision.ts";
 import { formatMoney } from "../currency.ts";
 import { formatDateTime } from "../displaySettings.ts";
+import { apiBase } from "../apiBase.ts";
 
 type Document = { id: string; documentNumber: string; type: string; issueDate: string;
   reason: string; note: string | null; signedAmount: number; createdByUserId: string | null;
@@ -67,7 +68,7 @@ export default function InvoiceDocuments({ zevId, invoiceId, status, token, canR
   async function download(document: Document) {
     setError("");
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL ?? "http://localhost:8080"}/api/zevs/${zevId}/finance/documents/${document.id}.pdf`,
+      const response = await fetch(`${apiBase}/api/zevs/${zevId}/finance/documents/${document.id}.pdf`,
         { headers: { Authorization: `Bearer ${token}` } });
       if (!response.ok) throw new Error("PDF povezanog dokumenta nije dostupan.");
       const url = URL.createObjectURL(await response.blob());

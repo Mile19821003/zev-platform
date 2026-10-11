@@ -5,6 +5,7 @@ import { useChangeRevision } from "../useChangeRevision.ts";
 import { formatMoney } from "../currency.ts";
 import LookupSelect from "./LookupSelect";
 import { expenseStatusLabels, label } from "../uiLabels.ts";
+import { apiBase } from "../apiBase.ts";
 
 type ZevOption = { id: string; code: string; name: string };
 type Fund = { id: string; name: string };
@@ -154,7 +155,7 @@ export default function ExpensesPage({ token, zevs, permissions }: { token: stri
         {allowed("Expenses.Reverse") && item.status === "Posted" && <button disabled={busy} onClick={() => changeStatus(item, "reverse")}>Storniraj</button>}
         {item.documentId && <button type="button" onClick={async () => {
           try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL ?? "http://localhost:8080"}/api/zevs/${zevId}/files/${item.documentId}`,
+            const response = await fetch(`${apiBase}/api/zevs/${zevId}/files/${item.documentId}`,
               { headers: { Authorization: `Bearer ${token}` } });
             if (!response.ok) throw new Error();
             const url = URL.createObjectURL(await response.blob()); window.open(url, "_blank", "noopener,noreferrer");
