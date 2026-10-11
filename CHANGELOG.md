@@ -64,6 +64,8 @@ kartica na početnom ekranu, C — Reporting centar. Opis toka: `MAINTENANCE_WOR
 
 ### Ispravljeno (Fixed)
 - Zaglavlje se na mobilnoj širini prelama (ZEV, zvonce, profil, odjava), pa stranica ne izlazi izvan ekrana.
+- Forma „Novi radni nalog“ se nakon uspješnog kreiranja prazni (izvođač, naslov, opis, trošak, rok, veza na termin
+  ili prijavu); ako kreiranje ne uspije, uneseni podaci ostaju za ispravku (ranije se veza brisala i pri grešci).
 
 ### Baza / Migracije
 - `20261011123454_AddMaintenanceTicketNotifications`: `SystemSettings.DefaultAdminEmail`;

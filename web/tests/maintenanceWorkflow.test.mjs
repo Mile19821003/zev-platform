@@ -80,3 +80,13 @@ test("screens: calendar filters and actions, dossier, home widget", () => {
   }
   assert.ok(source("../src/admin/MaintenanceWidget.tsx").includes("sessionStorage.setItem(calendarStatusHandoffKey, \"Due\")"));
 });
+
+test("Novi radni nalog: the form is emptied after a successful create, kept after an error", () => {
+  const page = source("../src/admin/MaintenancePage.tsx");
+  assert.ok(page.includes("async function submit(path: string, body: object, message: string): Promise<boolean>"));
+  assert.ok(page.includes('"Radni nalog je kreiran.").then((created) => { if (created) resetOrderForm(); });'));
+  const reset = page.slice(page.indexOf("function resetOrderForm()"), page.indexOf("}", page.indexOf("function resetOrderForm()")));
+  for (const setter of ["setOrderSource(null)", 'setOrderTicketId("")', 'setOrderSupplierId("")', 'setContractorName("")',
+    'setContractorPhone("")', 'setOrderTitle("")', 'setOrderDescription("")', 'setOrderCost("")', 'setOrderDueOn("")'])
+    assert.ok(reset.includes(setter), setter);
+});

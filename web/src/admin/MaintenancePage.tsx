@@ -110,13 +110,15 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
 
   useEffect(() => { void refresh(); return () => { requestId.current++; }; }, [refresh, revision]);
 
-  async function submit(path: string, body: object, message: string) {
-    if (pending.current) return;
+  // True when the request succeeded, so a form can be cleared only then (on an error the input stays for correction).
+  async function submit(path: string, body: object, message: string): Promise<boolean> {
+    if (pending.current) return false;
     pending.current = true; setBusy(true); setError(""); setNotice("");
     try {
       await callApi(`/api/zevs/${zevId}/maintenance/${path}`, { method: "POST", body: JSON.stringify(body) }, token);
       setNotice(message);
-    } catch (problem) { setError(errorText(problem)); }
+      return true;
+    } catch (problem) { setError(errorText(problem)); return false; }
     finally { pending.current = false; setBusy(false); }
   }
 
@@ -198,7 +200,13 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
       scheduleId: orderSource?.kind === "schedule" ? orderSource.id : null, supplierId: orderSupplierId || null,
       contractorName: orderSupplierId ? null : contractorName || null, contractorPhone: orderSupplierId ? null : contractorPhone || null,
       title: orderTitle, description: orderDescription, priority, costAmount: orderCost ? Number(orderCost) : null,
-      dueOn: orderDueOn || null }, "Radni nalog je kreiran.").then(() => { setOrderSource(null); setOrderTicketId(""); });
+      dueOn: orderDueOn || null }, "Radni nalog je kreiran.").then((created) => { if (created) resetOrderForm(); });
+  }
+
+  // Empty "Novi radni nalog" form after a work order was created.
+  function resetOrderForm() {
+    setOrderSource(null); setOrderTicketId(""); setOrderSupplierId(""); setContractorName(""); setContractorPhone("");
+    setOrderTitle(""); setOrderDescription(""); setOrderCost(""); setOrderDueOn("");
   }
 
   // "Pokreni radni nalog" from a calendar occurrence or a fault report pre-fills the work order form.
