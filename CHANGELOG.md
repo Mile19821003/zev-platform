@@ -21,6 +21,8 @@ Sve značajne izmjene ZEV Platforme. Ranija historija (faze do 4) je u `CLOUD_HA
     („Prilagođena“ kada boje ne odgovaraju nijednoj), pregled uživo u cijeloj aplikaciji i u maketi,
     upozorenja o čitljivosti (WCAG kontrast < 4.5:1), dugmad „Snimi boje“, „Odbaci izmjene“,
     „Vrati na tvorničke postavke“.
+- `MILESTONE_STATUS_v2.14.md`: presjek stanja (koraci 1–4, PR 8–11, testovi, migracije, otvorene odluke).
+- Web test provjerava da je posljednja verzija u istoriji verzija jednaka najnovijoj verziji u `CHANGELOG.md`.
 - Testovi: `ThemeApiTests` (3), seed teme u `SqlLookupTests`, `web/tests/theme.test.mjs` (7, uključujući
   usklađenost tvorničke palete s backendom i `:root`, kontrast svih paleta); provjera u pregledniku 17/17 —
   prijava, kontrolna ploča i tabela s tvorničkom temom su piksel-identične prethodnoj verziji.
@@ -34,6 +36,8 @@ Sve značajne izmjene ZEV Platforme. Ranija historija (faze do 4) je u `CLOUD_HA
 ### Baza / Migracije
 - `20261011064624_AddThemeSettings`: tabela `SystemThemeSettings` (singleton, boje `varchar(7)`) sa seedom
   tvorničkih boja (izgled nepromijenjen); seed ikonice modula `themes`.
+- `20261011070734_AddVersionHistoryV213V214`: unosi v2.13 (Obrisani redovi) i v2.14 (Teme i paleta boja) u
+  `AppVersionHistory`, pa ekran „Istorija verzija“ prikazuje v2.7–v2.14.
 
 ### Otvorene odluke (Open Decisions)
 - Statusne boje (greška, upozorenje, info, oznake) su namjerno fiksne i ne mijenjaju se s temom.
