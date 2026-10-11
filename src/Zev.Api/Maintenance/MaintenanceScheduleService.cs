@@ -59,6 +59,31 @@ public sealed class MaintenanceScheduleService(ZevDbContext database)
         return created;
     }
 
+    public const string RealizedWorkMessage =
+        "Plan ima izvršene radne naloge ili troškove. Deaktivirajte ga umjesto brisanja.";
+
+    // Work that must stay in the records: an occurrence that was done or is under way, or one linked to a work order
+    // (the order carries the costs).
+    public Task<bool> HasRealizedWorkAsync(Guid planId, CancellationToken cancellationToken) =>
+        database.ScheduledMaintenances.AnyAsync(item => item.PlanId == planId && (item.WorkOrderId != null
+            || item.Status == ScheduleStatus.Completed || item.Status == ScheduleStatus.InProgress), cancellationToken);
+
+    // Occurrences nobody worked on. Removed outright, except (when the plan is only stopped) overdue ones,
+    // which are cancelled so the calendar history shows they were not done. Not saved here.
+    public async Task<int> ClearOpenOccurrencesAsync(Guid planId, bool cancelOverdue, CancellationToken cancellationToken)
+    {
+        var today = Today();
+        var open = await database.ScheduledMaintenances.Where(item => item.PlanId == planId && item.WorkOrderId == null
+            && (item.Status == ScheduleStatus.Due || (!cancelOverdue && item.Status == ScheduleStatus.Cancelled)))
+            .ToListAsync(cancellationToken);
+        foreach (var item in open)
+        {
+            if (cancelOverdue && item.DueOn <= today) item.Status = ScheduleStatus.Cancelled;
+            else database.ScheduledMaintenances.Remove(item);
+        }
+        return open.Count;
+    }
+
     // Keeps every active plan of the ZEV filled up to today + HorizonDays (called when the calendar is read).
     public async Task EnsureHorizonAsync(Guid zevId, CancellationToken cancellationToken)
     {

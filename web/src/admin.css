@@ -151,3 +151,7 @@ button.danger{background:var(--zev-surface);color:#a22b2b;border:1px solid #e3b4
 .badge.schedule-completed{background:var(--zev-accent-soft,#e7f5ee);color:var(--zev-primary)}
 .badge.schedule-cancelled{background:var(--zev-bg);color:var(--zev-muted,#687986);text-decoration:line-through}
 .calendar-table tr.schedule-row-due td:first-child{font-weight:700}
+
+.badge.plan-active{background:var(--zev-accent-soft,#e7f5ee);color:var(--zev-primary)}
+.badge.plan-inactive{background:var(--zev-surface-alt,#eef1f3);color:var(--zev-muted,#687986)}
+.plans-table tr.inactive td:first-child{color:var(--zev-muted,#687986)}

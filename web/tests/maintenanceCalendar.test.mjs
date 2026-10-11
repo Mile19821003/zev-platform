@@ -35,3 +35,19 @@ test("calendar and work order dates follow the system date format", () => {
   assert.ok(page.includes("<span className={scheduleBadgeClass(item.status)}>{scheduleStatusLabel(item.status)}</span>"));
   assert.ok(page.includes('body: JSON.stringify({ status: "Completed"'));
 });
+
+test("periodic plans: status, interval and actions (deactivate, delete with confirmation)", async () => {
+  const { planStatusLabel, planFrequencyText, planDeleteWarning } = await import("../src/maintenanceCalendar.ts");
+  assert.equal(planStatusLabel(true), "Aktivan");
+  assert.equal(planStatusLabel(false), "Deaktiviran");
+  assert.deepEqual([1, 3, 7, 30].map(planFrequencyText), ["svaki dan", "svakih 3 dana", "svake sedmice", "svakih 30 dana"]);
+  assert.match(planDeleteWarning, /Obrisani redovi/);
+  const page = source("../src/admin/MaintenancePage.tsx");
+  assert.ok(page.includes("/maintenance/plans/${plan.id}`, { method: \"DELETE\" }"));
+  assert.ok(page.includes("/maintenance/plans/${plan.id}/toggle-active`, { method: \"PUT\" }"));
+  assert.ok(page.includes('{plan.isActive ? "Deaktiviraj" : "Aktiviraj"}'));
+  assert.ok(page.includes('role="dialog" aria-modal="true" aria-labelledby="plan-delete-title"'), "delete asks in a dialog first");
+  assert.ok(page.includes("onClick={() => setPlanToDelete(plan)}>Obriši</button>"), "Obriši only opens the dialog");
+  const api = source("../../src/Zev.Api/Maintenance/MaintenanceScheduleService.cs");
+  assert.ok(api.includes('"Plan ima izvršene radne naloge ili troškove. Deaktivirajte ga umjesto brisanja."'));
+});

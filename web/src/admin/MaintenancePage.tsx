@@ -5,7 +5,8 @@ import { label, maintenanceStatusLabels } from "../uiLabels.ts";
 import { useChangeRevision } from "../useChangeRevision.ts";
 import LookupSelect, { LookupLabel } from "./LookupSelect";
 import { formatDate, formatNumber } from "../displaySettings.ts";
-import { canCompleteSchedule, scheduleBadgeClass, scheduleStatusLabel } from "../maintenanceCalendar.ts";
+import { canCompleteSchedule, planDeleteWarning, planFrequencyText, planStatusLabel, scheduleBadgeClass,
+  scheduleStatusLabel } from "../maintenanceCalendar.ts";
 
 type ZevOption = { id: string; code: string; name: string };
 type Unit = { id: string; zevId: string; code: string };
@@ -13,7 +14,7 @@ type Ticket = { id: string; propertyUnitId: string | null; category: string; des
   location: string; priority: string; status: string; rowVersion: string };
 type Order = { id: string; title: string; description: string; status: string; priority: string;
   ticketId: string | null; costAmount: number | null; dueOn: string | null; rowVersion: string };
-type Plan = { id: string; title: string; category: string; frequencyDays: number; firstDueOn: string };
+type Plan = { id: string; title: string; category: string; frequencyDays: number; firstDueOn: string; isActive: boolean };
 type Schedule = { id: string; title: string; category: string; dueOn: string; status: string; workOrderId: string | null };
 
 export default function MaintenancePage({ token, zevs, role, permissions }: {
@@ -45,6 +46,7 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const [planToDelete, setPlanToDelete] = useState<Plan | null>(null);
   const pending = useRef(false);
   const requestId = useRef(0);
   const revision = useChangeRevision(`zev:${zevId}:maintenance`);
@@ -86,6 +88,23 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
       await callApi(`/api/zevs/${zevId}/maintenance/${path}`, { method: "POST", body: JSON.stringify(body) }, token);
       setNotice(message);
     } catch (problem) { setError(errorText(problem)); }
+    finally { pending.current = false; setBusy(false); }
+  }
+
+  async function planAction(plan: Plan, action: "toggle" | "delete") {
+    if (pending.current) return;
+    pending.current = true; setBusy(true); setError(""); setNotice("");
+    try {
+      if (action === "delete") {
+        await callApi(`/api/zevs/${zevId}/maintenance/plans/${plan.id}`, { method: "DELETE" }, token);
+        setNotice(`Plan „${plan.title}“ je obrisan zajedno s neizvršenim terminima.`);
+      } else {
+        await callApi(`/api/zevs/${zevId}/maintenance/plans/${plan.id}/toggle-active`, { method: "PUT" }, token);
+        setNotice(plan.isActive ? `Plan „${plan.title}“ je deaktiviran; budući termini su uklonjeni.`
+          : `Plan „${plan.title}“ je ponovo aktivan; termini za narednih 60 dana su kreirani.`);
+      }
+      setPlanToDelete(null);
+    } catch (problem) { setError(errorText(problem)); setPlanToDelete(null); }
     finally { pending.current = false; setBusy(false); }
   }
 
@@ -209,7 +228,29 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
               && <button type="button" disabled={busy} onClick={() => void completeSchedule(item)}>Završeno</button>}</td></tr>)}
         </tbody></table></div>
         {calendar.length === 0 && <p className="empty-inline">Nema termina u narednih 60 dana.</p>}
-        <p className="empty-inline">Aktivnih planova: {plans.length} · prikazani su dospjeli termini i termini u narednih 60 dana.</p></section></>}
+        <p className="empty-inline">Prikazani su dospjeli termini i termini u narednih 60 dana.</p></section>
+      <section className="panel table-panel"><h2>Periodični planovi</h2>
+        <div className="table-scroll"><table className="plans-table"><thead><tr><th>Plan</th><th>Kategorija</th><th>Učestalost</th>
+          <th>Početak</th><th>Status</th><th>Radnje</th></tr></thead><tbody>
+          {plans.map((plan) => <tr key={plan.id} className={plan.isActive ? "" : "inactive"}><td>{plan.title}</td><td>{plan.category}</td>
+            <td>{planFrequencyText(plan.frequencyDays)}</td><td>{formatDate(plan.firstDueOn)}</td>
+            <td><span className={`badge plan-${plan.isActive ? "active" : "inactive"}`}>{planStatusLabel(plan.isActive)}</span></td>
+            <td className="actions">{role === "manager" && allowed("Maintenance.Edit") && <>
+              <button type="button" disabled={busy} onClick={() => void planAction(plan, "toggle")}>{plan.isActive ? "Deaktiviraj" : "Aktiviraj"}</button>
+              <button type="button" className="danger" disabled={busy} onClick={() => setPlanToDelete(plan)}>Obriši</button></>}</td></tr>)}
+        </tbody></table></div>
+        {plans.length === 0 && <p className="empty-inline">Nema periodičnih planova.</p>}
+        <p className="empty-inline">Aktivnih planova: {plans.filter((plan) => plan.isActive).length} od {plans.length}.
+          Plan s izvršenim radom ne može se obrisati — deaktivirajte ga.</p></section></>}
+    {planToDelete && <div className="modal-backdrop" onClick={(event) => { if (event.target === event.currentTarget) setPlanToDelete(null); }}>
+      <div className="modal panel" role="dialog" aria-modal="true" aria-labelledby="plan-delete-title"
+        onKeyDown={(event) => { if (event.key === "Escape") setPlanToDelete(null); }}>
+        <h2 id="plan-delete-title">Obrisati plan „{planToDelete.title}“?</h2>
+        <p>{planDeleteWarning}</p>
+        <div className="form-actions"><button type="button" className="danger" disabled={busy} autoFocus
+          onClick={() => void planAction(planToDelete, "delete")}>{busy ? "Brisanje…" : "Obriši plan"}</button>
+          <button type="button" className="secondary" onClick={() => setPlanToDelete(null)}>Odustani</button></div>
+      </div></div>}
     </>}
   </>;
 }

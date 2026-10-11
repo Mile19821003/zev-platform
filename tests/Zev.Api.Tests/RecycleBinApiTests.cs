@@ -59,7 +59,7 @@ public sealed class RecycleBinApiTests
         Assert.Equal("B2 · Zgrada B", row.GetProperty("label").GetString());
         Assert.Equal("manager@example.invalid", row.GetProperty("deletedBy").GetString());
         Assert.True(row.GetProperty("id").GetInt64() > 0);
-        Assert.Equal(5, bin.GetProperty("types").GetArrayLength());
+        Assert.Equal(6, bin.GetProperty("types").GetArrayLength());
 
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         Assert.Equal(1, (await ReadAsync(await admin.GetAsync($"/api/admin/recycle-bin?module=Registar&entityType=Building&from={today:yyyy-MM-dd}&to={today:yyyy-MM-dd}"),

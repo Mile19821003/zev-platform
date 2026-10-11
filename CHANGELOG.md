@@ -2,6 +2,36 @@
 
 Sve značajne izmjene ZEV Platforme. Ranija historija (faze do 4) je u `CLOUD_HANDOFF_STATUS.md` i git logu.
 
+## [v2.18] - 2026-10-11
+
+### Dodano (Added)
+- **Životni ciklus planova održavanja**:
+  - `MaintenancePlan` je soft-deletable (`IsDeleted`, `DeletedAt`, `DeletedByUserId`; `IsActive` je već postojao)
+    i skriven globalnim filterom.
+  - `DELETE /api/zevs/{zevId}/maintenance/plans/{id}` (pravo `Maintenance.Edit`): ako plan ima izvršen rad —
+    termin u toku ili završen, odnosno termin povezan s radnim nalogom (nalog nosi troškove) — odgovor je 409
+    „Plan ima izvršene radne naloge ili troškove. Deaktivirajte ga umjesto brisanja.“ Inače se brišu njegovi
+    neizvršeni termini i plan ide u „Obrisani redovi“ (audit `RecordDeleted`), u jednoj transakciji.
+  - `PUT /api/zevs/{zevId}/maintenance/plans/{id}/toggle-active`: deaktivacija plana s istorijom — budući
+    neizvršeni termini se brišu, dospjeli neizvršeni otkazuju, generisanje staje; ponovna aktivacija kreira
+    termine za narednih 60 dana. Rad u toku i završeni termini ostaju.
+  - „Obrisani redovi“: modul „Održavanje“, forma „Planovi održavanja“; „Vrati“ reaktivira plan i kreira termine
+    za narednih 60 dana (audit `RecordRestored`).
+- Web (Održavanje): tabela „Periodični planovi“ (plan, kategorija, učestalost, početak, status Aktivan /
+  Deaktiviran), dugmad „Deaktiviraj“ / „Aktiviraj“ i „Obriši“ s dijalogom potvrde.
+- Testovi: `MaintenancePlanLifecycleApiTests` (2: brisanje i vraćanje s regeneracijom termina; 409 za plan s
+  radnim nalogom, deaktivacija i ponovna aktivacija), web testovi planova.
+- Tekuća verzija `v2.18` (upisuje se u istoriju verzija pri pokretanju).
+
+### Baza / Migracije
+- `20261011110346_AddMaintenancePlanSoftDelete`: kolone `IsDeleted`, `DeletedAt`, `DeletedByUserId` u
+  `MaintenancePlans`.
+
+### Otvorene odluke (Open Decisions)
+- Rute planova ostaju u opsegu ZEV-a (`/api/zevs/{zevId}/maintenance/plans/...`) kao i ostale rute održavanja,
+  radi provjere prava po ZEV-u (zahtjev je naveo `/api/maintenance/plans/{id}`). **Potvrđeno**: prati
+  autorizacijski model i izolaciju zakupaca.
+
 ## [v2.17] - 2026-10-11
 
 ### Dodano (Added)

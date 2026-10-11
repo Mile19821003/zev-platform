@@ -45,7 +45,7 @@ test("types offered by the screen equal the backend catalog", () => {
   const backend = source("../../src/Zev.Api/RecycleBin/SoftDeleteAdminService.cs");
   const catalog = [...backend.matchAll(/new\("(\w+)", "([^"]+)", "([^"]+)", typeof/g)].map((match) => match.slice(1, 4).join("|"));
   assert.deepEqual(catalog, ["Building|Registar|Zgrade", "Entrance|Registar|Ulazi", "PropertyUnit|Registar|Posebni dijelovi",
-    "Person|Registar|Vlasnici / korisnici", "Supplier|Finansije|Dobavljači"]);
+    "Person|Registar|Vlasnici / korisnici", "Supplier|Finansije|Dobavljači", "MaintenancePlan|Održavanje|Planovi održavanja"]);
 });
 
 test("Obrisani redovi is an administration module and delete actions are wired", () => {

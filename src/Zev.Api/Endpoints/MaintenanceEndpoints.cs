@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Zev.Api.Data;
 using Zev.Api.Domain;
 using Zev.Api.Maintenance;
+using Zev.Api.RecycleBin;
 using Zev.Api.Security;
 
 namespace Zev.Api.Endpoints;
@@ -258,6 +259,41 @@ public static class MaintenanceEndpoints
             await scheduleService.EnsureUntilAsync(zevId, plan.Id, MaintenanceScheduleService.Today()
                 .AddDays(MaintenanceScheduleService.HorizonDays), cancellationToken);
             return Results.Created($"/api/zevs/{zevId}/maintenance/plans/{plan.Id}", new { plan.Id });
+        });
+
+        // Delete only a plan nobody has worked on; its open occurrences go with it. A plan with history is stopped instead.
+        group.MapDelete("/plans/{planId:guid}", async (Guid zevId, Guid planId, TenantAccess access, ZevDbContext database,
+            MaintenanceScheduleService scheduleService, SoftDeleteAdminService recycleBin, CancellationToken cancellationToken) =>
+        {
+            if (await access.RequirePermissionAsync(zevId, "Maintenance.Edit", cancellationToken) is { } denied) return denied;
+            var plan = await database.MaintenancePlans.SingleOrDefaultAsync(item => item.Id == planId && item.ZevId == zevId,
+                cancellationToken);
+            if (plan is null) return Results.NotFound();
+            if (await scheduleService.HasRealizedWorkAsync(planId, cancellationToken))
+                return Results.Conflict(new { error = MaintenanceScheduleService.RealizedWorkMessage });
+            await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
+            await scheduleService.ClearOpenOccurrencesAsync(planId, cancelOverdue: false, cancellationToken);
+            await database.SaveChangesAsync(cancellationToken);
+            var result = await recycleBin.DeleteAsync(plan, access.CurrentUserId, cancellationToken);
+            if (result.Outcome == SoftDeleteOutcome.Done) await transaction.CommitAsync(cancellationToken);
+            return result.ToHttp();
+        });
+
+        // Stop a plan (keeps its history; open occurrences are removed, overdue ones cancelled) or start it again.
+        group.MapPut("/plans/{planId:guid}/toggle-active", async (Guid zevId, Guid planId, TenantAccess access,
+            ZevDbContext database, MaintenanceScheduleService scheduleService, CancellationToken cancellationToken) =>
+        {
+            if (await access.RequirePermissionAsync(zevId, "Maintenance.Edit", cancellationToken) is { } denied) return denied;
+            var plan = await database.MaintenancePlans.SingleOrDefaultAsync(item => item.Id == planId && item.ZevId == zevId,
+                cancellationToken);
+            if (plan is null) return Results.NotFound();
+            plan.IsActive = !plan.IsActive;
+            if (!plan.IsActive) await scheduleService.ClearOpenOccurrencesAsync(planId, cancelOverdue: true, cancellationToken);
+            await database.SaveChangesAsync(cancellationToken);
+            if (plan.IsActive)
+                await scheduleService.EnsureUntilAsync(zevId, planId, MaintenanceScheduleService.Today()
+                    .AddDays(MaintenanceScheduleService.HorizonDays), cancellationToken);
+            return Results.Ok(new { plan.Id, plan.IsActive });
         });
 
         group.MapPost("/plans/{planId:guid}/generate", async (Guid zevId, Guid planId,

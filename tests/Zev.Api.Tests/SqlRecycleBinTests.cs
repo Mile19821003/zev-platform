@@ -30,7 +30,7 @@ public sealed class SqlRecycleBinTests
             var entrance = new Entrance { OrganizationId = organization.Id, ZevId = zev.Id, BuildingId = building.Id, Code = "E1", Name = "Ulaz" };
             database.AddRange(organization, zev, building, entrance);
             await database.SaveChangesAsync();
-            var service = new SoftDeleteAdminService(database);
+            var service = new SoftDeleteAdminService(database, new Zev.Api.Maintenance.MaintenanceScheduleService(database));
 
             Assert.Equal(SoftDeleteOutcome.InUse, (await service.DeleteAsync(building, null, CancellationToken.None)).Outcome);
             Assert.Equal(SoftDeleteOutcome.Done, (await service.DeleteAsync(entrance, null, CancellationToken.None)).Outcome);

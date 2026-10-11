@@ -873,6 +873,7 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
                 .HasPrincipalKey(zev => new { zev.OrganizationId, zev.Id }).OnDelete(DeleteBehavior.Restrict);
             entity.HasAlternateKey(plan => new { plan.OrganizationId, plan.ZevId, plan.Id });
             entity.HasIndex(plan => new { plan.ZevId, plan.IsActive, plan.FirstDueOn });
+            entity.HasQueryFilter(plan => !plan.IsDeleted);
         });
 
         modelBuilder.Entity<ScheduledMaintenance>(entity =>

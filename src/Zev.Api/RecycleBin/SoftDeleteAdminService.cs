@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Zev.Api.Data;
 using Zev.Api.Domain;
+using Zev.Api.Maintenance;
 
 namespace Zev.Api.RecycleBin;
 
@@ -26,7 +27,7 @@ public sealed record SoftDeleteType(string EntityType, string Module, string For
 public sealed record DeletedRecordView(long? Id, string EntityType, string Module, string Form, Guid RecordId,
     string Label, DateTimeOffset? DeletedAt, Guid? DeletedByUserId, string? DeletedBy);
 
-public sealed class SoftDeleteAdminService(ZevDbContext database)
+public sealed class SoftDeleteAdminService(ZevDbContext database, MaintenanceScheduleService schedules)
 {
     public static readonly IReadOnlyList<SoftDeleteType> Types =
     [
@@ -35,6 +36,7 @@ public sealed class SoftDeleteAdminService(ZevDbContext database)
         new("PropertyUnit", "Registar", "Posebni dijelovi", typeof(PropertyUnit)),
         new("Person", "Registar", "Vlasnici / korisnici", typeof(Person)),
         new("Supplier", "Finansije", "Dobavljači", typeof(Supplier)),
+        new("MaintenancePlan", "Održavanje", "Planovi održavanja", typeof(MaintenancePlan)),
     ];
 
     // Readable names of the data that blocks a delete; other types fall back to the class name.
@@ -46,6 +48,7 @@ public sealed class SoftDeleteAdminService(ZevDbContext database)
         ["Expense"] = "rashodi", ["MaintenanceTicket"] = "prijave kvarova", ["WorkOrder"] = "radni nalozi",
         ["Reminder"] = "opomene", ["LegalCase"] = "pravni predmeti", ["Announcement"] = "obavještenja",
         ["FinancialDocument"] = "finansijski dokumenti", ["PaymentAccount"] = "računi za plaćanje",
+        ["ScheduledMaintenance"] = "termini održavanja",
     };
 
     // Delete only what nothing live points to; data still in use must be deactivated instead.
@@ -78,6 +81,7 @@ public sealed class SoftDeleteAdminService(ZevDbContext database)
             "PropertyUnit" => await Deleted(database.PropertyUnits, recordId, cancellationToken),
             "Person" => await Deleted(database.People, recordId, cancellationToken),
             "Supplier" => await Deleted(database.Suppliers, recordId, cancellationToken),
+            "MaintenancePlan" => await Deleted(database.MaintenancePlans, recordId, cancellationToken),
             _ => null
         };
         if (entity is null) return new(SoftDeleteOutcome.NotFound);
@@ -85,9 +89,14 @@ public sealed class SoftDeleteAdminService(ZevDbContext database)
         entity.IsDeleted = false;
         entity.DeletedAt = null;
         entity.DeletedByUserId = null;
+        // A restored maintenance plan runs again: active, with its occurrences for the coming HorizonDays.
+        if (entity is MaintenancePlan plan) plan.IsActive = true;
         try { await database.SaveChangesAsync(cancellationToken); }
         catch (DbUpdateConcurrencyException) { return new(SoftDeleteOutcome.Conflict, "Zapis je u međuvremenu izmijenjen."); }
         catch (DbUpdateException) { return new(SoftDeleteOutcome.Conflict, "Postoji aktivan zapis s istim podacima."); }
+        if (entity is MaintenancePlan restored)
+            await schedules.EnsureUntilAsync(restored.ZevId, restored.Id,
+                MaintenanceScheduleService.Today().AddDays(MaintenanceScheduleService.HorizonDays), cancellationToken);
         return new(SoftDeleteOutcome.Done);
     }
 
@@ -144,6 +153,7 @@ public sealed class SoftDeleteAdminService(ZevDbContext database)
         await Load("PropertyUnit", database.PropertyUnits, item => new DeletedRow(item.Id, item.Code, item.DeletedAt, item.DeletedByUserId));
         await Load("Person", database.People, item => new DeletedRow(item.Id, item.DisplayName, item.DeletedAt, item.DeletedByUserId));
         await Load("Supplier", database.Suppliers, item => new DeletedRow(item.Id, item.Name, item.DeletedAt, item.DeletedByUserId));
+        await Load("MaintenancePlan", database.MaintenancePlans, item => new DeletedRow(item.Id, item.Title, item.DeletedAt, item.DeletedByUserId));
 
         var userIds = rows.Select(item => item.Row.DeletedByUserId).OfType<Guid>().Distinct().ToList();
         var emails = await database.Users.AsNoTracking().Where(item => userIds.Contains(item.Id))

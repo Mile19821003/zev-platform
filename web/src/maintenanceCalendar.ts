@@ -16,3 +16,16 @@ export function scheduleBadgeClass(status: string): string {
 export function canCompleteSchedule(status: string): boolean {
   return status === "Due" || status === "InProgress";
 }
+
+// Periodic plans: status and interval as shown in the plans table.
+export function planStatusLabel(isActive: boolean): string {
+  return isActive ? "Aktivan" : "Deaktiviran";
+}
+
+export function planFrequencyText(days: number): string {
+  if (days === 1) return "svaki dan";
+  if (days === 7) return "svake sedmice";
+  return `svakih ${days} dana`;
+}
+
+export const planDeleteWarning = "Plan i njegovi neizvršeni termini biće obrisani. Sistemski administrator ga može vratiti iz „Obrisani redovi“.";

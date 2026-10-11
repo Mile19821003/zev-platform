@@ -77,7 +77,7 @@ public sealed class MaintenanceStatusEvent : ITenantRecord
     Guid? ITenantRecord.ZevId => ZevId;
 }
 
-public sealed class MaintenancePlan : ITenantRecord
+public sealed class MaintenancePlan : ITenantRecord, ISoftDeletable
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid OrganizationId { get; set; }
@@ -87,6 +87,9 @@ public sealed class MaintenancePlan : ITenantRecord
     public int FrequencyDays { get; set; }
     public DateOnly FirstDueOn { get; set; }
     public bool IsActive { get; set; } = true;
+    public bool IsDeleted { get; set; }
+    public DateTimeOffset? DeletedAt { get; set; }
+    public Guid? DeletedByUserId { get; set; }
     Guid? ITenantRecord.OrganizationId => OrganizationId;
     Guid? ITenantRecord.ZevId => ZevId;
 }
