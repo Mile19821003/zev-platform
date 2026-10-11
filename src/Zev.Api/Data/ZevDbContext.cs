@@ -787,6 +787,7 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
             entity.Property(ticket => ticket.Category).HasMaxLength(100).IsRequired();
             entity.Property(ticket => ticket.Description).HasMaxLength(4000).IsRequired();
             entity.Property(ticket => ticket.Location).HasMaxLength(250).IsRequired();
+            entity.HasIndex(ticket => new { ticket.ZevId, ticket.IsReadByAdmin });
             entity.Property(ticket => ticket.Priority).HasConversion<string>().HasMaxLength(20);
             entity.Property(ticket => ticket.Status).HasConversion<string>().HasMaxLength(20);
             entity.Property(ticket => ticket.RowVersion).IsRowVersion();
@@ -1160,6 +1161,7 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
             entity.Property(item => item.DecimalSeparator).HasMaxLength(1).IsRequired();
             entity.Property(item => item.DateFormat).HasMaxLength(20).IsRequired();
             entity.Property(item => item.FontSize).HasMaxLength(10).IsRequired();
+            entity.Property(item => item.DefaultAdminEmail).HasMaxLength(320);
             entity.HasOne<AppUser>().WithMany().HasForeignKey(item => item.UpdatedByUserId).OnDelete(DeleteBehavior.Restrict);
             entity.HasData(new SystemSettings());
         });

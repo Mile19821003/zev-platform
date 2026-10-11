@@ -21,6 +21,7 @@ import VersionHistoryPage from "./VersionHistoryPage";
 import DeletedRecordsPage from "./DeletedRecordsPage";
 import ThemeSettingsPage from "./ThemeSettingsPage";
 import ZevCardGrid from "./ZevCards";
+import NotificationBell from "./NotificationBell";
 import { useChangeRevision } from "../useChangeRevision.ts";
 import WorkspaceNav, { useSidebarState } from "./WorkspaceNav";
 import ModuleDashboard from "./ModuleDashboard";
@@ -207,6 +208,7 @@ export default function Workspace({ token, profile, zevs, onLogout, onProfile }:
         <label>Trenutni ZEV: <select aria-label="Trenutni ZEV" value={activeZev?.id ?? ""}
           onChange={(event) => selectZev(event.target.value)}>
           {zevs.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+        {activeZev && <NotificationBell token={token} zevId={activeZev.id} onOpen={() => setActive("maintenance")} />}
         <span className="user-email">{profile.email}</span><button type="button" className="text-button" onClick={onProfile}>Moj profil</button><button type="button" className="text-button" onClick={onLogout}>Odjavi se</button>
       </div></header>
       <main className="dashboard admin-main">

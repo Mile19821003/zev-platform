@@ -27,13 +27,39 @@ public static class MaintenanceEndpoints
             var items = await query.OrderByDescending(item => item.CreatedUtc).Skip((currentPage - 1) * currentSize)
                 .Take(currentSize).Select(item => new { item.Id, item.PropertyUnitId, item.Category,
                     item.Description, item.Location, priority = item.Priority.ToString(),
-                    status = item.Status.ToString(), item.CreatedUtc, item.ReportedByUserId,
+                    status = item.Status.ToString(), item.CreatedUtc, item.ReportedByUserId, item.IsReadByAdmin,
                     rowVersion = Convert.ToBase64String(item.RowVersion) }).ToListAsync(cancellationToken);
             return Results.Ok(new { page = currentPage, pageSize = currentSize, totalCount, items });
         });
 
+        // New reports for the bell: whoever handles maintenance in this ZEV (edit or approve rights).
+        group.MapGet("/tickets/unread-count", async (Guid zevId, TenantAccess access, ZevDbContext database,
+            CancellationToken cancellationToken) =>
+        {
+            if (!await CanHandleTicketsAsync(access, zevId, cancellationToken)) return await access.DeniedAsync(zevId, cancellationToken);
+            return Results.Ok(new { unread = await database.MaintenanceTickets.CountAsync(item => item.ZevId == zevId
+                && !item.IsReadByAdmin, cancellationToken) });
+        });
+
+        group.MapPost("/tickets/{ticketId:guid}/mark-as-read", async (Guid zevId, Guid ticketId, TenantAccess access,
+            ZevDbContext database, CancellationToken cancellationToken) =>
+        {
+            if (!await CanHandleTicketsAsync(access, zevId, cancellationToken)) return await access.DeniedAsync(zevId, cancellationToken);
+            var ticket = await database.MaintenanceTickets.SingleOrDefaultAsync(item => item.Id == ticketId && item.ZevId == zevId,
+                cancellationToken);
+            if (ticket is null) return Results.NotFound();
+            if (!ticket.IsReadByAdmin)
+            {
+                ticket.IsReadByAdmin = true;
+                ticket.ReadByAdminAt = DateTimeOffset.UtcNow;
+                ticket.ReadByAdminUserId = access.CurrentUserId;
+                await database.SaveChangesAsync(cancellationToken);
+            }
+            return Results.Ok(new { ticket.Id, ticket.IsReadByAdmin, ticket.ReadByAdminAt });
+        });
+
         group.MapPost("/tickets", async (Guid zevId, CreateMaintenanceTicketRequest request,
-            TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
+            TenantAccess access, ZevDbContext database, TicketNotifications notifications, CancellationToken cancellationToken) =>
         {
             if (access.CurrentUserId is not Guid userId) return Results.NotFound();
             if (await access.RequirePermissionAsync(zevId, "Maintenance.Create", cancellationToken, staffOnly: false)
@@ -68,6 +94,7 @@ public static class MaintenanceEndpoints
                 OrganizationId = organizationId, ZevId = zevId, TicketId = ticket.Id, StoredFileId = fileId
             }));
             await database.SaveChangesAsync(cancellationToken);
+            await notifications.NotifyNewTicketAsync(ticket, cancellationToken);
             return Results.Created($"/api/zevs/{zevId}/maintenance/tickets/{ticket.Id}", new { ticket.Id });
         });
 
@@ -230,6 +257,10 @@ public static class MaintenanceEndpoints
 
         return api;
     }
+
+    private static async Task<bool> CanHandleTicketsAsync(TenantAccess access, Guid zevId, CancellationToken cancellationToken) =>
+        await access.HasPermissionAsync(zevId, "Maintenance.Edit", cancellationToken)
+        || await access.HasPermissionAsync(zevId, "Maintenance.Approve", cancellationToken);
 
     private static void MapPlans(RouteGroupBuilder group)
     {

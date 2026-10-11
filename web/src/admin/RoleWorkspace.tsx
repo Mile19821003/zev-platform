@@ -12,6 +12,8 @@ import ReportsPage from "./ReportsPage";
 import OwnerFinancePage from "./OwnerFinancePage";
 import ManagerRegistryPage from "./ManagerRegistryPage";
 import ZevCardGrid from "./ZevCards";
+import NotificationBell from "./NotificationBell";
+import { handlesTickets } from "../maintenanceTickets.ts";
 import { hasStaffPermission } from "../permissionUi.ts";
 import ZevPermissionPage from "./ZevPermissionPage";
 import WorkspaceNav, { useSidebarState } from "./WorkspaceNav";
@@ -112,6 +114,8 @@ export default function RoleWorkspace({ token, profile, zevs, onLogout, onProfil
     <div><label>Trenutni ZEV: <select aria-label="Trenutni ZEV" value={activeZev?.id ?? ""}
       onChange={(event) => selectZev(event.target.value)}>{zevs.map((item) =>
         <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+      {activeZev && handlesTickets(activeZev.permissions) && <NotificationBell token={token} zevId={activeZev.id}
+        onOpen={() => setActive(navigation.some((item) => item.key === "maintenance") ? "maintenance" : "representative-maintenance")} />}
       <span className="user-email">{profile.email}</span><button className="text-button" onClick={onProfile}>Moj profil</button><button className="text-button" onClick={onLogout}>Odjavi se</button></div>
   </header><main className="dashboard admin-main">
     {contextError && <p className="error" role="alert">{contextError}</p>}

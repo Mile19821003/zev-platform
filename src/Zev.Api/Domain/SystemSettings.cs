@@ -15,6 +15,8 @@ public sealed class SystemSettings
     public string DecimalSeparator { get; set; } = ",";
     public string DateFormat { get; set; } = "DD.MM.YYYY";
     public string FontSize { get; set; } = "13px";
+    // Receives e-mail notifications such as new fault reports; none are sent while it is empty.
+    public string? DefaultAdminEmail { get; set; }
     public DateTimeOffset UpdatedAt { get; set; } = SeededUtc;
     public Guid? UpdatedByUserId { get; set; }
 }

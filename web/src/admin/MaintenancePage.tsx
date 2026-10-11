@@ -5,12 +5,13 @@ import { label, maintenanceStatusLabels } from "../uiLabels.ts";
 import { useChangeRevision } from "../useChangeRevision.ts";
 import LookupSelect, { LookupLabel } from "./LookupSelect";
 import { formatDate, formatNumber } from "../displaySettings.ts";
+import { canSubmitTicket, handlesTickets, TicketPlace, ticketPlaces, ticketUnitId } from "../maintenanceTickets.ts";
 import { canCompleteSchedule, planDeleteWarning, planFrequencyText, planStatusLabel, scheduleBadgeClass,
   scheduleStatusLabel } from "../maintenanceCalendar.ts";
 
 type ZevOption = { id: string; code: string; name: string };
 type Unit = { id: string; zevId: string; code: string };
-type Ticket = { id: string; propertyUnitId: string | null; category: string; description: string;
+type Ticket = { id: string; propertyUnitId: string | null; category: string; description: string; isReadByAdmin: boolean;
   location: string; priority: string; status: string; rowVersion: string };
 type Order = { id: string; title: string; description: string; status: string; priority: string;
   ticketId: string | null; costAmount: number | null; dueOn: string | null; rowVersion: string };
@@ -24,6 +25,7 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
   const [zevId, setZevId] = useState(zevs[0]?.id ?? "");
   const [units, setUnits] = useState<Unit[]>([]);
   const [unitId, setUnitId] = useState("");
+  const [place, setPlace] = useState<TicketPlace>("unit");
   const [tickets, setTickets] = useState<Page<Ticket>>({ page: 1, pageSize: 20, totalCount: 0, items: [] });
   const [orders, setOrders] = useState<Page<Order>>({ page: 1, pageSize: 20, totalCount: 0, items: [] });
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -119,6 +121,14 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
     finally { pending.current = false; setBusy(false); }
   }
 
+  async function markRead(item: Ticket) {
+    if (pending.current) return;
+    pending.current = true; setBusy(true); setError("");
+    try { await callApi(`/api/zevs/${zevId}/maintenance/tickets/${item.id}/mark-as-read`, { method: "POST" }, token); }
+    catch (problem) { setError(errorText(problem)); }
+    finally { pending.current = false; setBusy(false); }
+  }
+
   async function createTicket(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (pending.current) return; pending.current = true; setBusy(true); setError(""); setNotice("");
     try {
@@ -138,7 +148,7 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
         fileIds.push(uploaded.id);
       }
       await callApi(`/api/zevs/${zevId}/maintenance/tickets`, { method: "POST", body: JSON.stringify({
-        propertyUnitId: unitId || null, category, description, location, priority, fileIds,
+        propertyUnitId: role === "owner" ? ticketUnitId(place, unitId) : unitId || null, category, description, location, priority, fileIds,
       }) }, token);
       setNotice("Kvar je prijavljen."); setDescription(""); setPhoto(null);
     } catch (problem) { setError(errorText(problem)); }
@@ -175,16 +185,22 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
     {error && <p className="error" role="alert">{error}</p>}{notice && <p className="notice" role="status">{notice}</p>}
     {zevId && <><div className="finance-grid">{allowed("Maintenance.Create") && <section className="panel"><h2>Prijava kvara</h2>
       <form className="admin-form" onSubmit={createTicket}>
-        {role === "owner" && <label>Nekretnina<select required value={unitId} onChange={(event) => setUnitId(event.target.value)}>
+        {role === "owner" && <fieldset className="ticket-place"><legend>Gdje je kvar?</legend>
+          {ticketPlaces.map((option) => <label key={option.value} className="radio"><input type="radio" name="ticket-place"
+            value={option.value} checked={place === option.value} onChange={() => setPlace(option.value)} /> {option.label}</label>)}
+        </fieldset>}
+        {role === "owner" && place === "unit" && <label>Moj stan<select required value={unitId} onChange={(event) => setUnitId(event.target.value)}>
           <option value="">Odaberite</option>{units.map((unit) => <option key={unit.id} value={unit.id}>{unit.code}</option>)}</select></label>}
         <label>Kategorija<LookupSelect typeCode="MAINTENANCE_CATEGORY" token={token} valueBy="name" required
           value={category} onChange={setCategory} /></label>
         <label>Opis<textarea required maxLength={4000} value={description} onChange={(event) => setDescription(event.target.value)} /></label>
-        <label>Lokacija<input required maxLength={250} value={location} onChange={(event) => setLocation(event.target.value)} /></label>
+        <label>{role === "owner" ? (place === "unit" ? "Prostorija (npr. kupatilo)" : "Mjesto (npr. ulaz A, lift, krov)") : "Lokacija"}
+          <input required maxLength={250} value={location} onChange={(event) => setLocation(event.target.value)} /></label>
         <label>Prioritet<LookupSelect typeCode="MAINTENANCE_PRIORITY" token={token} required preselectDefault
           value={priority} onChange={setPriority} /></label>
         <label>Fotografija<input type="file" accept="image/png,image/jpeg" onChange={(event) => setPhoto(event.target.files?.[0] ?? null)} /></label>
-        <button disabled={busy || (role === "owner" && !unitId)}>Pošalji prijavu</button>
+        <button disabled={busy || (role === "owner" && !canSubmitTicket(place, unitId))}>Pošalji prijavu</button>
+        {role === "owner" && <small>Prijava odmah stiže upravi zgrade (i e-mailom, ako je adresa podešena).</small>}
       </form></section>}
       {role === "manager" && <>{allowed("Maintenance.Assign") && <section className="panel"><h2>Novi radni nalog</h2>
         <form className="admin-form" onSubmit={createOrder}>
@@ -206,8 +222,11 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
     </div>
     <section className="panel table-panel"><h2>Prijave kvarova</h2><div className="table-scroll"><table><thead><tr>
       <th>Kategorija</th><th>Lokacija</th><th>Opis</th><th>Prioritet</th><th>Status</th><th>Radnja</th>
-    </tr></thead><tbody>{tickets.items.map((item) => <tr key={item.id}><td>{item.category}</td><td>{item.location}</td>
+    </tr></thead><tbody>{tickets.items.map((item) => <tr key={item.id} className={!item.isReadByAdmin && role !== "owner" ? "unread" : ""}>
+      <td>{!item.isReadByAdmin && role !== "owner" && handlesTickets(permissions, !permissions) && <span className="badge ticket-new">Novo</span>} {item.category}</td><td>{item.location}</td>
       <td>{item.description}</td><td><LookupLabel typeCode="MAINTENANCE_PRIORITY" token={token} value={item.priority} /></td><td>{label(maintenanceStatusLabels, item.status)}</td><td className="actions">
+        {role !== "owner" && !item.isReadByAdmin && handlesTickets(permissions, !permissions)
+          && <button type="button" disabled={busy} onClick={() => void markRead(item)}>Označi pročitano</button>}
         {role !== "owner" && (allowed("Maintenance.Edit") || allowed("Maintenance.Approve")) && item.status === "Open" && <button onClick={() => changeStatus("tickets", item, "InProgress")}>Započni</button>}
         {role !== "owner" && (allowed("Maintenance.Edit") || allowed("Maintenance.Approve")) && item.status === "InProgress" && <button onClick={() => changeStatus("tickets", item, "Completed")}>Završi</button>}
         {item.status === "Completed" && (role === "owner" || allowed("Maintenance.Approve")) && <button onClick={() => changeStatus("tickets", item, "Verified")}>Potvrdi</button>}

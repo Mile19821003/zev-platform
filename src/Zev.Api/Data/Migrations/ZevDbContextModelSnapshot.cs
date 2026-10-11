@@ -2268,6 +2268,9 @@ namespace Zev.Api.Data.Migrations
                         .HasMaxLength(4000)
                         .HasColumnType("nvarchar(4000)");
 
+                    b.Property<bool>("IsReadByAdmin")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Location")
                         .IsRequired()
                         .HasMaxLength(250)
@@ -2282,6 +2285,12 @@ namespace Zev.Api.Data.Migrations
                         .HasColumnType("nvarchar(20)");
 
                     b.Property<Guid?>("PropertyUnitId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("ReadByAdminAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("ReadByAdminUserId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("ReportedByUserId")
@@ -2304,6 +2313,8 @@ namespace Zev.Api.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ReportedByUserId");
+
+                    b.HasIndex("ZevId", "IsReadByAdmin");
 
                     b.HasIndex("OrganizationId", "ZevId", "PropertyUnitId");
 
@@ -3806,6 +3817,10 @@ namespace Zev.Api.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(1)
                         .HasColumnType("nvarchar(1)");
+
+                    b.Property<string>("DefaultAdminEmail")
+                        .HasMaxLength(320)
+                        .HasColumnType("nvarchar(320)");
 
                     b.Property<string>("FontSize")
                         .IsRequired()

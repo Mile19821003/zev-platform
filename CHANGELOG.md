@@ -2,6 +2,36 @@
 
 Sve značajne izmjene ZEV Platforme. Ranija historija (faze do 4) je u `CLOUD_HANDOFF_STATUS.md` i git logu.
 
+## [v2.20] - 2026-10-11 (u izradi — faza A od 3)
+
+### Dodano (Added)
+- **Prijava kvara od stanara** (faza A modula održavanja):
+  - Stanar (verifikovani vlasnik ili korisnik stana u ZEV-u) prijavljuje kvar za **svoj stan** ili za
+    **zajedničke prostore** (ranije su zajedničke dijelove mogli prijaviti samo upravnik i predstavnik);
+    forma „Gdje je kvar?“ (Moj stan / Zajednički prostori), opis mjesta, fotografija (postojeći prilozi
+    prijave). Ovim se mijenja ranije UAT pravilo po kojem vlasnik nije mogao prijaviti zajedničke dijelove.
+  - **E-mail obavijest** o novoj prijavi na adresu iz `SystemSettings.DefaultAdminEmail` (Sistemska
+    podešavanja → „E-mail za obavještenja“): ZEV, kategorija, prioritet, stan ili zajednički prostor, opis,
+    prijavilac. Slanje ide preko pozadinskog reda (`EmailQueue` + `EmailDispatcher`), pa spor ili nedostupan
+    server ne usporava i ne ruši API. Bez SMTP-a (`Smtp:Host`) poruka se samo upisuje u log; bez adrese se ne šalje.
+  - **Novo → pročitano**: `IsReadByAdmin`, `ReadByAdminAt`, `ReadByAdminUserId` na prijavi;
+    `GET .../maintenance/tickets/unread-count` i `POST .../tickets/{id}/mark-as-read` (pravo `Maintenance.Edit`
+    ili `Maintenance.Approve`; ostali 403, tuđi ZEV 404).
+  - Web: zvonce 🔔 u zaglavlju (broj novih prijava aktivnog ZEV-a, „9+“, osvježava se pri izmjeni i svake
+    minute; klik otvara Održavanje), oznaka „Novo“ i dugme „Označi pročitano“ u listi prijava.
+- Testovi: `TicketNotificationApiTests` (4), `web/tests/maintenanceTickets.test.mjs` (4).
+- Tekuća verzija `v2.20`.
+
+### Baza / Migracije
+- `20261011123454_AddMaintenanceTicketNotifications`: `SystemSettings.DefaultAdminEmail`;
+  `MaintenanceTickets.IsReadByAdmin` (postojeće prijave = pročitane, da zvonce ne počne sa starim kvarovima),
+  `ReadByAdminAt`, `ReadByAdminUserId`, indeks (ZevId, IsReadByAdmin).
+
+### Otvorene odluke (Open Decisions)
+- Fotografija prijave ostaje u postojećim prilozima prijave (`MaintenanceTicketFile` → `StoredFile`, više slika)
+  umjesto jednog polja `AttachmentImageUrl`.
+- SMTP pristupni podaci se podešavaju u konfiguraciji servera (`Smtp:*`), ne u aplikaciji.
+
 ## [v2.19] - 2026-10-11
 
 ### Dodano (Added)

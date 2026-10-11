@@ -17,6 +17,10 @@ public sealed class MaintenanceTicket : ITenantRecord
     public MaintenancePriority Priority { get; set; } = MaintenancePriority.Normal;
     public MaintenanceStatus Status { get; set; } = MaintenanceStatus.Open;
     public DateTimeOffset CreatedUtc { get; set; } = DateTimeOffset.UtcNow;
+    // "Novo" until someone who handles maintenance opens it (bell in the header, badge in the list).
+    public bool IsReadByAdmin { get; set; }
+    public DateTimeOffset? ReadByAdminAt { get; set; }
+    public Guid? ReadByAdminUserId { get; set; }
     public byte[] RowVersion { get; set; } = [];
     Guid? ITenantRecord.OrganizationId => OrganizationId;
     Guid? ITenantRecord.ZevId => ZevId;

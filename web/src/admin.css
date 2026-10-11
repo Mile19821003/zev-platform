@@ -155,3 +155,12 @@ button.danger{background:var(--zev-surface);color:#a22b2b;border:1px solid #e3b4
 .badge.plan-active{background:var(--zev-accent-soft,#e7f5ee);color:var(--zev-primary)}
 .badge.plan-inactive{background:var(--zev-surface-alt,#eef1f3);color:var(--zev-muted,#687986)}
 .plans-table tr.inactive td:first-child{color:var(--zev-muted,#687986)}
+
+.notification-bell{position:relative;border:1px solid var(--zev-input-border,#cdd8dc);background:var(--zev-surface);border-radius:999px;width:38px;height:38px;display:grid;place-items:center;font-size:1.05rem;cursor:pointer}
+.notification-bell.has-unread{border-color:var(--zev-primary)}
+.bell-badge{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 4px;border-radius:999px;background:#a22b2b;color:white;font-size:.68rem;font-weight:800;display:grid;place-items:center}
+.badge.ticket-new{background:#a22b2b;color:white}
+tr.unread td{font-weight:700}
+.ticket-place{border:0;padding:0;margin:0;display:flex;flex-wrap:wrap;gap:16px}.ticket-place legend{font-weight:700;font-size:.85rem;margin-bottom:6px}
+.ticket-place .radio{display:flex;align-items:center;gap:6px;font-weight:600}
+.admin-form .ticket-place input[type=radio]{width:auto;min-height:0;height:auto;margin:0;padding:0;flex:none}.admin-form .ticket-place .radio{flex-direction:row;font-size:.9rem}

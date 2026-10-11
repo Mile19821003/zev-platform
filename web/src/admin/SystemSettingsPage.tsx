@@ -5,7 +5,7 @@ import { useChangeRevision } from "../useChangeRevision.ts";
 import { activeThemeLabel, normalizeTheme, Theme } from "../theme.ts";
 import { SectionTitle } from "./shared";
 
-type SettingsResponse = DisplaySettings & { updatedAt: string; updatedByUserId: string | null;
+type SettingsResponse = DisplaySettings & { updatedAt: string; updatedByUserId: string | null; defaultAdminEmail: string | null;
   options: { decimalSeparators: string[]; dateFormats: string[]; fontSizes: string[] } };
 
 
@@ -16,6 +16,7 @@ export default function SystemSettingsPage({ token, onOpenThemes }: { token: str
   const [loaded, setLoaded] = useState<SettingsResponse | null>(null);
   const [draft, setDraft] = useState<DisplaySettings | null>(null);
   const [busy, setBusy] = useState(false);
+  const [adminEmail, setAdminEmail] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const revision = useChangeRevision("settings");
@@ -32,7 +33,7 @@ export default function SystemSettingsPage({ token, onOpenThemes }: { token: str
   useEffect(() => {
     let current = true;
     callApi<SettingsResponse>("/api/system/settings", {}, token)
-      .then((result) => { if (current) { setLoaded(result); setDraft(normalizeDisplaySettings(result)); } })
+      .then((result) => { if (current) { setLoaded(result); setDraft(normalizeDisplaySettings(result)); setAdminEmail(result.defaultAdminEmail ?? ""); } })
       .catch((problem) => { if (current) setError(errorText(problem)); });
     return () => { current = false; };
   }, [token, revision]);
@@ -44,7 +45,7 @@ export default function SystemSettingsPage({ token, onOpenThemes }: { token: str
     try {
       // The successful PUT publishes the "settings" change; the app reloads and applies it without F5.
       await callApi<SettingsResponse>("/api/system/settings", { method: "PUT",
-        body: JSON.stringify({ ...draft, updatedAt: loaded.updatedAt }) }, token);
+        body: JSON.stringify({ ...draft, defaultAdminEmail: adminEmail.trim() || null, updatedAt: loaded.updatedAt }) }, token);
       setNotice("Podešavanja su snimljena i primijenjena.");
     } catch (problem) { setError(errorText(problem)); }
     finally { setBusy(false); }
@@ -66,6 +67,8 @@ export default function SystemSettingsPage({ token, onOpenThemes }: { token: str
         <label>Veličina slova<select value={draft.fontSize} onChange={(event) => set({ fontSize: event.target.value })}>
           {loaded.options.fontSizes.map((item) => <option key={item} value={item}>{item.replace("px", " px")}</option>)}
         </select></label>
+        <label>E-mail za obavještenja (nove prijave kvarova)<input type="email" maxLength={320} value={adminEmail}
+          placeholder="npr. odrzavanje@uprava.ba" onChange={(event) => { setAdminEmail(event.target.value); setNotice(""); }} /></label>
         <p className="settings-preview" aria-live="polite">Primjer: {formatMoney(1234.5, "BAM", draft)} · {formatDate("2026-10-31", draft)}</p>
         <button type="submit" disabled={busy}>{busy ? "Snimanje…" : "Snimi podešavanja"}</button>
       </form>

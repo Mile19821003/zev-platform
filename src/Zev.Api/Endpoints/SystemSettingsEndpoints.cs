@@ -22,7 +22,8 @@ public static class SystemSettingsEndpoints
             if (!await access.IsSystemAdministratorAsync(userId, cancellationToken)) return Results.Forbid();
             if (!SystemSettings.DecimalSeparators.Contains(request.DecimalSeparator)
                 || !SystemSettings.DateFormats.Contains(request.DateFormat)
-                || !SystemSettings.FontSizes.Contains(request.FontSize))
+                || !SystemSettings.FontSizes.Contains(request.FontSize)
+                || !string.IsNullOrWhiteSpace(request.DefaultAdminEmail) && (request.DefaultAdminEmail.Trim().Length > 320 || !System.Net.Mail.MailAddress.TryCreate(request.DefaultAdminEmail.Trim(), out _)))
                 return Results.BadRequest(new { error = "Nedozvoljena vrijednost podešavanja." });
             var settings = await database.SystemSettings.SingleOrDefaultAsync(item => item.Id == SystemSettings.SingletonId,
                 cancellationToken);
@@ -38,6 +39,7 @@ public static class SystemSettingsEndpoints
             settings.DecimalSeparator = request.DecimalSeparator;
             settings.DateFormat = request.DateFormat;
             settings.FontSize = request.FontSize;
+            settings.DefaultAdminEmail = string.IsNullOrWhiteSpace(request.DefaultAdminEmail) ? null : request.DefaultAdminEmail.Trim();
             settings.UpdatedAt = DateTimeOffset.UtcNow;
             settings.UpdatedByUserId = userId;
             database.AuditLogs.Add(new AuditLog
@@ -59,7 +61,7 @@ public static class SystemSettingsEndpoints
 
     private static object View(SystemSettings settings) => new
     {
-        settings.DecimalSeparator, settings.DateFormat, settings.FontSize,
+        settings.DecimalSeparator, settings.DateFormat, settings.FontSize, settings.DefaultAdminEmail,
         settings.UpdatedAt, settings.UpdatedByUserId,
         options = new
         {
@@ -70,4 +72,4 @@ public static class SystemSettingsEndpoints
 }
 
 public sealed record UpdateSystemSettingsRequest(string DecimalSeparator, string DateFormat, string FontSize,
-    DateTimeOffset? UpdatedAt);
+    DateTimeOffset? UpdatedAt, string? DefaultAdminEmail = null);

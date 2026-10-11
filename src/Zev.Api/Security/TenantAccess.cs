@@ -86,12 +86,19 @@ public sealed class TenantAccess(ZevDbContext database, IHttpContextAccessor htt
     public async Task<bool> CanReportTicketAsync(Guid zevId, Guid? unitId, CancellationToken cancellationToken)
     {
         if (!await CanReadZevAsync(zevId, cancellationToken) || CurrentUserId is not Guid userId) return false;
-        // Common parts (no unit): anyone who manages maintenance, including the building representative.
-        if (unitId is not Guid propertyUnitId) return await CanManageMaintenanceAsync(zevId, cancellationToken);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        // Common parts (no unit): anyone who manages maintenance, and every resident (verified owner or occupant of a
+        // unit in this ZEV).
+        if (unitId is not Guid propertyUnitId) return await CanManageMaintenanceAsync(zevId, cancellationToken)
+            || await database.Ownerships.AnyAsync(item => item.ZevId == zevId && item.ValidFrom <= today
+                && (item.ValidTo == null || item.ValidTo > today) && item.PropertyUnit.IsActive && item.Person.UserId == userId
+                && item.Person.IsActive && item.Person.UserLinkStatus == UserPersonLinkStatus.Verified, cancellationToken)
+            || await database.Occupancies.AnyAsync(item => item.ZevId == zevId && item.ValidFrom <= today
+                && (item.ValidTo == null || item.ValidTo > today) && item.Person.UserId == userId && item.Person.IsActive
+                && item.Person.UserLinkStatus == UserPersonLinkStatus.Verified, cancellationToken);
         // A specific unit: maintenance staff with edit rights, otherwise only its verified owner or occupant.
         if (await CanManageMaintenanceAsync(zevId, cancellationToken)
             && await HasPermissionAsync(zevId, "Maintenance.Edit", cancellationToken)) return true;
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
         return await effectiveAccess.CanAccessOwnUnitAsync(userId, zevId, propertyUnitId, cancellationToken)
             || await database.Occupancies.AnyAsync(item => item.ZevId == zevId && item.PropertyUnitId == propertyUnitId
                 && item.ValidFrom <= today && (item.ValidTo == null || item.ValidTo > today)

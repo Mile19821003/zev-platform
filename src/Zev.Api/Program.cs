@@ -60,6 +60,12 @@ builder.Services.AddSingleton<IPaymentQrProvider, UnconfiguredPaymentQrProvider>
 builder.Services.AddSingleton<IPaymentSlipProvider, GenericPdfPaymentSlipProvider>();
 builder.Services.AddScoped<ExpensePostingService>();
 builder.Services.AddSingleton<IFileStorage, LocalFileStorage>();
+builder.Services.AddSingleton<Zev.Api.Notifications.EmailQueue>();
+if (string.IsNullOrWhiteSpace(builder.Configuration["Smtp:Host"]))
+    builder.Services.AddSingleton<Zev.Api.Notifications.IEmailSender, Zev.Api.Notifications.LogOnlyEmailSender>();
+else builder.Services.AddSingleton<Zev.Api.Notifications.IEmailSender, Zev.Api.Notifications.SmtpEmailSender>();
+builder.Services.AddHostedService<Zev.Api.Notifications.EmailDispatcher>();
+builder.Services.AddScoped<TicketNotifications>();
 builder.Services.AddScoped<MaintenanceScheduleService>();
 builder.Services.AddScoped<HodogramService>();
 builder.Services.AddScoped<VotingService>();

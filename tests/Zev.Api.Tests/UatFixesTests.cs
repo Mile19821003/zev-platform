@@ -146,7 +146,8 @@ public sealed class UatFixesTests
             Ticket(seed.UnitId))).StatusCode);
         Assert.Equal(HttpStatusCode.Created, (await manager.PostAsJsonAsync($"{root}/maintenance/tickets",
             Ticket(seed.UnitId))).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await owner.PostAsJsonAsync($"{root}/maintenance/tickets",
+        // Since v2.20 residents also report faults in common parts (earlier UAT rule: representative and staff only).
+        Assert.Equal(HttpStatusCode.Created, (await owner.PostAsJsonAsync($"{root}/maintenance/tickets",
             Ticket(null))).StatusCode);
         Assert.Equal(HttpStatusCode.Created, (await owner.PostAsJsonAsync($"{root}/maintenance/tickets",
             Ticket(seed.UnitId))).StatusCode);
