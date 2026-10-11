@@ -28,6 +28,8 @@ public sealed class SqlLookupTests
             var theme = await database.ThemeSettings.SingleAsync();
             Assert.Equal(SystemThemeSettings.Factory().Colors(), theme.Colors());
             Assert.Equal("Default", theme.ActiveThemeName);
+            Assert.Equal(["v2.10", "v2.11", "v2.12", "v2.13", "v2.14", "v2.7", "v2.8", "v2.9"],
+                await database.VersionHistory.OrderBy(item => item.Version).Select(item => item.Version).ToListAsync());
             Assert.Equal("Transfer", await database.LookupItems.Where(item => item.LookupTypeCode == "PAYMENT_METHOD"
                 && item.IsDefault).Select(item => item.Code).SingleAsync());
 

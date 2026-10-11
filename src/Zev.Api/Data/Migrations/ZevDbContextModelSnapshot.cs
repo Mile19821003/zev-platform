@@ -282,6 +282,22 @@ namespace Zev.Api.Data.Migrations
                             InstalledBy = "Migracija baze",
                             Status = "installed",
                             Title = "Greške u sistemu, istorija verzija i kategorije dokumenata"
+                        },
+                        new
+                        {
+                            Version = "v2.13",
+                            InstalledAt = new DateTimeOffset(new DateTime(2026, 10, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InstalledBy = "Migracija baze",
+                            Status = "installed",
+                            Title = "Obrisani redovi: soft-delete i vraćanje zapisa (Recycle Bin)"
+                        },
+                        new
+                        {
+                            Version = "v2.14",
+                            InstalledAt = new DateTimeOffset(new DateTime(2026, 10, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InstalledBy = "Migracija baze",
+                            Status = "installed",
+                            Title = "Teme i paleta boja (CSS varijable, pregled uživo)"
                         });
                 });
 

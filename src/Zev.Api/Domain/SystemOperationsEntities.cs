@@ -63,6 +63,8 @@ public static class AppVersions
         Row("v2.10", "Prikazi i ikone: paleta ikonica za module i kategorije", 2026, 10, 10),
         Row("v2.11", "Šifarnici u formama (useLookup, storno ručne uplate)", 2026, 10, 11),
         Row("v2.12", "Greške u sistemu, istorija verzija i kategorije dokumenata", 2026, 10, 11),
+        Row("v2.13", "Obrisani redovi: soft-delete i vraćanje zapisa (Recycle Bin)", 2026, 10, 11),
+        Row("v2.14", "Teme i paleta boja (CSS varijable, pregled uživo)", 2026, 10, 11),
     ];
 
     private static AppVersionHistory Row(string version, string title, int year, int month, int day) => new()
