@@ -631,27 +631,9 @@ system.MapPost("/users/{userId:guid}/reset-password", async (Guid userId,
 
 system.MapPost("/memberships", async (CreateMembershipRequest request, ZevDbContext database, CancellationToken cancellationToken) =>
 {
-    if (!Enum.TryParse<MembershipRole>(request.Role, true, out var role) || !Enum.IsDefined(role)
-        || role == MembershipRole.Owner
-        || (request.ZevId is null && role is not (MembershipRole.OrganizationAdministrator or MembershipRole.Accountant))
-        || (request.ZevId is not null && role == MembershipRole.OrganizationAdministrator))
-    {
-        return Results.BadRequest();
-    }
-
-    if (!await database.Users.AnyAsync(item => item.Id == request.UserId && item.IsActive, cancellationToken)
-        || !await database.Organizations.AnyAsync(item => item.Id == request.OrganizationId && item.IsActive, cancellationToken)
-        || (request.ZevId is Guid zevId && !await database.Zevs.AnyAsync(item => item.Id == zevId
-            && item.OrganizationId == request.OrganizationId && item.IsActive, cancellationToken)))
-    {
-        return Results.NotFound();
-    }
-
-    if (await database.Memberships.AnyAsync(item => item.UserId == request.UserId
-        && item.OrganizationId == request.OrganizationId && item.ZevId == request.ZevId && item.Role == role, cancellationToken))
-    {
-        return Results.Conflict();
-    }
+    var (problem, role) = await MembershipRules.ValidateAsync(database, request.UserId, request.OrganizationId, request.ZevId,
+        request.Role, null, cancellationToken);
+    if (problem is not null) return problem;
 
     var membership = new Membership { UserId = request.UserId, OrganizationId = request.OrganizationId, ZevId = request.ZevId, Role = role };
     database.Memberships.Add(membership);

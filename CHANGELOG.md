@@ -60,6 +60,12 @@ kartica na početnom ekranu, C — Reporting centar. Opis toka: `MAINTENANCE_WOR
 - Dokumentacija: `MAINTENANCE_WORKFLOW.md` (tok modula i API), `GRANULAR_PERMISSIONS.md` dopunjen pravima za
   brisanje (v2.19) i izvozom izvještaja održavanja.
 - Testovi: `MaintenanceReportApiTests` (2), `web/tests/maintenanceReports.test.mjs` (6).
+- **Uredi ručne uloge** (Uloge i matrica prava): dugme „Uredi“ pored „Deaktiviraj“ popunjava formu podacima reda
+  (korisnik, organizacija, ZEV, uloga). Naslov forme postaje „Uredi zapis“, dugme „Ažuriraj“, a „Otkaži“ vraća
+  formu u početno stanje. Nova ruta `PUT /api/system/memberships/{id}` (samo sistemski administrator, `rowVersion`,
+  audit `Modified`) primjenjuje ista pravila kao kreiranje: 400 za neispravnu kombinaciju uloge i ZEV-a, 404 za
+  nepoznat ili neaktivan korisnik, organizaciju ili ZEV, 409 za duplikat ili istovremenu izmjenu. Pravila su
+  izdvojena u `MembershipRules`, pa ih kreiranje i izmjena dijele. Testovi: `MembershipUpdateApiTests` (1) i web test.
 - Tekuća verzija `v2.20`.
 
 ### Ispravljeno (Fixed)

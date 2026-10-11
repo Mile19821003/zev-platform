@@ -34,3 +34,15 @@ test("forms and tables display role names but send and store the codes", () => {
   assert.doesNotMatch(matrix, /context\.roles\.join|context\.sources\.join/);
   assert.ok(source("../src/admin/RoleWorkspace.tsx").includes("accessSourceList(zev.sources)"));
 });
+
+test("manual roles can be edited: Uredi fills the form, Ažuriraj sends PUT, Otkaži resets", () => {
+  const workspace = source("../src/admin/Workspace.tsx");
+  const memberships = workspace.slice(workspace.indexOf("memberships: {"), workspace.indexOf("};", workspace.indexOf("memberships: {")));
+  assert.ok(memberships.includes("allowEdit: true, allowStatus: true"));
+  const resource = source("../src/admin/ResourcePage.tsx");
+  assert.ok(resource.includes('{busy ? "Čuvanje…" : editingId ? "Ažuriraj" : "Sačuvaj"}'));
+  assert.ok(resource.includes('{editingId ? "Uredi zapis" : "Novi zapis"}'));
+  assert.ok(resource.includes('method: editingId ? "PUT" : "POST"'));
+  assert.ok(resource.includes('{editingId && <button className="secondary" type="button" onClick={reset}>Otkaži</button>}'));
+  assert.ok(source("../../src/Zev.Api/Endpoints/AdminAccessEndpoints.cs").includes('group.MapPut("/memberships/{membershipId:guid}"'));
+});

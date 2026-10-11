@@ -166,7 +166,7 @@ const resources: Partial<Record<MenuKey, ResourceConfig>> = {
     ],
     columns: [{ key: "userEmail", label: "Korisnik" }, { key: "organizationName", label: "Organizacija" },
       { key: "zevName", label: "ZEV" }, { key: "role", label: "Uloga", labels: roleLabels }],
-    allowStatus: true,
+    allowEdit: true, allowStatus: true,
   },
 };
 

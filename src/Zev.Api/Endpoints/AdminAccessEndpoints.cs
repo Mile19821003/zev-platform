@@ -105,6 +105,29 @@ public static class AdminAccessEndpoints
             return Results.Ok(new { page = currentPage, pageSize = currentSize, totalCount, items });
         });
 
+        // "Uredi" on a manual role: user, organization, ZEV and role, under the same rules as a new assignment.
+        group.MapPut("/memberships/{membershipId:guid}", async (Guid membershipId, UpdateMembershipRequest request,
+            ZevDbContext database, CancellationToken cancellationToken) =>
+        {
+            if (!AdminValidation.TryRowVersion(request.RowVersion, out var rowVersion)) return Results.BadRequest();
+            var membership = await database.Memberships.SingleOrDefaultAsync(item => item.Id == membershipId, cancellationToken);
+            if (membership is null) return Results.NotFound();
+            var (problem, role) = await MembershipRules.ValidateAsync(database, request.UserId, request.OrganizationId, request.ZevId,
+                request.Role, membershipId, cancellationToken);
+            if (problem is not null) return problem;
+            database.Entry(membership).Property(item => item.RowVersion).OriginalValue = rowVersion;
+            membership.UserId = request.UserId;
+            membership.OrganizationId = request.OrganizationId;
+            membership.ZevId = request.ZevId;
+            membership.Role = role;
+            try { await database.SaveChangesAsync(cancellationToken); }
+            catch (DbUpdateConcurrencyException) { return Results.Conflict(new { error = "Uloga je u međuvremenu izmijenjena. Osvježite i pokušajte ponovo." }); }
+            catch (DbUpdateException) { return Results.Conflict(new { error = "Korisnik već ima ovu ulogu u odabranoj organizaciji / ZEV-u." }); }
+            var saved = await database.Memberships.AsNoTracking().Include(item => item.User).Include(item => item.Organization)
+                .Include(item => item.Zev).SingleAsync(item => item.Id == membershipId, cancellationToken);
+            return Results.Ok(MembershipView(saved));
+        });
+
         group.MapPatch("/memberships/{membershipId:guid}/status", async (Guid membershipId, UpdateStatusRequest request,
             ZevDbContext database, CancellationToken cancellationToken) =>
         {
@@ -129,6 +152,8 @@ public static class AdminAccessEndpoints
 
         return group;
     }
+
+    public sealed record UpdateMembershipRequest(Guid UserId, Guid OrganizationId, Guid? ZevId, string Role, string RowVersion);
 
     private static object UserView(AppUser item) => new
     {

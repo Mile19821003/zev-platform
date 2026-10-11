@@ -246,7 +246,7 @@ export default function ResourcePage({ config, token, onChanged, onCreated }: {
                 .catch(() => setError("Kopiranje nije uspjelo. Provjerite dozvole preglednika."));
             }}>Kopiraj</button>
           </div>}
-          <div className="form-actions"><button type="submit" disabled={busy}>{busy ? "Čuvanje…" : "Sačuvaj"}</button>
+          <div className="form-actions"><button type="submit" disabled={busy}>{busy ? "Čuvanje…" : editingId ? "Ažuriraj" : "Sačuvaj"}</button>
             {editingId && <button className="secondary" type="button" onClick={reset}>Otkaži</button>}</div>
         </form>
       </section>}
