@@ -21,7 +21,7 @@ import VersionHistoryPage from "./VersionHistoryPage";
 import DeletedRecordsPage from "./DeletedRecordsPage";
 import ThemeSettingsPage from "./ThemeSettingsPage";
 import ZevCardGrid from "./ZevCards";
-import { roleLabels } from "../uiLabels.ts";
+import { personKindLabels, roleLabels } from "../uiLabels.ts";
 import NotificationBell from "./NotificationBell";
 import MaintenanceWidget from "./MaintenanceWidget";
 import { useChangeRevision } from "../useChangeRevision.ts";
@@ -136,7 +136,7 @@ const resources: Partial<Record<MenuKey, ResourceConfig>> = {
     title: "Vlasnici / korisnici", description: "Fizička i pravna lica povezana sa organizacijom.", path: "/api/system/people",
     fields: [
       { key: "organizationId", label: "Organizacija", kind: "lookup", required: true, createOnly: true, lookupPath: () => "/api/system/organizations" },
-      { key: "kind", label: "Vrsta lica", kind: "select", required: true, options: ["Individual", "LegalEntity"] },
+      { key: "kind", label: "Vrsta lica", kind: "select", required: true, options: ["Individual", "LegalEntity"], optionLabels: personKindLabels },
       { key: "displayName", label: "Ime / naziv", required: true, maxLength: 200 },
       { key: "userId", label: "Korisnički nalog", kind: "lookup", lookupPath: () => "/api/system/users" },
       { key: "taxIdentifier", label: "JIB / PIB", maxLength: 32 },
@@ -145,7 +145,8 @@ const resources: Partial<Record<MenuKey, ResourceConfig>> = {
       { key: "email", label: "Email", kind: "email", maxLength: 320 },
       { key: "phone", label: "Telefon", maxLength: 40 },
     ],
-    columns: [{ key: "displayName", label: "Ime / naziv" }, { key: "kind", label: "Vrsta" }, { key: "email", label: "Email" }],
+    columns: [{ key: "displayName", label: "Ime / naziv" }, { key: "kind", label: "Vrsta", labels: personKindLabels },
+      { key: "email", label: "Email" }],
     allowEdit: true, allowDelete: true, search: true,
   },
   users: {

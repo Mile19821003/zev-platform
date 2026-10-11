@@ -39,6 +39,11 @@ export function accessSourceList(sources: string[] | undefined): string {
   return (sources ?? []).map((source) => accessSourceLabels[source] ?? roleLabel(source)).join(", ");
 }
 
+// Registry codes (PersonKind, OccupantKind) and the active filter; API and database keep the codes.
+export const personKindLabels: Record<string, string> = { Individual: "Fizičko lice", LegalEntity: "Pravno lice" };
+export const occupantKindLabels: Record<string, string> = { Resident: "Stanovnik", Tenant: "Podstanar", OtherUser: "Drugi korisnik" };
+export const activeFilterLabels: Record<string, string> = { true: "Aktivni", false: "Neaktivni" };
+
 export const ballotKindLabels: Record<string, string> = { Survey: "Anketa", Formal: "Formalno glasanje" };
 export const ballotModeLabels: Record<string, string> = { OneUnitOneVote: "Jedan stan = jedan glas", Weighted: "Ponderisano" };
 export const ballotStatusLabels: Record<string, string> = { Draft: "Nacrt", Open: "Otvoreno", Closed: "Zaključeno" };

@@ -3,7 +3,8 @@ import { callApi, errorText } from "../api";
 import ResourcePage, { ResourceConfig } from "./ResourcePage";
 import { Lookup, SectionTitle } from "./shared";
 import { useChangeRevision } from "../useChangeRevision.ts";
-import { formatNumber } from "../displaySettings.ts";
+import { formatDate, formatNumber } from "../displaySettings.ts";
+import { activeFilterLabels, personKindLabels } from "../uiLabels.ts";
 
 type ZevOption = { id: string; code: string; name: string };
 type Section = "buildings" | "entrances" | "units" | "people" | "ownership";
@@ -14,7 +15,7 @@ function registryConfig(zevId: string, section: Exclude<Section, "ownership">): 
   const common = { allowEdit: true, search: true };
   if (section === "buildings") return { ...common, allowStatus: true,
     title: "Zgrade", description: "Zgrade u dodijeljenom ZEV-u.", path: `${prefix}/buildings`,
-    filters: [{ key: "isActive", label: "Status", kind: "select", options: ["true", "false"] }],
+    filters: [{ key: "isActive", label: "Status", kind: "select", options: ["true", "false"], optionLabels: activeFilterLabels }],
     fields: [{ key: "code", label: "Šifra", required: true, maxLength: 50 },
       { key: "name", label: "Naziv", required: true, maxLength: 200 },
       { key: "addressLine", label: "Adresa", maxLength: 250 }],
@@ -22,7 +23,7 @@ function registryConfig(zevId: string, section: Exclude<Section, "ownership">): 
   if (section === "entrances") return { ...common, allowStatus: true,
     title: "Ulazi", description: "Ulazi zgrada u dodijeljenom ZEV-u.", path: `${prefix}/entrances`,
     filters: [{ key: "buildingId", label: "Zgrada", kind: "lookup", lookupPath: () => `${prefix}/buildings` },
-      { key: "isActive", label: "Status", kind: "select", options: ["true", "false"] }],
+      { key: "isActive", label: "Status", kind: "select", options: ["true", "false"], optionLabels: activeFilterLabels }],
     fields: [{ key: "buildingId", label: "Zgrada", kind: "lookup", required: true,
       createOnly: true, lookupPath: () => `${prefix}/buildings` },
       { key: "code", label: "Šifra", required: true, maxLength: 50 },
@@ -34,7 +35,7 @@ function registryConfig(zevId: string, section: Exclude<Section, "ownership">): 
     path: `${prefix}/units`,
     filters: [{ key: "buildingId", label: "Zgrada", kind: "lookup", lookupPath: () => `${prefix}/buildings` },
       { key: "entranceId", label: "Ulaz", kind: "lookup", lookupPath: () => `${prefix}/entrances` },
-      { key: "isActive", label: "Status", kind: "select", options: ["true", "false"] }],
+      { key: "isActive", label: "Status", kind: "select", options: ["true", "false"], optionLabels: activeFilterLabels }],
     fields: [{ key: "entranceId", label: "Ulaz", kind: "lookup", required: true,
       createOnly: true, lookupPath: () => `${prefix}/entrances` },
       { key: "code", label: "Oznaka", required: true, maxLength: 50 },
@@ -48,16 +49,16 @@ function registryConfig(zevId: string, section: Exclude<Section, "ownership">): 
       { key: "entranceName", label: "Ulaz" }, { key: "areaSquareMeters", label: "m²" }] };
   return { ...common, title: "Vlasnici / korisnici", description: "Fizička i pravna lica u ZEV-u.",
     path: `${prefix}/people`,
-    filters: [{ key: "isActive", label: "Status", kind: "select", options: ["true", "false"] }],
+    filters: [{ key: "isActive", label: "Status", kind: "select", options: ["true", "false"], optionLabels: activeFilterLabels }],
     fields: [{ key: "kind", label: "Vrsta lica", kind: "select", required: true,
-      options: ["Individual", "LegalEntity"] },
+      options: ["Individual", "LegalEntity"], optionLabels: personKindLabels },
       { key: "displayName", label: "Ime / naziv", required: true, maxLength: 200 },
       { key: "taxIdentifier", label: "JIB / PIB", maxLength: 32 },
       { key: "addressLine", label: "Adresa", maxLength: 250 },
       { key: "cityMunicipality", label: "Grad / opština", maxLength: 120 },
       { key: "email", label: "Email", kind: "email", maxLength: 320 },
       { key: "phone", label: "Telefon", maxLength: 40 }],
-    columns: [{ key: "displayName", label: "Ime / naziv" }, { key: "kind", label: "Vrsta" },
+    columns: [{ key: "displayName", label: "Ime / naziv" }, { key: "kind", label: "Vrsta", labels: personKindLabels },
       { key: "email", label: "Email" }] };
 }
 
@@ -157,8 +158,8 @@ export default function ManagerRegistryPage({ token, zevs, permissions }: { toke
         </form></section>}<section className="panel table-panel"><h2>Istorija vlasništva</h2>
           {loading && <p role="status">Učitavanje…</p>}
           <div className="table-wrap"><table><thead><tr><th>Vlasnik</th><th>Od</th><th>Do</th><th>Udio</th><th>Radnja</th></tr></thead>
-            <tbody>{ownerships.map((item) => <tr key={item.id}><td>{item.personName}</td><td>{item.validFrom}</td>
-              <td>{item.validTo ?? "Aktivno"}</td><td>{formatNumber(item.share * 100)}%</td><td>{allowed("Ownership.Close") && !item.validTo && <>
+            <tbody>{ownerships.map((item) => <tr key={item.id}><td>{item.personName}</td><td>{formatDate(item.validFrom)}</td>
+              <td>{item.validTo ? formatDate(item.validTo) : "Aktivno"}</td><td>{formatNumber(item.share * 100)}%</td><td>{allowed("Ownership.Close") && !item.validTo && <>
                 <input aria-label="Datum zatvaranja" type="date" value={closeDates[item.id] ?? ""}
                   onChange={(event) => setCloseDates((current) => ({ ...current, [item.id]: event.target.value }))} />
                 <button type="button" disabled={busy} onClick={() => void closeOwnership(item)}>Zatvori</button></>}</td></tr>)}</tbody>

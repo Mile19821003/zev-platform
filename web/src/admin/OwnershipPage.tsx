@@ -2,6 +2,8 @@ import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { callApi, errorText, Ownership, PropertyUnit } from "../api";
 import { Lookup, SectionTitle } from "./shared";
 import { useChangeRevision } from "../useChangeRevision.ts";
+import { formatDate, formatNumber } from "../displaySettings.ts";
+import { label, occupantKindLabels } from "../uiLabels.ts";
 
 type Occupancy = { id: string; personName: string; kind: string; validFrom: string; validTo: string | null };
 
@@ -95,8 +97,8 @@ export default function OwnershipPage({ token }: { token: string }) {
         </form></section>
         <section className="panel table-panel"><h2>Istorija vlasništva · {unit.code}</h2>
           <div className="table-scroll"><table><thead><tr><th>Vlasnik</th><th>Od</th><th>Do</th><th>Udio</th><th>Radnja</th></tr></thead>
-            <tbody>{ownerships.map((item) => <tr key={item.id}><td>{item.personName}</td><td>{item.validFrom}</td>
-              <td>{item.validTo ?? "Aktivno"}</td><td>{item.share}</td><td>{!item.validTo && <div className="inline-action">
+            <tbody>{ownerships.map((item) => <tr key={item.id}><td>{item.personName}</td><td>{formatDate(item.validFrom)}</td>
+              <td>{item.validTo ? formatDate(item.validTo) : "Aktivno"}</td><td>{formatNumber(item.share * 100)}%</td><td>{!item.validTo && <div className="inline-action">
                 <input aria-label="Datum zatvaranja" type="date" value={closeDates[item.id] ?? ""}
                   onChange={(event) => setCloseDates((current) => ({ ...current, [item.id]: event.target.value }))} />
                 <button type="button" disabled={busy} onClick={() => closeOwnership(item)}>Zatvori</button></div>}</td></tr>)}</tbody></table></div>
@@ -107,16 +109,15 @@ export default function OwnershipPage({ token }: { token: string }) {
           <Lookup token={token} label="Lice" path={`/api/system/people?organizationId=${unit.organizationId}`}
             value={personId} onChange={setPersonId} />
           <label>Vrsta<select value={occupantKind} onChange={(event) => setOccupantKind(event.target.value)}>
-            <option value="Resident">Stanovnik</option><option value="Tenant">Podstanar</option>
-            <option value="OtherUser">Drugi korisnik</option></select></label>
+            {Object.entries(occupantKindLabels).map(([code, name]) => <option key={code} value={code}>{name}</option>)}</select></label>
           <label>Od datuma<input required type="date" value={validFrom} onChange={(event) => setValidFrom(event.target.value)} /></label>
           <label>Do datuma (opcionalno)<input type="date" value={validTo} onChange={(event) => setValidTo(event.target.value)} /></label>
           <button type="submit" disabled={busy || !personId}>Evidentiraj korisnika</button>
         </form></section>
         <section className="panel table-panel"><h2>Istorija korištenja</h2>
           <div className="table-scroll"><table><thead><tr><th>Lice</th><th>Vrsta</th><th>Od</th><th>Do</th></tr></thead>
-            <tbody>{occupancies.map((item) => <tr key={item.id}><td>{item.personName}</td><td>{item.kind}</td>
-              <td>{item.validFrom}</td><td>{item.validTo ?? "Aktivno"}</td></tr>)}</tbody></table></div>
+            <tbody>{occupancies.map((item) => <tr key={item.id}><td>{item.personName}</td><td>{label(occupantKindLabels, item.kind)}</td>
+              <td>{formatDate(item.validFrom)}</td><td>{item.validTo ? formatDate(item.validTo) : "Aktivno"}</td></tr>)}</tbody></table></div>
           {occupancies.length === 0 && <p className="empty-inline">Nema evidentiranih korisnika.</p>}
         </section></div>
     </>}

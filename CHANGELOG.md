@@ -84,6 +84,13 @@ kartica na početnom ekranu, C — Reporting centar. Opis toka: `MAINTENANCE_WOR
   Resident), Sistemski administrator. Padajući meni i kolona „Uloga“ na ekranu Uloge i matrica prava, red
   „Uloga / Izvor“ u matrici prava i izvor pristupa na karticama zajednica (umjesto šifri `ZEV_MEMBERSHIP`,
   `OWNERSHIP`…). API i baza i dalje koriste iste šifre (`Manager`, `OrganizationAdministrator`…).
+- **Registar bez engleskih šifri**: vrsta lica prikazuje se kao Fizičko lice / Pravno lice (forma i kolona „Vrsta“ na
+  ekranima Vlasnici / korisnici). Filter „Status“ nudi Aktivni / Neaktivni umjesto `true` / `false`. Kolona „Vrsta“ u
+  istoriji korištenja prikazuje Stanovnik / Podstanar / Drugi korisnik. Datumi u istoriji vlasništva i korištenja
+  koriste format iz postavki, a udio na ekranu Vlasništvo i korisnici prikazuje se u procentima. Mapiranja
+  `personKindLabels`, `occupantKindLabels` i `activeFilterLabels` su u `uiLabels.ts`. API i baza i dalje koriste
+  `Individual` / `LegalEntity` / `Tenant`…. Tip posebnog dijela već je bio preveden kroz šifrarnik `PROPERTY_UNIT_TYPE`.
+  Test: `web/tests/registryLabels.test.mjs` (2), koji provjerava i da mapiranja pokrivaju sve članove bekend enuma.
   `ResourcePage` dobija `optionLabels` za polja i `labels` za kolone.
 
 ### Baza / Migracije
