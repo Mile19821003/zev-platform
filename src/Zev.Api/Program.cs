@@ -289,6 +289,7 @@ api.MapModuleIconEndpoints();
 api.MapClientErrorEndpoint();
 api.MapRecycleBinEndpoints();
 api.MapThemeEndpoint();
+api.MapZevImageEndpoints();
 api.MapManagerDeleteEndpoints();
 api.MapGet("/me", async (TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
 {
@@ -387,7 +388,7 @@ api.MapGet("/me/zevs", async (int? page, int? pageSize, TenantAccess access, Eff
                 && item.RevokedUtc == null && item.ValidFromUtc <= DateTimeOffset.UtcNow
                 && (item.ValidToUtc == null || item.ValidToUtc > DateTimeOffset.UtcNow))))
         .OrderBy(zev => zev.Name).ThenBy(zev => zev.Id)
-        .Select(zev => new { zev.Id, zev.OrganizationId, OrganizationName = zev.Organization.Name, zev.Code, zev.Name, zev.AddressLine })
+        .Select(zev => new { zev.Id, zev.OrganizationId, OrganizationName = zev.Organization.Name, zev.Code, zev.Name, zev.AddressLine, zev.ImageUrl })
         .ToListAsync(cancellationToken);
     var visible = new List<object>();
     foreach (var zev in candidates)
@@ -399,7 +400,7 @@ api.MapGet("/me/zevs", async (int? page, int? pageSize, TenantAccess access, Eff
         {
             var permissionContext = await accessService.GetPermissionContextAsync(userId, zev.Id, cancellationToken);
             visible.Add(new { zev.Id, zev.OrganizationId, zev.OrganizationName, zev.Code, zev.Name,
-                AddressLine = rights.CanRead ? zev.AddressLine : null, rights.Sources, rights.IsOwner, rights.CanManageFinances,
+                AddressLine = rights.CanRead ? zev.AddressLine : null, ImageUrl = rights.CanRead ? zev.ImageUrl : null, rights.Sources, rights.IsOwner, rights.CanManageFinances,
                 rights.CanManageLegalCases, rights.CanManageMaintenance, historicalSelfAccess,
                 permissionContext.IsStaff,
                 permissions = permissionContext.Permissions.Where(item => item.Effective).Select(item => item.Key).ToArray() });

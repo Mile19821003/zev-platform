@@ -117,6 +117,9 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
             entity.Property(zev => zev.ReserveFundBankAccount).HasMaxLength(64);
             entity.Property(zev => zev.ContactEmail).HasMaxLength(320);
             entity.Property(zev => zev.ContactPhone).HasMaxLength(40);
+            entity.Property(zev => zev.ImageUrl).HasMaxLength(300);
+            entity.Property(zev => zev.ImageStorageKey).HasMaxLength(40);
+            entity.Property(zev => zev.ImageContentType).HasMaxLength(20);
             entity.Property(zev => zev.RowVersion).IsRowVersion();
             entity.HasOne(zev => zev.Organization).WithMany().HasForeignKey(zev => zev.OrganizationId).OnDelete(DeleteBehavior.Restrict);
             entity.HasAlternateKey(zev => new { zev.OrganizationId, zev.Id });
@@ -1389,6 +1392,8 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
             item.Effect == AccessEffect.Deny ? "PermissionDenied" : "PermissionGranted",
         AccessOverride when entry.State == EntityState.Modified
             && entry.Property(nameof(AccessOverride.RevokedUtc)).IsModified => "PermissionRevoked",
+        ZevEntity item when entry.State == EntityState.Modified
+            && entry.Property(nameof(ZevEntity.ImageUrl)).IsModified => item.ImageUrl is null ? "ZevImageRemoved" : "ZevImageUpdated",
         ISoftDeletable item when entry.State == EntityState.Modified
             && entry.Property(nameof(ISoftDeletable.IsDeleted)).IsModified => item.IsDeleted ? "RecordDeleted" : "RecordRestored",
         _ => entry.State.ToString()

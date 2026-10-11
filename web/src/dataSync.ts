@@ -23,6 +23,7 @@ export function resourceKey(path: string): string | null {
   if (parts[1] === "admin") return parts[2] ?? null;
   if (parts[1] === "zevs") {
     if (parts[3] === "registry") return parts[4] ?? null;
+    if (parts[3] === "image") return "zevs";
     return parts[3] ?? null;
   }
   return null;

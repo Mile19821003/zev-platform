@@ -398,7 +398,7 @@ public static class Phase2AdminEndpoints
     {
         item.Id, item.OrganizationId, organizationName = item.Organization.Name, item.Code, item.Name,
         item.AddressLine, item.CityMunicipality, item.TaxIdentifier, item.PrimaryBankAccount,
-        item.ReserveFundBankAccount, item.ContactEmail, item.ContactPhone, item.FoundedOn,
+        item.ReserveFundBankAccount, item.ContactEmail, item.ContactPhone, item.FoundedOn, item.ImageUrl,
         item.IsActive, rowVersion = Convert.ToBase64String(item.RowVersion)
     };
 

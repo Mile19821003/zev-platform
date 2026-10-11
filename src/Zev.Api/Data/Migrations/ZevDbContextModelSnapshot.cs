@@ -298,6 +298,14 @@ namespace Zev.Api.Data.Migrations
                             InstalledBy = "Migracija baze",
                             Status = "installed",
                             Title = "Teme i paleta boja (CSS varijable, pregled uživo)"
+                        },
+                        new
+                        {
+                            Version = "v2.15",
+                            InstalledAt = new DateTimeOffset(new DateTime(2026, 10, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InstalledBy = "Migracija baze",
+                            Status = "installed",
+                            Title = "Fotografija zgrade na karticama zajednica"
                         });
                 });
 
@@ -4186,12 +4194,12 @@ namespace Zev.Api.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<bool>("AutoApplyPaymentCredit")
-                        .HasColumnType("bit");
-
                     b.Property<string>("AddressLine")
                         .HasMaxLength(250)
                         .HasColumnType("nvarchar(250)");
+
+                    b.Property<bool>("AutoApplyPaymentCredit")
+                        .HasColumnType("bit");
 
                     b.Property<string>("CityMunicipality")
                         .HasMaxLength(120)
@@ -4212,6 +4220,18 @@ namespace Zev.Api.Data.Migrations
 
                     b.Property<DateOnly?>("FoundedOn")
                         .HasColumnType("date");
+
+                    b.Property<string>("ImageContentType")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("ImageStorageKey")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<string>("ImageUrl")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");

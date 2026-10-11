@@ -11,6 +11,7 @@ import CommunityPage from "./CommunityPage";
 import ReportsPage from "./ReportsPage";
 import OwnerFinancePage from "./OwnerFinancePage";
 import ManagerRegistryPage from "./ManagerRegistryPage";
+import ZevCover from "./ZevCover";
 import { hasStaffPermission } from "../permissionUi.ts";
 import ZevPermissionPage from "./ZevPermissionPage";
 import WorkspaceNav, { useSidebarState } from "./WorkspaceNav";
@@ -123,6 +124,7 @@ export default function RoleWorkspace({ token, profile, zevs, onLogout, onProfil
     {active === "overview" && !workspaceOpen && <><p className="eyebrow">RADNI PROSTOR</p><h1>Vaše zajednice</h1>
       <p className="lead">Podaci i funkcije su ograničeni na dodijeljene uloge i ZEV-ove.</p>
       <div className="zev-grid">{zevs.map((zev) => <article className="zev-card" key={zev.id}>
+        <ZevCover token={token} imageUrl={zev.imageUrl} name={zev.name} />
         <p className="eyebrow">{zev.code}</p><h3>{zev.name}</h3>
         <p>{zev.addressLine}</p><p>{zev.historicalSelfAccess ? "Samo istorijski finansijski podaci" : zev.sources?.join(", ")}</p>
         <button type="button" onClick={() => selectZev(zev.id)}>Otvori ZEV</button></article>)}</div>

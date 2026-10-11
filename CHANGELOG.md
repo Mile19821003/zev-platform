@@ -2,6 +2,41 @@
 
 Sve značajne izmjene ZEV Platforme. Ranija historija (faze do 4) je u `CLOUD_HANDOFF_STATUS.md` i git logu.
 
+## [v2.15] - 2026-10-11
+
+### Dodano (Added)
+- **Fotografija zgrade (naslovna slika ZEV-a)**:
+  - `Zev.ImageUrl` (verzionisan URL `/api/zevs/{id}/image?v=…`, mijenja se sa svakom novom slikom pa
+    preglednik ne prikazuje staru), uz `ImageStorageKey` i `ImageContentType` za fajl u storageu.
+  - `POST /api/zevs/{id}/image` (`{ fileName, contentType, contentBase64 }`): JPG/JPEG, PNG, WEBP do 5 MB;
+    naziv, tip i potpis fajla moraju se slagati (preimenovani PDF se odbija). Zamjena briše prethodni fajl.
+  - `DELETE /api/zevs/{id}/image`: briše fajl i postavlja polja na null.
+  - `GET /api/zevs/{id}/image`: slika za svakoga ko može čitati ZEV (`Cache-Control: private`).
+  - Mijenjati smiju sistemski administrator i administrator organizacije kojoj ZEV pripada; ostali koji vide
+    ZEV dobijaju 403, ostali 404. Audit `ZevImageUpdated` / `ZevImageRemoved`.
+  - Slika se čuva u postojećem storageu (`Storage:Root`, Docker volume `file-data`); `IFileStorage` sada
+    prepoznaje i WEBP.
+  - `imageUrl` u `GET /api/me/zevs` (samo uz pravo čitanja) i u ZEV pogledima sistemske administracije.
+- Web:
+  - Forma ZEV-a (kreiranje i uređivanje): „Fotografija zgrade“ s pretpregledom, „Zamijeni sliku“ i
+    „Ukloni sliku“; slika se šalje nakon snimanja zapisa (novi ZEV tada već ima id).
+  - Kartice „Dostupne zajednice“ / „Vaše zajednice“: slika 16:9, `object-fit: cover`, zaobljene ivice; bez
+    slike placeholder s ikonicom zgrade na neutralnoj pozadini.
+  - Slike se učitavaju s tokenom (`<img>` ne može poslati token) i keširaju za sesiju po verziji URL-a;
+    promjena slike osvježava liste ZEV-ova (dataSync ključ `zevs`).
+- Testovi: `ZevImageApiTests` (3: upload/zamjena/brisanje s fajlovima na disku, 8 neispravnih uploada,
+  403/404/401), `web/tests/zevCover.test.mjs` (6, komponenta renderovana u HTML: slika i placeholder, polje za
+  upload, pravila fajla); provjera u pregledniku 11/11.
+
+### Baza / Migracije
+- `20261011081112_AddZevCoverImage`: kolone `ImageUrl`, `ImageStorageKey`, `ImageContentType` u `Zevs`
+  (nullable); unos v2.15 u istoriju verzija.
+
+### Otvorene odluke (Open Decisions)
+- Slika se ne smanjuje niti optimizuje na serveru (čuva se kako je poslana, do 5 MB); po potrebi dodati
+  generisanje umanjenog prikaza za kartice.
+- Upravnik ZEV-a (uloga Manager) ne može mijenjati sliku; da li uvesti posebno pravo za to.
+
 ## [v2.14] - 2026-10-11
 
 ### Dodano (Added)

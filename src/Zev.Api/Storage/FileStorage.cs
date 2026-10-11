@@ -21,6 +21,7 @@ public sealed class LocalFileStorage(IConfiguration configuration) : IFileStorag
             "application/pdf" => ".pdf",
             "image/png" => ".png",
             "image/jpeg" => ".jpg",
+            "image/webp" => ".webp",
             _ => throw new InvalidDataException("Unsupported file type.")
         };
         var key = Guid.NewGuid().ToString("N") + extension;
@@ -56,6 +57,8 @@ public sealed class LocalFileStorage(IConfiguration configuration) : IFileStorag
             "application/pdf" => content.AsSpan().StartsWith("%PDF-"u8),
             "image/png" => content.AsSpan().StartsWith(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }),
             "image/jpeg" => content.AsSpan().StartsWith(new byte[] { 255, 216, 255 }),
+            "image/webp" => content.Length > 12 && content.AsSpan(0, 4).SequenceEqual("RIFF"u8)
+                && content.AsSpan(8, 4).SequenceEqual("WEBP"u8),
             _ => false
         };
     }

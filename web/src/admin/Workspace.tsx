@@ -20,6 +20,7 @@ import SystemErrorsPage from "./SystemErrorsPage";
 import VersionHistoryPage from "./VersionHistoryPage";
 import DeletedRecordsPage from "./DeletedRecordsPage";
 import ThemeSettingsPage from "./ThemeSettingsPage";
+import ZevCover from "./ZevCover";
 import { useChangeRevision } from "../useChangeRevision.ts";
 import WorkspaceNav, { useSidebarState } from "./WorkspaceNav";
 import ModuleDashboard from "./ModuleDashboard";
@@ -60,6 +61,7 @@ const menu: { key: MenuKey; label: string }[] = [
 const resources: Partial<Record<MenuKey, ResourceConfig>> = {
   zevs: {
     title: "ZEV", description: "Zajednice i njihovi osnovni podaci.", path: "/api/system/zevs",
+    image: { label: "Fotografija zgrade", path: (id) => `/api/zevs/${id}/image`, urlKey: "imageUrl", nameKey: "name" },
     fields: [
       { key: "organizationId", label: "Organizacija", kind: "lookup", required: true, createOnly: true, lookupPath: () => "/api/system/organizations" },
       { key: "code", label: "Šifra", required: true, maxLength: 50 },
@@ -223,6 +225,7 @@ export default function Workspace({ token, profile, zevs, onLogout, onProfile }:
             <div className="summary-card"><span>Aktivni ZEV-ovi</span><strong>{overview?.activeZevs ?? "…"}</strong></div></div>
           <div className="section-heading"><h2>Dostupne zajednice</h2><span>{zevs.length} prikazano</span></div>
           <div className="zev-grid">{zevs.map((zev) => <article className="zev-card" key={zev.id}>
+            <ZevCover token={token} imageUrl={zev.imageUrl} name={zev.name} />
             <p className="eyebrow">{zev.code}</p><h3>{zev.name}</h3><p>{zev.addressLine}</p>
             <button type="button" onClick={() => selectZev(zev.id)}>Otvori ZEV</button></article>)}</div></>}
         {active === "organizations" && <OrganizationsPage token={token} onChanged={() => setRevision((value) => value + 1)} />}

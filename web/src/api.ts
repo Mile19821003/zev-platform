@@ -20,6 +20,8 @@ export type Zev = {
   organizationName: string;
   code: string;
   name: string;
+  // Versioned GET /api/zevs/{id}/image; null when the ZEV has no cover photo.
+  imageUrl?: string | null;
   sources?: string[];
   isOwner?: boolean;
   historicalSelfAccess?: boolean;

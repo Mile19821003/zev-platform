@@ -7,6 +7,8 @@ import { Lookup, Pager, SectionTitle, Status } from "./shared";
 import { generateStrongPassword } from "../passwords.ts";
 import type { LookupTypeCode } from "../lookupOptions.ts";
 import LookupSelect, { LookupLabel } from "./LookupSelect";
+import { emptyImageDraft, ImageDraft, ImageUploadField } from "./ZevCover";
+import { readFileBase64 } from "../zevImage.ts";
 
 export type ResourceRow = { id: string; rowVersion?: string; isActive?: boolean; [key: string]: unknown };
 export type ResourceField = {
@@ -38,6 +40,8 @@ export type ResourceConfig = {
   passwordReset?: boolean;
   search?: boolean;
   filters?: ResourceField[];
+  // Photo of the record (ZEV cover): sent to {path(id)} after the record itself is saved.
+  image?: { label: string; path: (id: string) => string; urlKey: string; nameKey: string };
 };
 
 function initialForm(fields: ResourceField[]): Record<string, string> {
@@ -59,6 +63,8 @@ export default function ResourcePage({ config, token, onChanged, onCreated }: {
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [resetTarget, setResetTarget] = useState<ResourceRow | null>(null);
+  const [imageDraft, setImageDraft] = useState<ImageDraft>(emptyImageDraft);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [resetPassword, setResetPassword] = useState("");
   const [resetConfirm, setResetConfirm] = useState("");
   const [requireChange, setRequireChange] = useState(true);
@@ -95,6 +101,8 @@ export default function ResourcePage({ config, token, onChanged, onCreated }: {
     setForm(Object.fromEntries(config.fields.map((field) => [field.key, String(item[field.key] ?? "")])));
     setEditingId(item.id);
     setRowVersion(item.rowVersion ?? "");
+    setImageDraft(emptyImageDraft);
+    setImageUrl(config.image ? (item[config.image.urlKey] as string | null) ?? null : null);
     setError("");
   }
 
@@ -103,6 +111,19 @@ export default function ResourcePage({ config, token, onChanged, onCreated }: {
     setShowCreatePassword(false);
     setEditingId("");
     setRowVersion("");
+    setImageDraft(emptyImageDraft);
+    setImageUrl(null);
+  }
+
+  // The record is saved first (a new ZEV gets its id), then the photo is uploaded or removed.
+  async function saveImage(id: string): Promise<string | null> {
+    if (!config.image || (!imageDraft.file && !imageDraft.remove)) return null;
+    try {
+      if (imageDraft.file) await callApi(config.image.path(id), { method: "POST", body: JSON.stringify({
+        fileName: imageDraft.file.name, contentType: imageDraft.file.type, contentBase64: await readFileBase64(imageDraft.file) }) }, token);
+      else await callApi(config.image.path(id), { method: "DELETE" }, token);
+      return null;
+    } catch (problem) { return errorText(problem); }
   }
 
   async function save(event: FormEvent<HTMLFormElement>) {
@@ -122,7 +143,9 @@ export default function ResourcePage({ config, token, onChanged, onCreated }: {
         method: editingId ? "PUT" : "POST", body: JSON.stringify(payload),
       }, token);
       if (!editingId && saved?.id) onCreated?.(saved.id);
+      const imageError = await saveImage(editingId || saved?.id || "");
       reset(); setNotice("Zapis je sačuvan.");
+      if (imageError) setError(`Zapis je sačuvan, ali slika nije: ${imageError}`);
       onChanged();
     } catch (problem) { setError(errorText(problem)); }
     finally { pending.current = false; setBusy(false); }
@@ -207,6 +230,8 @@ export default function ResourcePage({ config, token, onChanged, onCreated }: {
                   maxLength={field.maxLength} step={field.step} value={form[field.key] ?? ""}
                   onChange={(event) => updateForm(field.key, event.target.value)} />}
               </label>)}
+          {config.image && <ImageUploadField label={config.image.label} token={token} currentUrl={imageUrl}
+            name={form[config.image.nameKey] ?? ""} draft={imageDraft} onChange={setImageDraft} />}
           {config.passwordReset && !editingId && <div className="form-actions">
             <button type="button" className="secondary" onClick={() => {
               const generated = generateStrongPassword();

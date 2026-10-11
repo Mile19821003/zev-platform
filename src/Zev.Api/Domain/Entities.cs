@@ -106,6 +106,11 @@ public sealed class Zev : ITenantRecord
     public DateOnly? FoundedOn { get; set; }
     public bool IsActive { get; set; } = true;
     public bool AutoApplyPaymentCredit { get; set; }
+    // Cover photo of the building: URL the clients load (GET /api/zevs/{id}/image, versioned so caches refresh on
+    // change) and the file in storage it is served from.
+    public string? ImageUrl { get; set; }
+    public string? ImageStorageKey { get; set; }
+    public string? ImageContentType { get; set; }
     public byte[] RowVersion { get; set; } = [];
     Guid? ITenantRecord.OrganizationId => OrganizationId;
     Guid? ITenantRecord.ZevId => Id;
