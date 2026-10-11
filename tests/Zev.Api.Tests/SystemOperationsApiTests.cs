@@ -140,7 +140,7 @@ public sealed class SystemOperationsApiTests
         using var manager = Client(factory, seed.ManagerId);
 
         var versions = await ReadAsync(await administrator.GetAsync("/api/system/versions"), HttpStatusCode.OK);
-        Assert.Equal(["v2.15", "v2.14", "v2.13", "v2.12", "v2.11", "v2.10", "v2.9", "v2.8", "v2.7"],
+        Assert.Equal(["v2.16", "v2.15", "v2.14", "v2.13", "v2.12", "v2.11", "v2.10", "v2.9", "v2.8", "v2.7"],
             versions.EnumerateArray().Select(item => item.GetProperty("version").GetString()));
         Assert.Equal("installed", versions[0].GetProperty("status").GetString());
 

@@ -306,6 +306,14 @@ namespace Zev.Api.Data.Migrations
                             InstalledBy = "Migracija baze",
                             Status = "installed",
                             Title = "Fotografija zgrade na karticama zajednica"
+                        },
+                        new
+                        {
+                            Version = "v2.16",
+                            InstalledAt = new DateTimeOffset(new DateTime(2026, 10, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InstalledBy = "Migracija baze",
+                            Status = "installed",
+                            Title = "Kalendar održavanja: statusi Planirano / Dospjelo / Završeno, horizont 60 dana"
                         });
                 });
 

@@ -66,6 +66,7 @@ public static class AppVersions
         Row("v2.13", "Obrisani redovi: soft-delete i vraćanje zapisa (Recycle Bin)", 2026, 10, 11),
         Row("v2.14", "Teme i paleta boja (CSS varijable, pregled uživo)", 2026, 10, 11),
         Row("v2.15", "Fotografija zgrade na karticama zajednica", 2026, 10, 11),
+        Row("v2.16", "Kalendar održavanja: statusi Planirano / Dospjelo / Završeno, horizont 60 dana", 2026, 10, 11),
     ];
 
     private static AppVersionHistory Row(string version, string title, int year, int month, int day) => new()

@@ -29,14 +29,53 @@ public sealed class MaintenanceTests
         var organization = new Organization { Code = "O", Name = "Organization" };
         var zev = new global::Zev.Api.Domain.Zev { OrganizationId = organization.Id,
             Organization = organization, Code = "Z", Name = "ZEV" };
+        var today = MaintenanceScheduleService.Today();
         var plan = new MaintenancePlan { OrganizationId = organization.Id, ZevId = zev.Id,
-            Title = "Lift", Category = "Lift", FirstDueOn = new DateOnly(2026, 1, 1), FrequencyDays = 30 };
+            Title = "Lift", Category = "Lift", FirstDueOn = today.AddDays(1), FrequencyDays = 30 };
         database.AddRange(organization, zev, plan);
         await database.SaveChangesAsync();
         var service = new MaintenanceScheduleService(database);
-        Assert.Equal(4, await service.EnsureUntilAsync(zev.Id, plan.Id, new DateOnly(2026, 4, 1), CancellationToken.None));
-        Assert.Equal(0, await service.EnsureUntilAsync(zev.Id, plan.Id, new DateOnly(2026, 4, 1), CancellationToken.None));
-        Assert.Equal(4, database.ScheduledMaintenances.Count());
+        Assert.Equal(2, await service.EnsureUntilAsync(zev.Id, plan.Id, today.AddDays(40), CancellationToken.None));
+        Assert.Equal(0, await service.EnsureUntilAsync(zev.Id, plan.Id, today.AddDays(40), CancellationToken.None));
+        Assert.Equal(2, database.ScheduledMaintenances.Count());
+    }
+
+    [Fact]
+    public async Task GenerationStaysWithinSixtyDaysAndStartsAtTheLastDueDate()
+    {
+        var options = new DbContextOptionsBuilder<ZevDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
+        await using var database = new ZevDbContext(options, new HttpContextAccessor());
+        var organization = new Organization { Code = "O", Name = "Organization" };
+        var zev = new global::Zev.Api.Domain.Zev { OrganizationId = organization.Id, Organization = organization, Code = "Z", Name = "ZEV" };
+        var today = MaintenanceScheduleService.Today();
+        // Every 3 days since 100 days ago: one overdue occurrence (the latest due date), then the next 60 days only.
+        var frequent = new MaintenancePlan { OrganizationId = organization.Id, ZevId = zev.Id, Title = "Čišćenje",
+            Category = "Higijena", FirstDueOn = today.AddDays(-100), FrequencyDays = 3 };
+        database.AddRange(organization, zev, frequent);
+        await database.SaveChangesAsync();
+        var service = new MaintenanceScheduleService(database);
+
+        Assert.Equal(21, await service.EnsureUntilAsync(zev.Id, frequent.Id, today.AddDays(3660), CancellationToken.None));
+        var dates = database.ScheduledMaintenances.Select(item => item.DueOn).OrderBy(item => item).ToList();
+        Assert.Equal(today.AddDays(-1), dates[0]);
+        Assert.True(dates[^1] <= today.AddDays(MaintenanceScheduleService.HorizonDays));
+        Assert.All(dates.Zip(dates.Skip(1)), pair => Assert.Equal(3, pair.Second.DayNumber - pair.First.DayNumber));
+        await service.EnsureHorizonAsync(zev.Id, CancellationToken.None);
+        Assert.Equal(21, database.ScheduledMaintenances.Count());
+    }
+
+    [Fact]
+    public void OpenOccurrenceIsPlannedBeforeItsDateAndDueFromIt()
+    {
+        var today = new DateOnly(2026, 10, 11);
+        Assert.Equal("Planned", MaintenanceScheduleService.EffectiveStatus(ScheduleStatus.Due, today.AddDays(1), today));
+        Assert.Equal("Due", MaintenanceScheduleService.EffectiveStatus(ScheduleStatus.Due, today, today));
+        Assert.Equal("Due", MaintenanceScheduleService.EffectiveStatus(ScheduleStatus.Due, today.AddDays(-5), today));
+        Assert.Equal("Completed", MaintenanceScheduleService.EffectiveStatus(ScheduleStatus.Completed, today.AddDays(9), today));
+        Assert.Equal("InProgress", MaintenanceScheduleService.EffectiveStatus(ScheduleStatus.InProgress, today.AddDays(9), today));
+        Assert.Equal(new DateOnly(2026, 10, 9), MaintenanceScheduleService.WindowStart(new DateOnly(2026, 10, 1), 4, today));
+        Assert.Equal(today, MaintenanceScheduleService.WindowStart(new DateOnly(2026, 10, 1), 2, today));
+        Assert.Equal(today.AddDays(5), MaintenanceScheduleService.WindowStart(today.AddDays(5), 2, today));
     }
 
     [Fact]

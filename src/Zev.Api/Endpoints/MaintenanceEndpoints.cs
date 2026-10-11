@@ -178,6 +178,18 @@ public static class MaintenanceEndpoints
                 OrganizationId = order.OrganizationId, ZevId = zevId, WorkOrderId = orderId,
                 Status = next, ActorUserId = userId
             });
+            var linked = await database.ScheduledMaintenances.Where(item => item.ZevId == zevId && item.WorkOrderId == orderId
+                && item.Status != ScheduleStatus.Cancelled).ToListAsync(cancellationToken);
+            foreach (var schedule in linked)
+            {
+                schedule.Status = next switch
+                {
+                    MaintenanceStatus.Completed or MaintenanceStatus.Verified => ScheduleStatus.Completed,
+                    MaintenanceStatus.Cancelled => ScheduleStatus.Due,
+                    _ => ScheduleStatus.InProgress
+                };
+                if (next == MaintenanceStatus.Cancelled) schedule.WorkOrderId = null;
+            }
             try
             {
                 await database.SaveChangesAsync(cancellationToken);
@@ -243,7 +255,8 @@ public static class MaintenanceEndpoints
                 FrequencyDays = request.FrequencyDays, FirstDueOn = request.FirstDueOn };
             database.MaintenancePlans.Add(plan);
             await database.SaveChangesAsync(cancellationToken);
-            await scheduleService.EnsureUntilAsync(zevId, plan.Id, plan.FirstDueOn.AddDays(365), cancellationToken);
+            await scheduleService.EnsureUntilAsync(zevId, plan.Id, MaintenanceScheduleService.Today()
+                .AddDays(MaintenanceScheduleService.HorizonDays), cancellationToken);
             return Results.Created($"/api/zevs/{zevId}/maintenance/plans/{plan.Id}", new { plan.Id });
         });
 
@@ -256,19 +269,25 @@ public static class MaintenanceEndpoints
             return Results.Ok(new { created });
         });
 
+        // Default view: everything still open (also overdue from earlier dates) plus the next HorizonDays days.
         group.MapGet("/calendar", async (Guid zevId, DateOnly? from, DateOnly? to,
-            TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
+            TenantAccess access, ZevDbContext database, MaintenanceScheduleService scheduleService,
+            CancellationToken cancellationToken) =>
         {
             if (await access.RequirePermissionAsync(zevId, "Maintenance.View", cancellationToken) is { } denied) return denied;
-            var start = from ?? DateOnly.FromDateTime(DateTime.UtcNow);
-            var end = to ?? start.AddDays(90);
-            if (end < start || end.DayNumber - start.DayNumber > 366) return Results.BadRequest();
-            var items = await database.ScheduledMaintenances.AsNoTracking().Where(item => item.ZevId == zevId
-                && item.DueOn >= start && item.DueOn <= end).OrderBy(item => item.DueOn)
+            var today = MaintenanceScheduleService.Today();
+            var end = to ?? today.AddDays(MaintenanceScheduleService.HorizonDays);
+            if (from is DateOnly first && (end < first || end.DayNumber - first.DayNumber > 366)) return Results.BadRequest();
+            await scheduleService.EnsureHorizonAsync(zevId, cancellationToken);
+            var query = database.ScheduledMaintenances.AsNoTracking().Where(item => item.ZevId == zevId && item.DueOn <= end);
+            query = from is DateOnly start ? query.Where(item => item.DueOn >= start)
+                : query.Where(item => item.DueOn >= today || item.Status == ScheduleStatus.Due || item.Status == ScheduleStatus.InProgress);
+            var items = await query.OrderBy(item => item.DueOn).ThenBy(item => item.Plan.Title)
                 .Select(item => new { item.Id, item.PlanId, title = item.Plan.Title, category = item.Plan.Category,
-                    item.DueOn, status = item.Status.ToString(), item.WorkOrderId })
+                    item.DueOn, item.Status, item.WorkOrderId })
                 .ToListAsync(cancellationToken);
-            return Results.Ok(items);
+            return Results.Ok(items.Select(item => new { item.Id, item.PlanId, item.title, item.category, item.DueOn,
+                status = MaintenanceScheduleService.EffectiveStatus(item.Status, item.DueOn, today), item.WorkOrderId }));
         });
 
         group.MapPatch("/calendar/{scheduleId:guid}/status", async (Guid zevId, Guid scheduleId,

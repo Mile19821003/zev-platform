@@ -2,6 +2,32 @@
 
 Sve značajne izmjene ZEV Platforme. Ranija historija (faze do 4) je u `CLOUD_HANDOFF_STATUS.md` i git logu.
 
+## [v2.16] - 2026-10-11
+
+### Ispravljeno (Fixed)
+- **Status termina u kalendaru održavanja**: otvoreni termin s datumom u budućnosti više nije „Dospjelo“.
+  API izvodi status iz datuma: **Planirano** (datum > danas), **Dospjelo** (datum ≤ danas, posao nije završen),
+  **U toku** (povezan radni nalog u radu), **Završeno**, **Otkazano**.
+- **Završeno kada se unese rad**: kada radni nalog povezan s terminom pređe u Završeno/Potvrđeno, termin postaje
+  Završeno; ponovno otvaranje naloga vraća termin u „U toku“, otkazivanje ga vraća na otvoren. Dugme „Završeno“
+  u kalendaru (pravo `Maintenance.Edit`) za dospjele termine i termine u toku.
+- **Formatiranje datuma**: kolona „Datum“ u kalendaru i „Rok“ radnih naloga prate sistemski format
+  (`formatDate`, npr. 14.10.2026) umjesto `2026-10-14`.
+- **Generisanje termina**: umjesto cijele godine unaprijed (npr. ~120 zapisa za interval od 3 dana) kreiraju se
+  samo termini do **60 dana unaprijed**, počevši od posljednjeg dospjelog termina (stari početni datum daje jedan
+  dospjeli termin, ne sve propuštene). Kalendar pri čitanju dopunjava prozor kako vrijeme prolazi;
+  `POST .../plans/{id}/generate` je ograničen na isti horizont.
+- Kalendar prikazuje dospjele i nezavršene termine te termine u narednih 60 dana (ranije: 90 dana bez starijih
+  dospjelih), sortirano po datumu.
+
+### Baza / Migracije
+- `20261011092854_TrimMaintenanceScheduleHorizon`: briše otvorene termine bez radnog naloga koji su dalje od 60
+  dana (ponovo se kreiraju kada se približe); unos v2.16 u istoriju verzija.
+
+### Otvorene odluke (Open Decisions)
+- „Danas“ se računa po UTC datumu (kao i ostatak API-ja); između ponoći po lokalnom vremenu i ponoći po UTC-u
+  današnji termin može još biti „Planirano“. Po potrebi uvesti vremensku zonu organizacije.
+
 ## [v2.15] - 2026-10-11
 
 ### Dodano (Added)

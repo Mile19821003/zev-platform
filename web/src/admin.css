@@ -144,3 +144,10 @@ button.danger{background:var(--zev-surface);color:#a22b2b;border:1px solid #e3b4
 .zev-active-badge{position:absolute;top:12px;right:12px;background:var(--zev-primary);color:white;border-radius:999px;padding:3px 10px;font-size:.72rem;font-weight:800;letter-spacing:.04em;box-shadow:0 2px 8px #0003}
 .zev-grid[role=list]>[role=listitem]{display:flex;min-width:0}
 .zev-card.selectable .zev-cover{align-self:stretch}
+
+.badge.schedule-planned{background:var(--zev-surface-alt,#eef1f3);color:var(--zev-secondary)}
+.badge.schedule-due{background:#fff4e0;color:#8a5300}
+.badge.schedule-inprogress{background:#eaf2fb;color:#115899}
+.badge.schedule-completed{background:var(--zev-accent-soft,#e7f5ee);color:var(--zev-primary)}
+.badge.schedule-cancelled{background:var(--zev-bg);color:var(--zev-muted,#687986);text-decoration:line-through}
+.calendar-table tr.schedule-row-due td:first-child{font-weight:700}

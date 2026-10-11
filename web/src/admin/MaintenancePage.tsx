@@ -4,7 +4,8 @@ import { Pager, SectionTitle } from "./shared";
 import { label, maintenanceStatusLabels } from "../uiLabels.ts";
 import { useChangeRevision } from "../useChangeRevision.ts";
 import LookupSelect, { LookupLabel } from "./LookupSelect";
-import { formatNumber } from "../displaySettings.ts";
+import { formatDate, formatNumber } from "../displaySettings.ts";
+import { canCompleteSchedule, scheduleBadgeClass, scheduleStatusLabel } from "../maintenanceCalendar.ts";
 
 type ZevOption = { id: string; code: string; name: string };
 type Unit = { id: string; zevId: string; code: string };
@@ -13,7 +14,7 @@ type Ticket = { id: string; propertyUnitId: string | null; category: string; des
 type Order = { id: string; title: string; description: string; status: string; priority: string;
   ticketId: string | null; costAmount: number | null; dueOn: string | null; rowVersion: string };
 type Plan = { id: string; title: string; category: string; frequencyDays: number; firstDueOn: string };
-type Schedule = { id: string; title: string; dueOn: string; status: string };
+type Schedule = { id: string; title: string; category: string; dueOn: string; status: string; workOrderId: string | null };
 
 export default function MaintenancePage({ token, zevs, role, permissions }: {
   token: string; zevs: ZevOption[]; role: "manager" | "representative" | "owner"; permissions?: string[];
@@ -84,6 +85,17 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
     try {
       await callApi(`/api/zevs/${zevId}/maintenance/${path}`, { method: "POST", body: JSON.stringify(body) }, token);
       setNotice(message);
+    } catch (problem) { setError(errorText(problem)); }
+    finally { pending.current = false; setBusy(false); }
+  }
+
+  async function completeSchedule(item: Schedule) {
+    if (pending.current) return;
+    pending.current = true; setBusy(true); setError(""); setNotice("");
+    try {
+      await callApi(`/api/zevs/${zevId}/maintenance/calendar/${item.id}/status`, { method: "PATCH",
+        body: JSON.stringify({ status: "Completed", workOrderId: item.workOrderId ?? null }) }, token);
+      setNotice(`„${item.title}“ (${formatDate(item.dueOn)}) je označeno kao završeno.`);
     } catch (problem) { setError(errorText(problem)); }
     finally { pending.current = false; setBusy(false); }
   }
@@ -183,15 +195,21 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
       </td></tr>)}</tbody></table></div><Pager {...tickets} onPage={setTicketPage} /></section>
     {role !== "owner" && <><section className="panel table-panel"><h2>Radni nalozi</h2><div className="table-scroll"><table><thead><tr>
       <th>Naslov</th><th>Rok</th><th>Trošak</th><th>Status</th><th>Radnja</th>
-    </tr></thead><tbody>{orders.items.map((item) => <tr key={item.id}><td>{item.title}</td><td>{item.dueOn ?? "—"}</td>
+    </tr></thead><tbody>{orders.items.map((item) => <tr key={item.id}><td>{item.title}</td><td>{item.dueOn ? formatDate(item.dueOn) : "—"}</td>
       <td>{item.costAmount === null || item.costAmount === undefined ? "—" : formatNumber(item.costAmount)}</td><td>{label(maintenanceStatusLabels, item.status)}</td><td className="actions">
         {role === "manager" && allowed("Maintenance.Edit") && item.status === "Open" && <button onClick={() => changeStatus("work-orders", item, "InProgress")}>Započni</button>}
         {role === "manager" && allowed("Maintenance.Edit") && item.status === "InProgress" && <button onClick={() => changeStatus("work-orders", item, "Completed")}>Završi</button>}
       </td></tr>)}</tbody></table></div></section>
       <section className="panel table-panel"><h2>Kalendar održavanja</h2>
-        <div className="table-scroll"><table><thead><tr><th>Obaveza</th><th>Datum</th><th>Status</th></tr></thead><tbody>
-          {calendar.map((item) => <tr key={item.id}><td>{item.title}</td><td>{item.dueOn}</td><td>{label(maintenanceStatusLabels, item.status)}</td></tr>)}
-        </tbody></table></div><p className="empty-inline">Aktivnih planova: {plans.length}</p></section></>}
+        <div className="table-scroll"><table className="calendar-table"><thead><tr><th>Obaveza</th><th>Datum</th><th>Status</th><th>Radnja</th></tr></thead><tbody>
+          {calendar.map((item) => <tr key={item.id} className={`schedule-row-${item.status.toLowerCase()}`}><td>{item.title}</td>
+            <td>{formatDate(item.dueOn)}</td>
+            <td><span className={scheduleBadgeClass(item.status)}>{scheduleStatusLabel(item.status)}</span></td>
+            <td className="actions">{role === "manager" && allowed("Maintenance.Edit") && canCompleteSchedule(item.status)
+              && <button type="button" disabled={busy} onClick={() => void completeSchedule(item)}>Završeno</button>}</td></tr>)}
+        </tbody></table></div>
+        {calendar.length === 0 && <p className="empty-inline">Nema termina u narednih 60 dana.</p>}
+        <p className="empty-inline">Aktivnih planova: {plans.length} · prikazani su dospjeli termini i termini u narednih 60 dana.</p></section></>}
     </>}
   </>;
 }

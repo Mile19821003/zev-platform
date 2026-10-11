@@ -24,7 +24,7 @@ export const ballotStatusLabels: Record<string, string> = { Draft: "Nacrt", Open
 
 export const maintenanceStatusLabels: Record<string, string> = {
   Open: "Otvoreno", InProgress: "U toku", Completed: "Završeno", Verified: "Potvrđeno", Cancelled: "Otkazano",
-  Due: "Dospjelo",
+  Due: "Dospjelo", Planned: "Planirano",
 };
 
 export const priorityLabels: Record<string, string> = { Low: "Nizak", Normal: "Normalan", High: "Visok", Urgent: "Hitno" };
