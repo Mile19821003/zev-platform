@@ -1,7 +1,7 @@
 // Bosnian display labels for API enum values; unknown values are shown unchanged.
 export const documentTypeLabels: Record<string, string> = {
   Contract: "Ugovor", Policy: "Pravilnik", Statute: "Statut", Minutes: "Zapisnik",
-  Financial: "Finansijski", Legal: "Pravni", Other: "Ostalo",
+  Financial: "Finansijski", Legal: "Pravni", Other: "Ostalo", InsurancePolicy: "Polisa osiguranja", Decision: "Odluka",
 };
 
 export const visibilityLabels: Record<string, string> = {

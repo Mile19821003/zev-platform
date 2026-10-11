@@ -2,6 +2,46 @@
 
 Sve značajne izmjene ZEV Platforme. Ranija historija (faze do 4) je u `CLOUD_HANDOFF_STATUS.md` i git logu.
 
+## [v2.12] - 2026-10-11
+
+### Dodano (Added)
+- **Greške u sistemu** (Administracija i sistem → „Greške u sistemu“, samo sistemski administrator):
+  - Globalni handler izuzetaka (`SystemErrorExceptionHandler`) bilježi svaku neobrađenu 500 grešku API-ja
+    (ruta, tip, poruka, stack trace, korisnik) i vraća ProblemDetails „Interna greška servera.“ s `errorId`.
+  - `POST /api/system/errors/client`: prijava greške iz web aplikacije (i bez prijave), rate limit 20/min po
+    korisniku ili IP-u, polja se skraćuju; web šalje greške prikaza (React `ErrorBoundary` s ekranom „Došlo je do
+    greške“) i neobrađene `error`/`unhandledrejection` događaje, uz dedupe i najviše 5 prijava u minuti.
+  - `GET /api/system/errors?status=active|resolved|all` (stranice, najnovije prvo),
+    `PUT /api/system/errors/{id}` (Završen + bilješka administratora; ponovno otvaranje briše datum završetka;
+    audit `SystemErrorUpdated`).
+  - Ekran: lijevo tabela ID / Naziv / Izvor (Frontend/Backend oznaka) / Greška / Vrijeme s filterima
+    Aktuelni / Završeni / Svi; desno detalj s opisom, tehničkim detaljima, checkboxom „Završen“, bilješkom i „Snimi“.
+- **Istorija verzija** (Administracija i sistem → „Istorija verzija“): `GET /api/system/versions` (numerički
+  silazno, v2.12 → v2.7), `PUT /api/system/versions/{version}/notes` (audit `VersionNotesUpdated`); ekran s tabelom
+  Verzija / Status / Naslov / Instalirano / Notes i dugmetom „Snimi note“ po redu.
+- Zadane ikonice novih modula: `errors` → activity, `versions` → clipboard-check (mijenjaju se u „Prikazi i ikone“).
+- Testovi: `SystemOperationsApiTests` (5), `web/tests/systemOps.test.mjs` (7); provjera u pregledniku 14/14.
+
+### Ispravljeno (Fixed)
+- Tip dokumenta zajednice: `ManagedDocumentType` dobija `InsurancePolicy` („Polisa osiguranja“) i `Decision`
+  („Odluka“); forma „Novi dokument“ bira tip iz šifarnika `DOCUMENT_CATEGORY` (`LookupSelect`), tabela dokumenata
+  prikazuje naziv iz šifarnika. Šifre šifarnika usklađene s enumom (ranije `INSURANCE_POLICY`/`DECISION` koje API
+  nije prihvatao).
+
+### Baza / Migracije
+- `20261011055600_AddSystemErrorLogging`: tabela `SystemErrorLogs` (indeks Status + CreatedAt).
+- `20261011055708_AddAppVersionHistory`: tabela `AppVersionHistory` (PK Version) sa seedom v2.7–v2.12.
+- `20261011055745_AlignDocumentCategories`: `DOCUMENT_CATEGORY` šifre `INSURANCE_POLICY` → `InsurancePolicy`,
+  `DECISION` → `Decision`; nove stavke Pravilnik (`Policy`), Statut (`Statute`), Pravni dokument (`Legal`),
+  Ostalo (`Other`), tako da šifarnik pokriva sve vrijednosti enuma.
+
+### Otvorene odluke (Open Decisions)
+- Istorija verzija se puni seedom u migraciji; svaka nova verzija treba svoj red (migracija ili ručni unos) —
+  automatsko upisivanje pri deployu nije uvedeno.
+- Greške se čuvaju neograničeno; potrebno je pravilo zadržavanja/brisanja starih završenih grešaka.
+- Prijava grešaka iz weba je anonimna (bez korisnika ako sesija ne postoji); da li tražiti prijavu ili dodati
+  CAPTCHA/IP blokadu ako dođe do zloupotrebe.
+
 ## [v2.11] - 2026-10-10
 
 ### Dodano (Added)
@@ -35,8 +75,8 @@ Sve značajne izmjene ZEV Platforme. Ranija historija (faze do 4) je u `CLOUD_HA
 - Kategorije rashoda i kvarova čuvaju **naziv** stavke (polja su slobodan tekst i postojeći zapisi/izvještaji
   ostaju čitljivi); preimenovanje stavke u šifarniku ne mijenja već snimljene zapise. Prelazak na šifre traži
   migraciju postojećih podataka.
-- Tip dokumenta zajednice (`ManagedDocumentType`) još koristi fiksnu listu; šifarnik `DOCUMENT_CATEGORY` ima
-  stavke kojih nema u enumu (`INSURANCE_POLICY`, `DECISION`) — potrebna odluka o proširenju enuma.
+- ~~Tip dokumenta zajednice (`ManagedDocumentType`) još koristi fiksnu listu; šifarnik `DOCUMENT_CATEGORY` ima
+  stavke kojih nema u enumu (`INSURANCE_POLICY`, `DECISION`) — potrebna odluka o proširenju enuma.~~ Riješeno u v2.12.
 - Nova šifra u `PROPERTY_UNIT_TYPE` ili `MAINTENANCE_PRIORITY` traži i proširenje enuma na backendu.
 - SQL integracijski testovi: prvi prolaz nakon dužeg mirovanja SQL Server instance može imati timeoute u testovima
   performansi/konkurentnosti (isti testovi odmah zatim prolaze); zaostale testne baze iz prekinutih prolaza treba

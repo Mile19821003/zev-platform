@@ -69,6 +69,8 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
     public DbSet<LookupType> LookupTypes => Set<LookupType>();
     public DbSet<LookupItem> LookupItems => Set<LookupItem>();
     public DbSet<ModuleIconSetting> ModuleIconSettings => Set<ModuleIconSetting>();
+    public DbSet<SystemErrorLog> SystemErrorLogs => Set<SystemErrorLog>();
+    public DbSet<AppVersionHistory> VersionHistory => Set<AppVersionHistory>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -1196,6 +1198,35 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
             entity.HasOne<AppUser>().WithMany().HasForeignKey(item => item.UpdatedByUserId).OnDelete(DeleteBehavior.Restrict);
             entity.HasData(ModuleIcons.Seed.Select(item => new { item.Id, item.ModuleKey, item.IconKey, item.UpdatedAt,
                 UpdatedByUserId = (Guid?)null }));
+        });
+
+        modelBuilder.Entity<SystemErrorLog>(entity =>
+        {
+            entity.ToTable("SystemErrorLogs");
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.Title).HasMaxLength(SystemErrorLog.TitleLength).IsRequired();
+            entity.Property(item => item.Source).HasConversion<string>().HasMaxLength(20);
+            entity.Property(item => item.ErrorType).HasMaxLength(SystemErrorLog.ErrorTypeLength).IsRequired();
+            entity.Property(item => item.Message).HasMaxLength(SystemErrorLog.MessageLength).IsRequired();
+            entity.Property(item => item.StackTrace).HasMaxLength(SystemErrorLog.StackTraceLength);
+            entity.Property(item => item.RequestPath).HasMaxLength(SystemErrorLog.PathLength);
+            entity.Property(item => item.Status).HasConversion<string>().HasMaxLength(20);
+            entity.Property(item => item.AdminNotes).HasMaxLength(SystemErrorLog.NotesLength);
+            entity.HasIndex(item => new { item.Status, item.CreatedAt });
+        });
+
+        modelBuilder.Entity<AppVersionHistory>(entity =>
+        {
+            entity.ToTable("AppVersionHistory");
+            entity.HasKey(item => item.Version);
+            entity.Property(item => item.Version).HasMaxLength(20);
+            entity.Property(item => item.Status).HasMaxLength(20).IsRequired();
+            entity.Property(item => item.Title).HasMaxLength(200).IsRequired();
+            entity.Property(item => item.InstalledBy).HasMaxLength(120).IsRequired();
+            entity.Property(item => item.AdminNotes).HasMaxLength(AppVersionHistory.NotesLength);
+            entity.HasData(AppVersions.Seed.Select(item => new { item.Version, item.Status, item.Title, item.InstalledAt,
+                item.InstalledBy, AdminNotes = (string?)null, NotesUpdatedAt = (DateTimeOffset?)null,
+                NotesUpdatedByUserId = (Guid?)null }));
         });
 
         modelBuilder.Entity<AuditLog>(entity =>

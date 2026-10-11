@@ -1,7 +1,8 @@
 namespace Zev.Api.Domain;
 
 public enum AudienceScope { Zev, Building, Entrance, Role }
-public enum ManagedDocumentType { Contract, Policy, Statute, Minutes, Financial, Legal, Other }
+// Stored as text; the values equal the codes of the DOCUMENT_CATEGORY code list.
+public enum ManagedDocumentType { Contract, Policy, Statute, Minutes, Financial, Legal, Other, InsurancePolicy, Decision }
 public enum DocumentVisibility { ManagersOnly, ZevMembers, PersonOnly, PropertyUnit, Role }
 public enum BallotKind { Survey, Formal }
 public enum VotingMode { OneUnitOneVote, Weighted }

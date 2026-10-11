@@ -1,9 +1,10 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { callApi, errorText, Page } from "../api";
 import { Pager, SectionTitle } from "./shared";
-import { announcementScopeLabels, ballotKindLabels, ballotModeLabels, ballotStatusLabels, documentTypeLabels, label,
+import { announcementScopeLabels, ballotKindLabels, ballotModeLabels, ballotStatusLabels, label,
   membershipRoleLabels, visibilityLabels } from "../uiLabels.ts";
 import { useChangeRevision } from "../useChangeRevision.ts";
+import LookupSelect, { LookupLabel } from "./LookupSelect";
 
 type ZevOption = { id: string; code: string; name: string };
 type Announcement = { id: string; title: string; content: string; scope: string; publishedFromUtc: string };
@@ -161,8 +162,8 @@ export default function CommunityPage({ token, zevs, role, permissions }: {
       {role === "manager" && <>{allowed("Documents.Upload") && <section className="panel"><h2>Novi dokument</h2>
         <form className="admin-form" onSubmit={addDocument}>
           <label>Naslov<input required maxLength={200} value={documentTitle} onChange={(event) => setDocumentTitle(event.target.value)} /></label>
-          <label>Tip<select value={documentType} onChange={(event) => setDocumentType(event.target.value)}>
-            {['Contract', 'Policy', 'Statute', 'Minutes', 'Financial', 'Legal', 'Other'].map((item) => <option key={item} value={item}>{label(documentTypeLabels, item)}</option>)}</select></label>
+          <label>Tip<LookupSelect typeCode="DOCUMENT_CATEGORY" token={token} required value={documentType}
+            onChange={setDocumentType} /></label>
           <label>Pristup<select value={visibility} onChange={(event) => setVisibility(event.target.value)}>
             <option value="ZevMembers">Članovi ZEV-a</option><option value="ManagersOnly">Samo upravnik</option></select></label>
           <label>Datoteka<input required type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></label>
@@ -187,7 +188,7 @@ export default function CommunityPage({ token, zevs, role, permissions }: {
       <Pager {...announcements} onPage={setPage} /></section>
     <section className="panel table-panel"><h2>Dokumenti</h2><div className="table-scroll"><table><thead><tr>
       <th>Naslov</th><th>Tip</th><th>Pristup</th><th>Radnja</th></tr></thead><tbody>
-      {documents.items.map((item) => <tr key={item.id}><td>{item.title}</td><td>{label(documentTypeLabels, item.type)}</td>
+      {documents.items.map((item) => <tr key={item.id}><td>{item.title}</td><td><LookupLabel typeCode="DOCUMENT_CATEGORY" token={token} value={item.type} /></td>
         <td>{label(visibilityLabels, item.visibility)}</td><td className="actions">{allowed("Documents.Download") && <button type="button" onClick={() => download(item)}>Otvori</button>}</td></tr>)}
       </tbody></table></div></section>
     <section className="panel table-panel"><h2>Glasanja</h2>{role === "owner" && <div className="vote-picker">

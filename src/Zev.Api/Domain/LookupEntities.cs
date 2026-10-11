@@ -68,8 +68,8 @@ public static class LookupSeed
         ("MAINTENANCE_PRIORITY", "Low", "Nizak", false),
         ("DOCUMENT_CATEGORY", "Minutes", "Zapisnik", false),
         ("DOCUMENT_CATEGORY", "Contract", "Ugovor", false),
-        ("DOCUMENT_CATEGORY", "INSURANCE_POLICY", "Polisa osiguranja", false),
-        ("DOCUMENT_CATEGORY", "DECISION", "Odluka", false),
+        ("DOCUMENT_CATEGORY", "InsurancePolicy", "Polisa osiguranja", false),
+        ("DOCUMENT_CATEGORY", "Decision", "Odluka", false),
         ("DOCUMENT_CATEGORY", "Financial", "Finansijski izvještaj", false),
         ("PAYMENT_METHOD", "Cash", "Gotovina", false),
         ("PAYMENT_METHOD", "Transfer", "Virman", true),
@@ -82,6 +82,11 @@ public static class LookupSeed
         ("PROPERTY_UNIT_TYPE", "Other", "Ostalo", false),
         ("PAYMENT_METHOD", "Migration", "Migraciona uplata", false),
         ("PAYMENT_METHOD", "Other", "Drugo", false),
+        // Document types the community form already offered (PR 9).
+        ("DOCUMENT_CATEGORY", "Policy", "Pravilnik", false),
+        ("DOCUMENT_CATEGORY", "Statute", "Statut", false),
+        ("DOCUMENT_CATEGORY", "Legal", "Pravni dokument", false),
+        ("DOCUMENT_CATEGORY", "Other", "Ostalo", false),
     ];
 
     public static LookupItem[] Items => ItemRows.Select((row, index) => new LookupItem

@@ -26,6 +26,7 @@ var seedUatFinance = args.Contains("--seed-uat-finance", StringComparer.Ordinal)
 var builder = WebApplication.CreateBuilder(args.Where(argument => argument != "--seed-uat-finance").ToArray());
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<SystemErrorExceptionHandler>();
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
@@ -121,6 +122,15 @@ builder.Services.AddRateLimiter(options =>
             QueueLimit = 0
         }));
     options.AddPolicy("upload", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.User.FindFirstValue("sub") ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 20,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        }));
+    // Error reports from the web app (also anonymous): per user or address, a burst of failures cannot flood the log.
+    options.AddPolicy("client-errors", context => RateLimitPartition.GetFixedWindowLimiter(
         context.User.FindFirstValue("sub") ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions
         {
@@ -275,6 +285,7 @@ api.MapAccessOverrideEndpoints();
 api.MapSystemSettingsEndpoints();
 api.MapLookupEndpoints();
 api.MapModuleIconEndpoints();
+api.MapClientErrorEndpoint();
 api.MapGet("/me", async (TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
 {
     if (access.CurrentUserId is not Guid userId)
@@ -635,6 +646,8 @@ system.MapPost("/memberships", async (CreateMembershipRequest request, ZevDbCont
 
 system.MapPhase2AdminEndpoints();
 system.MapRegistryAdminEndpoints();
+system.MapSystemErrorAdminEndpoints();
+system.MapVersionHistoryEndpoints();
 
 await AdminBootstrap.RunAsync(app.Services, app.Configuration, app.Lifetime.ApplicationStopping);
 await app.RunAsync();

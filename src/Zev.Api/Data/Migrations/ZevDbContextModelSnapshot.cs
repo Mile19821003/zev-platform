@@ -196,6 +196,95 @@ namespace Zev.Api.Data.Migrations
                     b.ToTable("Users", (string)null);
                 });
 
+            modelBuilder.Entity("Zev.Api.Domain.AppVersionHistory", b =>
+                {
+                    b.Property<string>("Version")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("AdminNotes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTimeOffset>("InstalledAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("InstalledBy")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<DateTimeOffset?>("NotesUpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("NotesUpdatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Version");
+
+                    b.ToTable("AppVersionHistory", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Version = "v2.7",
+                            InstalledAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InstalledBy = "Migracija baze",
+                            Status = "installed",
+                            Title = "Navigacija radnog prostora: kontrolna ploča i sklopivi meni"
+                        },
+                        new
+                        {
+                            Version = "v2.8",
+                            InstalledAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InstalledBy = "Migracija baze",
+                            Status = "installed",
+                            Title = "Sistemska podešavanja i regionalni prikaz iznosa i datuma"
+                        },
+                        new
+                        {
+                            Version = "v2.9",
+                            InstalledAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InstalledBy = "Migracija baze",
+                            Status = "installed",
+                            Title = "Šifarnici (generičke klasifikacije i padajuće liste)"
+                        },
+                        new
+                        {
+                            Version = "v2.10",
+                            InstalledAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InstalledBy = "Migracija baze",
+                            Status = "installed",
+                            Title = "Prikazi i ikone: paleta ikonica za module i kategorije"
+                        },
+                        new
+                        {
+                            Version = "v2.11",
+                            InstalledAt = new DateTimeOffset(new DateTime(2026, 10, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InstalledBy = "Migracija baze",
+                            Status = "installed",
+                            Title = "Šifarnici u formama (useLookup, storno ručne uplate)"
+                        },
+                        new
+                        {
+                            Version = "v2.12",
+                            InstalledAt = new DateTimeOffset(new DateTime(2026, 10, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InstalledBy = "Migracija baze",
+                            Status = "installed",
+                            Title = "Greške u sistemu, istorija verzija i kategorije dokumenata"
+                        });
+                });
+
             modelBuilder.Entity("Zev.Api.Domain.AuditLog", b =>
                 {
                     b.Property<long>("Id")
@@ -1753,7 +1842,7 @@ namespace Zev.Api.Data.Migrations
                         new
                         {
                             Id = new Guid("5e1f0000-0000-4000-8000-000000000022"),
-                            Code = "INSURANCE_POLICY",
+                            Code = "InsurancePolicy",
                             CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             IsActive = true,
                             IsDefault = false,
@@ -1764,7 +1853,7 @@ namespace Zev.Api.Data.Migrations
                         new
                         {
                             Id = new Guid("5e1f0000-0000-4000-8000-000000000023"),
-                            Code = "DECISION",
+                            Code = "Decision",
                             CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             IsActive = true,
                             IsDefault = false,
@@ -1892,6 +1981,50 @@ namespace Zev.Api.Data.Migrations
                             LookupTypeCode = "PAYMENT_METHOD",
                             Name = "Drugo",
                             SortOrder = 50
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000035"),
+                            Code = "Policy",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "DOCUMENT_CATEGORY",
+                            Name = "Pravilnik",
+                            SortOrder = 60
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000036"),
+                            Code = "Statute",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "DOCUMENT_CATEGORY",
+                            Name = "Statut",
+                            SortOrder = 70
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000037"),
+                            Code = "Legal",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "DOCUMENT_CATEGORY",
+                            Name = "Pravni dokument",
+                            SortOrder = 80
+                        },
+                        new
+                        {
+                            Id = new Guid("5e1f0000-0000-4000-8000-000000000038"),
+                            Code = "Other",
+                            CreatedUtc = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDefault = false,
+                            LookupTypeCode = "DOCUMENT_CATEGORY",
+                            Name = "Ostalo",
+                            SortOrder = 90
                         });
                 });
 
@@ -2519,6 +2652,20 @@ namespace Zev.Api.Data.Migrations
                             Id = new Guid("1c0e0000-0000-4000-8000-000000000034"),
                             IconKey = "palette",
                             ModuleKey = "icons",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000035"),
+                            IconKey = "activity",
+                            ModuleKey = "errors",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000036"),
+                            IconKey = "clipboard-check",
+                            ModuleKey = "versions",
                             UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
                         });
                 });
@@ -3476,6 +3623,70 @@ namespace Zev.Api.Data.Migrations
                     b.HasIndex("OrganizationId", "Name");
 
                     b.ToTable("Suppliers", (string)null);
+                });
+
+            modelBuilder.Entity("Zev.Api.Domain.SystemErrorLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AdminNotes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("ErrorType")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("RequestPath")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<DateTimeOffset?>("ResolvedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("ResolvedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("StackTrace")
+                        .HasMaxLength(20000)
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status", "CreatedAt");
+
+                    b.ToTable("SystemErrorLogs", (string)null);
                 });
 
             modelBuilder.Entity("Zev.Api.Domain.SystemSettings", b =>

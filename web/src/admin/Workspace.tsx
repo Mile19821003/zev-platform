@@ -16,13 +16,15 @@ import AccessControlPage from "./AccessControlPage";
 import SystemSettingsPage from "./SystemSettingsPage";
 import LookupsPage from "./LookupsPage";
 import IconSettingsPage from "./IconSettingsPage";
+import SystemErrorsPage from "./SystemErrorsPage";
+import VersionHistoryPage from "./VersionHistoryPage";
 import { useChangeRevision } from "../useChangeRevision.ts";
 import WorkspaceNav, { useSidebarState } from "./WorkspaceNav";
 import ModuleDashboard from "./ModuleDashboard";
 import { moduleLabel } from "../navigationModel.ts";
 
 type MenuKey = "overview" | "organizations" | "zevs" | "buildings" | "entrances" | "units"
-  | "people" | "ownership" | "users" | "memberships" | "accountLinks" | "settings" | "lookups" | "icons" | "finance" | "payments" | "expenses" | "legal" | "maintenance" | "hodogram" | "community" | "reports";
+  | "people" | "ownership" | "users" | "memberships" | "accountLinks" | "settings" | "lookups" | "icons" | "errors" | "versions" | "finance" | "payments" | "expenses" | "legal" | "maintenance" | "hodogram" | "community" | "reports";
 
 const menu: { key: MenuKey; label: string }[] = [
   { key: "overview", label: "Pregled" },
@@ -39,6 +41,8 @@ const menu: { key: MenuKey; label: string }[] = [
   { key: "lookups", label: "Šifarnici" },
   { key: "settings", label: "Sistemska podešavanja" },
   { key: "icons", label: "Prikazi i ikone" },
+  { key: "errors", label: "Greške u sistemu" },
+  { key: "versions", label: "Istorija verzija" },
   { key: "finance", label: "Finansije" },
   { key: "payments", label: "Uplate i izvodi" },
   { key: "expenses", label: "Rashodi i dugovanja" },
@@ -234,6 +238,8 @@ export default function Workspace({ token, profile, zevs, onLogout, onProfile }:
         {active === "settings" && <SystemSettingsPage token={token} />}
         {active === "lookups" && <LookupsPage token={token} />}
         {active === "icons" && <IconSettingsPage token={token} />}
+        {active === "errors" && <SystemErrorsPage token={token} />}
+        {active === "versions" && <VersionHistoryPage token={token} />}
       </main>
     </div>
   </div>;

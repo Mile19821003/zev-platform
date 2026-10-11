@@ -11,7 +11,7 @@ const seed = [...backend.matchAll(/\("([A-Z_]+)", "([^"]+)", "([^"]+)", (true|fa
   .map((match) => ({ type: match[1], code: match[2], name: match[3], isDefault: match[4] === "true" }));
 
 test("fallback options equal the backend seed, in the same order", () => {
-  assert.equal(seed.length, 34);
+  assert.equal(seed.length, 38);
   for (const [type, items] of Object.entries(lookupFallbacks)) {
     const expected = seed.filter((row) => row.type === type);
     // Appended compatibility rows come last in the seed but belong at their sort position in the list.

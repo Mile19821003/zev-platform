@@ -24,7 +24,7 @@ public sealed class SqlLookupTests
         {
             await database.Database.MigrateAsync();
             Assert.Equal(7, await database.LookupTypes.CountAsync());
-            Assert.Equal(34, await database.LookupItems.CountAsync());
+            Assert.Equal(38, await database.LookupItems.CountAsync());
             Assert.Equal("Transfer", await database.LookupItems.Where(item => item.LookupTypeCode == "PAYMENT_METHOD"
                 && item.IsDefault).Select(item => item.Code).SingleAsync());
 
