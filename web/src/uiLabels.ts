@@ -44,6 +44,22 @@ export const personKindLabels: Record<string, string> = { Individual: "Fizičko 
 export const occupantKindLabels: Record<string, string> = { Resident: "Stanovnik", Tenant: "Podstanar", OtherUser: "Drugi korisnik" };
 export const activeFilterLabels: Record<string, string> = { true: "Aktivni", false: "Neaktivni" };
 
+// Finance codes: expenses, legal, bank and payments. Requests and the database keep the codes.
+export const expenseStatusLabels: Record<string, string> = { Draft: "Nacrt", Posted: "Proknjiženo", Reversed: "Stornirano" };
+export const reminderKindLabels: Record<string, string> = { Payment: "Opomena", BeforeLawsuit: "Opomena pred utuženje" };
+export const legalCaseStatusLabels: Record<string, string> = {
+  Open: "Otvoren", Filed: "Tužba podnesena", InProgress: "U toku", Settled: "Riješen nagodbom", Closed: "Zatvoren",
+};
+export const bankTransactionStatusLabels: Record<string, string> = {
+  Pending: "Na čekanju", Matched: "Povezano", ManualReview: "Za provjeru", Ignored: "Zanemareno",
+  PartiallyMatched: "Djelimično povezano", Returned: "Vraćeno",
+};
+export const bankImportStatusLabels: Record<string, string> = {
+  Imported: "Uvezen", PartiallyReconciled: "Djelimično usklađen", Reconciled: "Usklađen",
+};
+export const paymentSourceLabels: Record<string, string> = { BankTransaction: "Bankovni izvod", Manual: "Ručna uplata" };
+export const fundKindLabels: Record<string, string> = { Regular: "Redovni", Reserve: "Rezervni" };
+
 export const ballotKindLabels: Record<string, string> = { Survey: "Anketa", Formal: "Formalno glasanje" };
 export const ballotModeLabels: Record<string, string> = { OneUnitOneVote: "Jedan stan = jedan glas", Weighted: "Ponderisano" };
 export const ballotStatusLabels: Record<string, string> = { Draft: "Nacrt", Open: "Otvoreno", Closed: "Zaključeno" };

@@ -4,6 +4,7 @@ import { Pager, SectionTitle } from "./shared";
 import { useChangeRevision } from "../useChangeRevision.ts";
 import { formatMoney } from "../currency.ts";
 import LookupSelect from "./LookupSelect";
+import { expenseStatusLabels, label } from "../uiLabels.ts";
 
 type ZevOption = { id: string; code: string; name: string };
 type Fund = { id: string; name: string };
@@ -148,7 +149,7 @@ export default function ExpensesPage({ token, zevs, permissions }: { token: stri
     <section className="panel table-panel"><h2>Rashodi</h2><div className="table-scroll"><table><thead><tr>
       <th>Dobavljač</th><th>Račun</th><th>Datum</th><th>Kategorija</th><th>Iznos</th><th>Status</th><th>Radnja</th>
     </tr></thead><tbody>{expenses.items.map((item) => <tr key={item.id}><td>{item.supplierName}</td><td>{item.invoiceNumber}</td>
-      <td>{item.invoiceDate}</td><td>{item.category}</td><td>{formatMoney(item.amount, item.currencyCode)}</td><td>{item.status}</td>
+      <td>{item.invoiceDate}</td><td>{item.category}</td><td>{formatMoney(item.amount, item.currencyCode)}</td><td>{label(expenseStatusLabels, item.status)}</td>
       <td className="actions">{allowed("Expenses.Post") && item.status === "Draft" && <button disabled={busy} onClick={() => changeStatus(item, "post")}>Knjiži</button>}
         {allowed("Expenses.Reverse") && item.status === "Posted" && <button disabled={busy} onClick={() => changeStatus(item, "reverse")}>Storniraj</button>}
         {item.documentId && <button type="button" onClick={async () => {

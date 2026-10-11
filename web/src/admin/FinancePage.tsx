@@ -8,6 +8,7 @@ import { billingBasisLabel, billingDate, billingDraftSignature, billingIssueText
   defaultBillingSelection, invoiceListView, similarBillingWarnings } from "../billingUi.ts";
 import { manualLineAmount } from "../billingUi.ts";
 import { formatMoney, ownerLedgerLabel } from "../currency.ts";
+import { fundKindLabels, label } from "../uiLabels.ts";
 import type { BillingAdjustment, BillingIssue, BillingItem, BillingManualLine } from "../billingUi.ts";
 
 type Fund = { id: string; kind: string; name: string; balance: number | null;
@@ -386,7 +387,7 @@ export default function FinancePage({ token, zevs, permissions }: { token: strin
     {!zevId ? <p className="empty-inline">Nema dostupnih ZEV-ova.</p> : <>
       <div className="finance-grid">
         <section className="panel"><h2>Fondovi</h2>
-          {funds.map((fund) => <div className="fund-row" key={fund.id}><span>{fund.name} ({fund.kind}) ·
+          {funds.map((fund) => <div className="fund-row" key={fund.id}><span>{fund.name} ({label(fundKindLabels, fund.kind)}) ·
             {fund.requiresBankAccountForInvoice ? " Račun obavezan" : " Račun nije obavezan"}</span>
             <strong>{fund.balancesByCurrency.length ? fund.balancesByCurrency.map((balance) =>
               formatMoney(balance.balance, balance.currencyCode)).join(" · ") : "Nema transakcija"}</strong>
@@ -397,7 +398,7 @@ export default function FinancePage({ token, zevs, permissions }: { token: strin
             }}>Promijeni zahtjev računa</button>}</div>)}
           {allowed("Funds.Create") && <form className="admin-form" onSubmit={addFund}>
             <label>Vrsta<select value={fundKind} onChange={(event) => setFundKind(event.target.value)}>
-              <option value="Regular">Redovni</option><option value="Reserve">Rezervni</option></select></label>
+              {Object.entries(fundKindLabels).map(([code, name]) => <option key={code} value={code}>{name}</option>)}</select></label>
             <label>Naziv<input required maxLength={120} value={fundName} onChange={(event) => setFundName(event.target.value)} /></label>
             <label><input type="checkbox" checked={fundRequiresBankAccount}
               onChange={(event) => setFundRequiresBankAccount(event.target.checked)} /> Zahtijevaj aktivan bankovni račun prije knjiženja</label>

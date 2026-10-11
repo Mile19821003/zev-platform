@@ -8,6 +8,7 @@ import LookupSelect, { ReasonFields } from "./LookupSelect";
 import { activeAllocationCount, allocationStatusLabel, canSubmitPayerCorrection,
   matchRuleLabel } from "../paymentUi.ts";
 import { formatMoney } from "../currency.ts";
+import { label, paymentSourceLabels } from "../uiLabels.ts";
 
 type Fund = { id: string; name: string };
 type Account = { id: string; accountNumber: string };
@@ -220,7 +221,7 @@ export default function PaymentWorkspace({ zevId, token, permissions, funds, acc
       + NOVA RUČNA UPLATA</button>}
     <div className="table-scroll"><table><thead><tr><th>Datum</th><th>Izvor</th><th>Vlasnik</th><th>Uplatilac</th>
       <th>Poziv</th><th>Iznos</th><th>Raspoređeno</th><th>Kredit</th><th>Status</th><th>Radnja</th></tr></thead>
-      <tbody>{payments.items.map((item) => <tr key={item.id}><td>{item.paidOn}</td><td>{item.sourceType}</td>
+      <tbody>{payments.items.map((item) => <tr key={item.id}><td>{item.paidOn}</td><td>{label(paymentSourceLabels, item.sourceType)}</td>
         <td>{item.personName ?? "Nepoznato"}</td><td>{item.counterparty ?? "—"}</td><td>{item.reference ?? "—"}</td>
         <td>{formatMoney(item.amount, item.currencyCode)}</td><td>{formatMoney(item.allocated, item.currencyCode)}</td>
         <td>{formatMoney(item.unallocated, item.currencyCode)}</td>

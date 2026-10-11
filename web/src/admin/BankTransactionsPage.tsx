@@ -4,6 +4,7 @@ import { Pager, SectionTitle } from "./shared";
 import PaymentWorkspace from "./PaymentWorkspace";
 import { allocationStatusLabel, matchRuleLabel } from "../paymentUi.ts";
 import { formatMoney } from "../currency.ts";
+import { bankTransactionStatusLabels } from "../uiLabels.ts";
 
 type Zev = { id: string; name: string; code: string };
 type Account = { id: string; accountNumber: string };
@@ -70,8 +71,8 @@ export default function BankTransactionsPage({ token, zevs, permissions }: { tok
       <label>Od<input type="date" value={from} onChange={(event) => { setFrom(event.target.value); setPage(1); }} /></label>
       <label>Do<input type="date" value={to} onChange={(event) => { setTo(event.target.value); setPage(1); }} /></label>
       <label>Status<select value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }}>
-        <option value="">Svi</option>{["Pending", "Matched", "ManualReview", "PartiallyMatched", "Returned", "Ignored"]
-          .map((item) => <option key={item}>{item}</option>)}</select></label>
+        <option value="">Svi</option>{Object.entries(bankTransactionStatusLabels)
+          .map(([code, name]) => <option key={code} value={code}>{name}</option>)}</select></label>
       <label>Traži vlasnika<input value={personSearch} onChange={(event) => setPersonSearch(event.target.value)} /></label>
       <label>Vlasnik<select value={personId} onChange={(event) => { setPersonId(event.target.value);
         setPropertyUnitId(""); setPage(1); }}><option value="">Svi</option>{people.items.map((item) =>

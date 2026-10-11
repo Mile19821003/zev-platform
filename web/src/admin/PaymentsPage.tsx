@@ -7,6 +7,7 @@ import PaymentWorkspace from "./PaymentWorkspace";
 import { formatMoney } from "../currency.ts";
 import { formatDate } from "../bankBalanceUi.ts";
 import BankAccountBalanceCard from "./BankAccountBalanceCard";
+import { bankImportStatusLabels, bankTransactionStatusLabels, label } from "../uiLabels.ts";
 
 type ZevOption = { id: string; code: string; name: string };
 type Fund = { id: string; name: string };
@@ -202,7 +203,7 @@ export default function PaymentsPage({ token, zevs, permissions }: { token: stri
       <div className="table-scroll"><table><thead><tr><th>Datum</th><th>Iznos</th><th>Poziv</th><th>Uplatilac</th><th>Status</th><th>Radnja</th></tr></thead>
         <tbody>{queue.items.map((item) => <tr key={item.id}><td>{item.bookingDate}</td>
           <td>{formatMoney(item.amount, item.currencyCode)}</td>
-          <td>{item.reference ?? "—"}</td><td>{item.counterparty ?? "—"}</td><td>{item.status}</td><td className="actions">
+          <td>{item.reference ?? "—"}</td><td>{item.counterparty ?? "—"}</td><td>{label(bankTransactionStatusLabels, item.status)}</td><td className="actions">
             {allowed("Payments.Reverse") && <button type="button"
               onClick={() => setSelected(item)}>Povrat</button>}</td></tr>)}</tbody></table></div>
       {queue.items.length === 0 && <p className="empty-inline">Nema povrata za ručni pregled.</p>}
@@ -225,7 +226,7 @@ export default function PaymentsPage({ token, zevs, permissions }: { token: stri
           <td>{item.statementFrom && item.statementTo ? `${formatDate(item.statementFrom)} – ${formatDate(item.statementTo)}` : "—"}</td>
           <td>{item.openingBalance !== null ? formatMoney(item.openingBalance, currency) : "—"}</td>
           <td>{item.closingBalance !== null ? formatMoney(item.closingBalance, currency) : "—"}</td>
-          <td>{item.transactionCount}</td><td>{item.status}</td><td>{item.importedUtc}</td>
+          <td>{item.transactionCount}</td><td>{label(bankImportStatusLabels, item.status)}</td><td>{item.importedUtc}</td>
           <td>{item.importedByUserId ?? "—"}</td></tr>; })}</tbody></table></div>
     </section>
     </>}

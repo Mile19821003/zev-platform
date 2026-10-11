@@ -3,6 +3,7 @@ import { callApi, errorText, Page } from "../api";
 import { Pager, SectionTitle } from "./shared";
 import { useChangeRevision } from "../useChangeRevision.ts";
 import { formatMoney } from "../currency.ts";
+import { label, legalCaseStatusLabels, reminderKindLabels } from "../uiLabels.ts";
 
 type ZevOption = { id: string; code: string; name: string };
 type Person = { id: string; displayName: string };
@@ -135,7 +136,7 @@ export default function LegalPage({ token, zevs, permissions }: { token: string;
         <label>Lice<select required value={personId} onChange={(event) => setPersonId(event.target.value)}>
           <option value="">Odaberite</option>{people.map((item) => <option key={item.id} value={item.id}>{item.displayName}</option>)}</select></label>
         <label>Vrsta<select value={reminderKind} onChange={(event) => setReminderKind(event.target.value)}>
-          <option value="Payment">Opomena</option><option value="BeforeLawsuit">Opomena pred utuženje</option></select></label>
+          {Object.entries(reminderKindLabels).map(([code, name]) => <option key={code} value={code}>{name}</option>)}</select></label>
         <label>Stanje na dan<input required type="date" value={asOf} onChange={(event) => setAsOf(event.target.value)} /></label>
         <button disabled={busy}>Evidentiraj opomenu</button></form>
       </section>}
@@ -156,7 +157,7 @@ export default function LegalPage({ token, zevs, permissions }: { token: string;
     </div>
     <section className="panel table-panel"><h2>Opomene</h2><div className="table-scroll"><table><thead><tr>
       <th>Lice</th><th>Vrsta</th><th>Datum</th><th>Glavnica</th><th>Kamata</th><th>PDF</th>
-    </tr></thead><tbody>{reminders.items.map((item) => <tr key={item.id}><td>{item.personName}</td><td>{item.kind}</td>
+    </tr></thead><tbody>{reminders.items.map((item) => <tr key={item.id}><td>{item.personName}</td><td>{label(reminderKindLabels, item.kind)}</td>
       <td>{item.asOf}</td><td>{formatMoney(item.principalSnapshot, "UNKNOWN")}</td><td>{formatMoney(item.interestSnapshot, "UNKNOWN")}</td>
       <td>{allowed("Legal.Documents") && <button type="button" onClick={() => void downloadReminder(item.id)}>Preuzmi</button>}</td></tr>)}</tbody></table></div></section>
     <section className="panel table-panel"><h2>Pravni predmeti</h2><div className="table-scroll"><table><thead><tr>
@@ -164,7 +165,8 @@ export default function LegalPage({ token, zevs, permissions }: { token: string;
     </tr></thead><tbody>{cases.items.map((item) => <tr key={item.id}><td>{item.personName}</td><td>{item.caseNumber ?? "—"}</td>
       <td>{formatMoney(item.principalAmount, "UNKNOWN")}</td><td>{formatMoney(item.recoveredAmount, "UNKNOWN")}</td><td>{allowed("Legal.Edit") ? <select value={item.status}
         disabled={busy} onChange={(event) => updateCase(item, event.target.value)}>
-          {['Open', 'Filed', 'InProgress', 'Settled', 'Closed'].map((status) => <option key={status}>{status}</option>)}</select> : item.status}
+          {Object.entries(legalCaseStatusLabels).map(([code, name]) => <option key={code} value={code}>{name}</option>)}</select>
+          : label(legalCaseStatusLabels, item.status)}
       </td></tr>)}</tbody></table></div><Pager {...cases} onPage={setCasePage} /></section></>}
   </>;
 }
