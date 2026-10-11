@@ -6,9 +6,9 @@ import { useChangeRevision } from "../useChangeRevision.ts";
 import LookupSelect, { LookupLabel } from "./LookupSelect";
 import { formatDate, formatNumber } from "../displaySettings.ts";
 import { canSubmitTicket, handlesTickets, TicketPlace, ticketPlaces, ticketUnitId } from "../maintenanceTickets.ts";
-import { calendarQuery, calendarStatusHandoffKey, CalendarFilters, canCompleteSchedule, canStartWorkOrder,
-  defaultCalendarFilters, planDeleteWarning, planFrequencyText, planStatusLabel, RangePreset, rangePresets,
-  scheduleBadgeClass, scheduleStatusLabel, scheduleStatusLabels } from "../maintenanceCalendar.ts";
+import { calendarQuery, calendarStatusHandoffKey, CalendarFilters, calendarStatusOptions, canCompleteSchedule, canStartWorkOrder,
+  defaultCalendarFilters, MaintenanceTab, planDeleteWarning, planFrequencyText, planStatusLabel, RangePreset, rangePresets,
+  scheduleBadgeClass, scheduleStatusLabel, tabsFor, visibleScheduleItems } from "../maintenanceCalendar.ts";
 import WorkOrderDossier from "./WorkOrderDossier";
 import MaintenanceReports from "./MaintenanceReports";
 
@@ -65,6 +65,7 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [filters, setFilters] = useState<CalendarFilters>(initialFilters);
   const [dossierId, setDossierId] = useState<string | null>(null);
+  const [tab, setTab] = useState<MaintenanceTab>(() => filters.status === "Due" ? "calendar" : "tickets");
   const orderForm = useRef<HTMLElement | null>(null);
   const [planTitle, setPlanTitle] = useState("");
   const [planCategory, setPlanCategory] = useState("");
@@ -213,10 +214,12 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
   function startOrder(source: NonNullable<OrderSource>, title: string, description: string, dueOn: string) {
     setOrderSource(source); setOrderTitle(title); setOrderDescription(description); setOrderDueOn(dueOn);
     if (source.kind === "ticket") setOrderTicketId(source.id);
-    orderForm.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setTab("orders");
+    window.setTimeout(() => orderForm.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
   }
 
   const setRange = (preset: RangePreset) => setFilters((current) => ({ ...current, preset }));
+  const visibleCalendar = visibleScheduleItems(calendar, filters.status);
 
   function createPlan(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); void submit("plans", { title: planTitle, category: planCategory,
@@ -229,7 +232,11 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
       {zevs.map((zev) => <option key={zev.id} value={zev.id}>{zev.name} ({zev.code})</option>)}
     </select></label></div>
     {error && <p className="error" role="alert">{error}</p>}{notice && <p className="notice" role="status">{notice}</p>}
-    {zevId && <><div className="finance-grid">{allowed("Maintenance.Create") && <section className="panel"><h2>Prijava kvara</h2>
+    {zevId && <>
+    {tabsFor(role).length > 1 && <div className="filter-tabs maintenance-tabs" role="tablist" aria-label="Održavanje">{tabsFor(role).map((item) =>
+      <button type="button" role="tab" key={item.value} aria-selected={tab === item.value} className={tab === item.value ? "active" : ""}
+        onClick={() => setTab(item.value)}>{item.label}</button>)}</div>}
+    {tab === "tickets" && <div role="tabpanel" aria-label="Prijave kvarova"><div className="finance-grid">{allowed("Maintenance.Create") && <section className="panel"><h2>Prijava kvara</h2>
       <form className="admin-form" onSubmit={createTicket}>
         {role === "owner" && <fieldset className="ticket-place"><legend>Gdje je kvar?</legend>
           {ticketPlaces.map((option) => <label key={option.value} className="radio"><input type="radio" name="ticket-place"
@@ -247,8 +254,23 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
         <label>Fotografija<input type="file" accept="image/png,image/jpeg" onChange={(event) => setPhoto(event.target.files?.[0] ?? null)} /></label>
         <button disabled={busy || (role === "owner" && !canSubmitTicket(place, unitId))}>Pošalji prijavu</button>
         {role === "owner" && <small>Prijava odmah stiže upravi zgrade (i e-mailom, ako je adresa podešena).</small>}
-      </form></section>}
-      {role === "manager" && <>{allowed("Maintenance.Assign") && <section className="panel" ref={orderForm}><h2>Novi radni nalog</h2>
+      </form></section>}</div>
+      <section className="panel table-panel"><h2>Prijave kvarova</h2><div className="table-scroll"><table><thead><tr>
+      <th>Kategorija</th><th>Lokacija</th><th>Opis</th><th>Prioritet</th><th>Status</th><th>Radnja</th>
+    </tr></thead><tbody>{tickets.items.map((item) => <tr key={item.id} className={!item.isReadByAdmin && role !== "owner" ? "unread" : ""}>
+      <td>{!item.isReadByAdmin && role !== "owner" && handlesTickets(permissions, !permissions) && <span className="badge ticket-new">Novo</span>} {item.category}</td><td>{item.location}</td>
+      <td>{item.description}</td><td><LookupLabel typeCode="MAINTENANCE_PRIORITY" token={token} value={item.priority} /></td><td>{label(maintenanceStatusLabels, item.status)}</td><td className="actions">
+        {role !== "owner" && !item.isReadByAdmin && handlesTickets(permissions, !permissions)
+          && <button type="button" disabled={busy} onClick={() => void markRead(item)}>Označi pročitano</button>}
+        {role === "manager" && allowed("Maintenance.Assign") && item.status === "Open" && <button type="button"
+          onClick={() => startOrder({ kind: "ticket", id: item.id, label: `${item.category} · ${item.location}` },
+            `${item.category}: ${item.location}`, item.description, "")}>Pokreni radni nalog</button>}
+        {role !== "owner" && (allowed("Maintenance.Edit") || allowed("Maintenance.Approve")) && item.status === "Open" && <button onClick={() => changeStatus("tickets", item, "InProgress")}>Započni</button>}
+        {role !== "owner" && (allowed("Maintenance.Edit") || allowed("Maintenance.Approve")) && item.status === "InProgress" && <button onClick={() => changeStatus("tickets", item, "Completed")}>Završi</button>}
+        {item.status === "Completed" && (role === "owner" || allowed("Maintenance.Approve")) && <button onClick={() => changeStatus("tickets", item, "Verified")}>Potvrdi</button>}
+      </td></tr>)}</tbody></table></div><Pager {...tickets} onPage={setTicketPage} /></section></div>}
+    {role !== "owner" && tab === "orders" && <div role="tabpanel" aria-label="Radni nalozi">
+      {role === "manager" && <div className="finance-grid">{allowed("Maintenance.Assign") && <section className="panel" ref={orderForm}><h2>Novi radni nalog</h2>
         <form className="admin-form" onSubmit={createOrder}>
           {orderSource && <p className="order-source">Iz {orderSource.kind === "schedule" ? "kalendara" : "prijave"}: <strong>{orderSource.label}</strong>
             <button type="button" className="link-button" onClick={() => setOrderSource(null)} aria-label="Ukloni povezivanje">✕</button></p>}
@@ -263,30 +285,8 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
           <label>Trošak<input type="number" min="0" step="0.01" value={orderCost} onChange={(event) => setOrderCost(event.target.value)} /></label>
           <label>Rok<input type="date" value={orderDueOn} onChange={(event) => setOrderDueOn(event.target.value)} /></label>
           <button disabled={busy}>Kreiraj nalog</button>
-        </form></section>}
-        {allowed("Maintenance.Create") && <section className="panel"><h2>Periodični plan</h2><form className="admin-form" onSubmit={createPlan}>
-          <label>Naslov<input required maxLength={200} value={planTitle} onChange={(event) => setPlanTitle(event.target.value)} /></label>
-          <label>Kategorija<LookupSelect typeCode="MAINTENANCE_CATEGORY" token={token} valueBy="name" required
-            value={planCategory} onChange={setPlanCategory} /></label>
-          <label>Interval (dani)<input required type="number" min="1" value={frequencyDays} onChange={(event) => setFrequencyDays(event.target.value)} /></label>
-          <label>Prvi termin<input required type="date" value={firstDueOn} onChange={(event) => setFirstDueOn(event.target.value)} /></label>
-          <button disabled={busy}>Dodaj plan</button></form></section>}</>}
-    </div>
-    <section className="panel table-panel"><h2>Prijave kvarova</h2><div className="table-scroll"><table><thead><tr>
-      <th>Kategorija</th><th>Lokacija</th><th>Opis</th><th>Prioritet</th><th>Status</th><th>Radnja</th>
-    </tr></thead><tbody>{tickets.items.map((item) => <tr key={item.id} className={!item.isReadByAdmin && role !== "owner" ? "unread" : ""}>
-      <td>{!item.isReadByAdmin && role !== "owner" && handlesTickets(permissions, !permissions) && <span className="badge ticket-new">Novo</span>} {item.category}</td><td>{item.location}</td>
-      <td>{item.description}</td><td><LookupLabel typeCode="MAINTENANCE_PRIORITY" token={token} value={item.priority} /></td><td>{label(maintenanceStatusLabels, item.status)}</td><td className="actions">
-        {role !== "owner" && !item.isReadByAdmin && handlesTickets(permissions, !permissions)
-          && <button type="button" disabled={busy} onClick={() => void markRead(item)}>Označi pročitano</button>}
-        {role === "manager" && allowed("Maintenance.Assign") && item.status === "Open" && <button type="button"
-          onClick={() => startOrder({ kind: "ticket", id: item.id, label: `${item.category} · ${item.location}` },
-            `${item.category}: ${item.location}`, item.description, "")}>Pokreni radni nalog</button>}
-        {role !== "owner" && (allowed("Maintenance.Edit") || allowed("Maintenance.Approve")) && item.status === "Open" && <button onClick={() => changeStatus("tickets", item, "InProgress")}>Započni</button>}
-        {role !== "owner" && (allowed("Maintenance.Edit") || allowed("Maintenance.Approve")) && item.status === "InProgress" && <button onClick={() => changeStatus("tickets", item, "Completed")}>Završi</button>}
-        {item.status === "Completed" && (role === "owner" || allowed("Maintenance.Approve")) && <button onClick={() => changeStatus("tickets", item, "Verified")}>Potvrdi</button>}
-      </td></tr>)}</tbody></table></div><Pager {...tickets} onPage={setTicketPage} /></section>
-    {role !== "owner" && <><section className="panel table-panel"><h2>Radni nalozi</h2><div className="table-scroll"><table><thead><tr>
+        </form></section>}</div>}
+      <section className="panel table-panel"><h2>Radni nalozi</h2><div className="table-scroll"><table><thead><tr>
       <th>Naslov</th><th>Izvođač</th><th>Rok</th><th>Trošak</th><th>Prilozi</th><th>Status</th><th>Radnja</th>
     </tr></thead><tbody>{orders.items.map((item) => <tr key={item.id}><td>{item.title}</td>
       <td>{item.supplierId ? suppliers.find((supplier) => supplier.id === item.supplierId)?.name ?? "Dobavljač" : item.contractorName ?? "—"}</td>
@@ -296,7 +296,8 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
         <button type="button" onClick={() => setDossierId(item.id)}>Dosije</button>
         {role === "manager" && allowed("Maintenance.Edit") && item.status === "Open" && <button onClick={() => changeStatus("work-orders", item, "InProgress")}>Započni</button>}
         {role === "manager" && allowed("Maintenance.Edit") && item.status === "InProgress" && <button type="button" onClick={() => setDossierId(item.id)}>Završi</button>}
-      </td></tr>)}</tbody></table></div></section>
+      </td></tr>)}</tbody></table></div></section></div>}
+    {role !== "owner" && tab === "calendar" && <div role="tabpanel" aria-label="Kalendar održavanja">
       <section className="panel table-panel"><h2>Kalendar održavanja</h2>
         <div className="calendar-filters" role="group" aria-label="Filteri kalendara">
           <div className="filter-tabs">{rangePresets.map((preset) => <button type="button" key={preset.value}
@@ -305,13 +306,13 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
           {filters.preset === "custom" && <><label>Od<input type="date" value={filters.from} onChange={(event) => setFilters({ ...filters, from: event.target.value })} /></label>
             <label>Do<input type="date" value={filters.to} onChange={(event) => setFilters({ ...filters, to: event.target.value })} /></label></>}
           <label>Status<select value={filters.status} onChange={(event) => setFilters({ ...filters, status: event.target.value })}>
-            <option value="">Svi statusi</option>{Object.entries(scheduleStatusLabels).map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label>
+            {calendarStatusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
           <label>Kategorija<LookupSelect typeCode="MAINTENANCE_CATEGORY" token={token} valueBy="name" value={filters.category}
             onChange={(value) => setFilters({ ...filters, category: value })} /></label>
           {filters.category && <button type="button" className="link-button" onClick={() => setFilters({ ...filters, category: "" })}>Sve kategorije</button>}
         </div>
         <div className="table-scroll"><table className="calendar-table"><thead><tr><th>Obaveza</th><th>Kategorija</th><th>Datum</th><th>Status</th><th>Radnja</th></tr></thead><tbody>
-          {calendar.map((item) => <tr key={item.id ?? `${item.planId}-${item.dueOn}`} className={`schedule-row-${item.status.toLowerCase()}${item.projected ? " projected" : ""}`}><td>{item.title}</td>
+          {visibleCalendar.map((item) => <tr key={item.id ?? `${item.planId}-${item.dueOn}`} className={`schedule-row-${item.status.toLowerCase()}${item.projected ? " projected" : ""}`}><td>{item.title}</td>
             <td>{item.category}</td><td>{formatDate(item.dueOn)}{item.projected && <small className="projected-note"> (projekcija)</small>}</td>
             <td><span className={scheduleBadgeClass(item.status)}>{scheduleStatusLabel(item.status)}</span></td>
             <td className="actions">{role === "manager" && allowed("Maintenance.Edit") && item.id && !item.projected && canCompleteSchedule(item.status)
@@ -321,8 +322,15 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
                   item.title, `Redovni servis po planu: ${item.title} (${formatDate(item.dueOn)})`, item.dueOn)}>Pokreni radni nalog</button>}
               {item.workOrderId && <button type="button" onClick={() => setDossierId(item.workOrderId)}>Dosije</button>}</td></tr>)}
         </tbody></table></div>
-        {calendar.length === 0 && <p className="empty-inline">Nema termina za odabrane filtere.</p>}
+        {visibleCalendar.length === 0 && <p className="empty-inline">Nema termina za odabrane filtere.</p>}
         <p className="empty-inline">Termini dalje od 60 dana prikazuju se kao projekcija i kreiraju se kada se približe.</p></section>
+      {role === "manager" && <div className="finance-grid">{allowed("Maintenance.Create") && <section className="panel"><h2>Periodični plan</h2><form className="admin-form" onSubmit={createPlan}>
+          <label>Naslov<input required maxLength={200} value={planTitle} onChange={(event) => setPlanTitle(event.target.value)} /></label>
+          <label>Kategorija<LookupSelect typeCode="MAINTENANCE_CATEGORY" token={token} valueBy="name" required
+            value={planCategory} onChange={setPlanCategory} /></label>
+          <label>Interval (dani)<input required type="number" min="1" value={frequencyDays} onChange={(event) => setFrequencyDays(event.target.value)} /></label>
+          <label>Prvi termin<input required type="date" value={firstDueOn} onChange={(event) => setFirstDueOn(event.target.value)} /></label>
+          <button disabled={busy}>Dodaj plan</button></form></section>}</div>}
       <section className="panel table-panel"><h2>Periodični planovi</h2>
         <div className="table-scroll"><table className="plans-table"><thead><tr><th>Plan</th><th>Kategorija</th><th>Učestalost</th>
           <th>Početak</th><th>Status</th><th>Radnje</th></tr></thead><tbody>
@@ -336,8 +344,8 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
         </tbody></table></div>
         {plans.length === 0 && <p className="empty-inline">Nema periodičnih planova.</p>}
         <p className="empty-inline">Aktivnih planova: {plans.filter((plan) => plan.isActive).length} od {plans.length}.
-          Plan s izvršenim radom ne može se obrisati — deaktivirajte ga.</p></section></>}
-    {zevId && role !== "owner" && <MaintenanceReports token={token} zevId={zevId} canExport={allowed("Maintenance.Export")} />}
+          Plan s izvršenim radom ne može se obrisati — deaktivirajte ga.</p></section></div>}
+    {role !== "owner" && tab === "reports" && <div role="tabpanel" aria-label="Izvještaji"><MaintenanceReports token={token} zevId={zevId} canExport={allowed("Maintenance.Export")} /></div>}
     {dossierId && <WorkOrderDossier token={token} zevId={zevId} orderId={dossierId} suppliers={suppliers}
       canEdit={role === "manager" && allowed("Maintenance.Edit")} onClose={() => setDossierId(null)} />}
     {planToDelete && <div className="modal-backdrop" onClick={(event) => { if (event.target === event.currentTarget) setPlanToDelete(null); }}>

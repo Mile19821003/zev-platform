@@ -66,6 +66,13 @@ kartica na početnom ekranu, C — Reporting centar. Opis toka: `MAINTENANCE_WOR
 - Zaglavlje se na mobilnoj širini prelama (ZEV, zvonce, profil, odjava), pa stranica ne izlazi izvan ekrana.
 - Forma „Novi radni nalog“ se nakon uspješnog kreiranja prazni (izvođač, naslov, opis, trošak, rok, veza na termin
   ili prijavu); ako kreiranje ne uspije, uneseni podaci ostaju za ispravku (ranije se veza brisala i pri grešci).
+- Ekran **Održavanje** podijeljen u 4 taba: **Prijave kvarova** (forma i lista), **Radni nalozi** (forma i tabela),
+  **Kalendar održavanja** (filteri, kalendar, periodični plan i lista planova) i **Izvještaji** (Reporting centar).
+  „Pokreni radni nalog“ prebacuje na tab Radni nalozi s popunjenom formom; kartica s početnog ekrana otvara tab
+  Kalendar. Stanar vidi samo svoje prijave, bez tabova.
+- Kalendar podrazumijevano prikazuje samo **aktivne obaveze** (Planirano, Dospjelo, U toku), pa se završeni termini
+  ne dupliraju sa završenim radnim nalozima; završeni i otkazani vide se samo uz status „Završeno“, „Otkazano“
+  ili „Svi statusi“.
 
 ### Baza / Migracije
 - `20261011123454_AddMaintenanceTicketNotifications`: `SystemSettings.DefaultAdminEmail`;

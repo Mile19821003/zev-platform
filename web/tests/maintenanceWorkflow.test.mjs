@@ -90,3 +90,35 @@ test("Novi radni nalog: the form is emptied after a successful create, kept afte
     'setContractorPhone("")', 'setOrderTitle("")', 'setOrderDescription("")', 'setOrderCost("")', 'setOrderDueOn("")'])
     assert.ok(reset.includes(setter), setter);
 });
+
+test("maintenance screen: four tabs (residents only report), each block in its tab", async () => {
+  const { maintenanceTabs, tabsFor } = await import("../src/maintenanceCalendar.ts");
+  assert.deepEqual(maintenanceTabs.map((item) => item.label), ["Prijave kvarova", "Radni nalozi", "Kalendar održavanja", "Izvještaji"]);
+  assert.deepEqual(tabsFor("owner").map((item) => item.value), ["tickets"]);
+  assert.equal(tabsFor("manager").length, 4);
+  const page = source("../src/admin/MaintenancePage.tsx");
+  const panel = (name) => { const start = page.indexOf(`aria-label="${name}">`); return page.slice(start, page.indexOf("</div>}", start)); };
+  assert.ok(panel("Prijave kvarova").includes("<h2>Prijava kvara</h2>") && panel("Prijave kvarova").includes("<h2>Prijave kvarova</h2>"));
+  assert.ok(page.indexOf('aria-label="Radni nalozi">') < page.indexOf("<h2>Novi radni nalog</h2>")
+    && page.indexOf("<h2>Novi radni nalog</h2>") < page.indexOf('aria-label="Kalendar održavanja">'));
+  assert.ok(page.indexOf('aria-label="Kalendar održavanja">') < page.indexOf("<h2>Periodični plan</h2>")
+    && page.indexOf("<h2>Periodični planovi</h2>") < page.indexOf('aria-label="Izvještaji">'));
+  assert.ok(page.includes('{role !== "owner" && tab === "reports" && <div role="tabpanel" aria-label="Izvještaji"><MaintenanceReports'));
+  assert.ok(page.includes('setTab("orders");'), "Pokreni radni nalog switches to the work order tab");
+  assert.ok(page.includes('useState<MaintenanceTab>(() => filters.status === "Due" ? "calendar" : "tickets")'), "home card opens the calendar tab");
+});
+
+test("calendar default shows only work still to do; done items only for Završeno or Svi statusi", async () => {
+  const { calendarStatusOptions, defaultCalendarFilters, visibleScheduleItems, calendarQuery } = await import("../src/maintenanceCalendar.ts");
+  assert.equal(defaultCalendarFilters.status, "active");
+  assert.deepEqual(calendarStatusOptions.slice(0, 2).map((item) => item.label), ["Aktivne obaveze", "Svi statusi"]);
+  assert.ok(calendarStatusOptions.some((item) => item.value === "Completed" && item.label === "Završeno"));
+  const items = ["Planned", "Due", "InProgress", "Completed", "Cancelled"].map((status) => ({ status }));
+  assert.deepEqual(visibleScheduleItems(items, "active").map((item) => item.status), ["Planned", "Due", "InProgress"]);
+  assert.equal(visibleScheduleItems(items, "all").length, 5);
+  assert.deepEqual(visibleScheduleItems(items, "Completed").map((item) => item.status), ["Planned", "Due", "InProgress", "Completed", "Cancelled"],
+    "a single status is filtered by the API");
+  assert.equal(calendarQuery({ ...defaultCalendarFilters, status: "all" }, "2026-10-11"), "/calendar");
+  assert.equal(calendarQuery({ ...defaultCalendarFilters, status: "Completed" }, "2026-10-11"), "/calendar?status=Completed");
+  assert.ok(source("../src/admin/MaintenancePage.tsx").includes("{visibleCalendar.map((item) =>"));
+});

@@ -64,14 +64,23 @@ export function rangeFor(preset: RangePreset, today: string, custom: { from: str
 }
 
 export type CalendarFilters = { preset: RangePreset; from: string; to: string; status: string; category: string };
-export const defaultCalendarFilters: CalendarFilters = { preset: "default", from: "", to: "", status: "", category: "" };
+// Default status "active": only work still to do (Planirano, Dospjelo, U toku); done items show only for "Završeno" or "Svi statusi".
+export const defaultCalendarFilters: CalendarFilters = { preset: "default", from: "", to: "", status: "active", category: "" };
+export const activeScheduleStatuses = ["Planned", "Due", "InProgress"];
+export const calendarStatusOptions: { value: string; label: string }[] = [
+  { value: "active", label: "Aktivne obaveze" }, { value: "all", label: "Svi statusi" },
+  ...Object.entries(scheduleStatusLabels).map(([value, label]) => ({ value, label }))];
+
+export function visibleScheduleItems<T extends { status: string }>(items: T[], status: string): T[] {
+  return status === "active" ? items.filter((item) => activeScheduleStatuses.includes(item.status)) : items;
+}
 
 export function calendarQuery(filters: CalendarFilters, today: string): string {
   const range = rangeFor(filters.preset, today, { from: filters.from, to: filters.to });
   const params = new URLSearchParams();
   if (range.from) params.set("from", range.from);
   if (range.to) params.set("to", range.to);
-  if (filters.status) params.set("status", filters.status);
+  if (filters.status && filters.status !== "active" && filters.status !== "all") params.set("status", filters.status);
   if (filters.category) params.set("category", filters.category);
   const query = params.toString();
   return query ? `/calendar?${query}` : "/calendar";
@@ -91,3 +100,12 @@ export function summaryTone(summary: MaintenanceSummary): "danger" | "warning" |
   return summary.due > 0 ? "danger" : summary.inProgress > 0 || (summary.unreadTickets ?? 0) > 0 ? "warning" : "ok";
 }
 export const calendarStatusHandoffKey = "zev.maintenance.calendarStatus";
+
+// Tabs of the maintenance screen; residents only report and follow their faults.
+export type MaintenanceTab = "tickets" | "orders" | "calendar" | "reports";
+export const maintenanceTabs: { value: MaintenanceTab; label: string }[] = [
+  { value: "tickets", label: "Prijave kvarova" }, { value: "orders", label: "Radni nalozi" },
+  { value: "calendar", label: "Kalendar održavanja" }, { value: "reports", label: "Izvještaji" }];
+export function tabsFor(role: "manager" | "representative" | "owner"): { value: MaintenanceTab; label: string }[] {
+  return role === "owner" ? maintenanceTabs.filter((tab) => tab.value === "tickets") : maintenanceTabs;
+}

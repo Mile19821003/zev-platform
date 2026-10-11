@@ -209,3 +209,4 @@ tr.unread td{font-weight:700}
 .gantt-mark.status-cancelled{background:#8a96a0}
 @media(max-width:900px){.report-charts{grid-template-columns:minmax(0,1fr)}.report-totals{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:800px){.topbar{height:auto;min-height:64px;padding:10px 16px;flex-wrap:wrap;gap:8px}.topbar>div{flex-wrap:wrap;gap:8px 14px;min-width:0}.topbar select{max-width:150px}}
+.maintenance-tabs{margin:4px 0 18px}.maintenance-tabs button{padding:8px 18px;font-size:.9rem}
