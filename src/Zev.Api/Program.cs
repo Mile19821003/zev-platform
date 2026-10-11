@@ -288,6 +288,7 @@ api.MapLookupEndpoints();
 api.MapModuleIconEndpoints();
 api.MapClientErrorEndpoint();
 api.MapRecycleBinEndpoints();
+api.MapThemeEndpoint();
 api.MapManagerDeleteEndpoints();
 api.MapGet("/me", async (TenantAccess access, ZevDbContext database, CancellationToken cancellationToken) =>
 {
@@ -650,6 +651,7 @@ system.MapPost("/memberships", async (CreateMembershipRequest request, ZevDbCont
 system.MapPhase2AdminEndpoints();
 system.MapRegistryAdminEndpoints();
 system.MapSystemDeleteEndpoints();
+system.MapThemeAdminEndpoints();
 system.MapSystemErrorAdminEndpoints();
 system.MapVersionHistoryEndpoints();
 

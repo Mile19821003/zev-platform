@@ -38,7 +38,7 @@ public static class ModuleIcons
         ("community", "megaphone"), ("representative-community", "megaphone"), ("owner-community", "vote"),
         ("access", "key"), ("memberships", "key"), ("users", "users"), ("accountLinks", "link"), ("organizations", "network"),
         ("hodogram", "workflow"), ("settings", "sliders"), ("lookups", "barcode"), ("icons", "palette"),
-        ("errors", "activity"), ("versions", "clipboard-check"), ("deleted", "package"),
+        ("errors", "activity"), ("versions", "clipboard-check"), ("deleted", "package"), ("themes", "monitor"),
     ];
 
     public static ModuleIconSetting[] Seed => Defaults.Select((row, index) => new ModuleIconSetting

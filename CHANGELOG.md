@@ -2,6 +2,45 @@
 
 Sve značajne izmjene ZEV Platforme. Ranija historija (faze do 4) je u `CLOUD_HANDOFF_STATUS.md` i git logu.
 
+## [v2.14] - 2026-10-11
+
+### Dodano (Added)
+- **Teme i paleta boja** (Administracija i sistem → „Teme i paleta boja“, ikonica monitor):
+  - `SystemThemeSettings` (jedan red): `ActiveThemeName` i 12 boja (Primary, Secondary, Accent, Background,
+    Surface, Text, HeaderBg, HeaderText, MenuBg, MenuText, MenuActive, Border), samo `#RRGGBB`.
+  - `GET /api/system/theme` (svi, i prije prijave — ekran za prijavu koristi boje) s predefinisanim paletama
+    „Default ERP“, „Tamna / Tamnoplava“, „Visoki kontrast“; `PUT /api/system/theme` i
+    `POST /api/system/theme/reset` (sistemski administrator, optimistička provjera `updatedAt`, audit
+    `ThemeUpdated` / `ThemeReset`).
+  - CSS varijable `--zev-*` u svim stilovima (oko 170 zamjena): osnovne boje s `:root` zadanim vrijednostima
+    jednakim dosadašnjim; nijanse (hover, prigušeni tekst, rubovi polja, svijetle pozadine, meni) kao
+    `var(--zev-x, <stara vrijednost>)` i izvode se iz palete samo kada se ona razlikuje od tvorničke.
+  - `useTheme` primjenjuje paletu na `document.documentElement` pri učitavanju i odmah nakon snimanja (bez F5),
+    uz keš u pregledniku (bez treptanja pri pokretanju) i osvježavanje kad je drugi administrator promijeni.
+  - Ekran: kartica po boji (uzorak, color picker i heks polje s provjerom), padajući meni paleta
+    („Prilagođena“ kada boje ne odgovaraju nijednoj), pregled uživo u cijeloj aplikaciji i u maketi,
+    upozorenja o čitljivosti (WCAG kontrast < 4.5:1), dugmad „Snimi boje“, „Odbaci izmjene“,
+    „Vrati na tvorničke postavke“.
+- Testovi: `ThemeApiTests` (3), seed teme u `SqlLookupTests`, `web/tests/theme.test.mjs` (7, uključujući
+  usklađenost tvorničke palete s backendom i `:root`, kontrast svih paleta); provjera u pregledniku 17/17 —
+  prijava, kontrolna ploča i tabela s tvorničkom temom su piksel-identične prethodnoj verziji.
+
+### Ispravljeno (Fixed)
+- Paleta „Tamna / Tamnoplava“: primarna boja `#2563eb` umjesto `#3b82f6` (bijeli tekst na dugmadi imao je
+  kontrast 3.7:1).
+- Editor tema se prikazuje tek kada stigne snimljena paleta, pa izmjena unesena tokom učitavanja ne može biti
+  prepisana.
+
+### Baza / Migracije
+- `20261011064624_AddThemeSettings`: tabela `SystemThemeSettings` (singleton, boje `varchar(7)`) sa seedom
+  tvorničkih boja (izgled nepromijenjen); seed ikonice modula `themes`.
+
+### Otvorene odluke (Open Decisions)
+- Statusne boje (greška, upozorenje, info, oznake) su namjerno fiksne i ne mijenjaju se s temom.
+- Postojeće podešavanje „Zadana tema“ u Sistemskim podešavanjima (`DefaultTheme`, samo „Default“) ostaje
+  nezavisno; spojiti ga s `ActiveThemeName` ili ukloniti.
+- Tema je globalna; lična tema po korisniku nije uvedena.
+
 ## [v2.13] - 2026-10-11
 
 ### Dodano (Added)

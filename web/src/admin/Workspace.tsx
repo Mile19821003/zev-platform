@@ -19,13 +19,14 @@ import IconSettingsPage from "./IconSettingsPage";
 import SystemErrorsPage from "./SystemErrorsPage";
 import VersionHistoryPage from "./VersionHistoryPage";
 import DeletedRecordsPage from "./DeletedRecordsPage";
+import ThemeSettingsPage from "./ThemeSettingsPage";
 import { useChangeRevision } from "../useChangeRevision.ts";
 import WorkspaceNav, { useSidebarState } from "./WorkspaceNav";
 import ModuleDashboard from "./ModuleDashboard";
 import { moduleLabel } from "../navigationModel.ts";
 
 type MenuKey = "overview" | "organizations" | "zevs" | "buildings" | "entrances" | "units"
-  | "people" | "ownership" | "users" | "memberships" | "accountLinks" | "settings" | "lookups" | "icons" | "errors" | "versions" | "deleted" | "finance" | "payments" | "expenses" | "legal" | "maintenance" | "hodogram" | "community" | "reports";
+  | "people" | "ownership" | "users" | "memberships" | "accountLinks" | "settings" | "lookups" | "icons" | "errors" | "versions" | "deleted" | "themes" | "finance" | "payments" | "expenses" | "legal" | "maintenance" | "hodogram" | "community" | "reports";
 
 const menu: { key: MenuKey; label: string }[] = [
   { key: "overview", label: "Pregled" },
@@ -42,6 +43,7 @@ const menu: { key: MenuKey; label: string }[] = [
   { key: "lookups", label: "Šifarnici" },
   { key: "settings", label: "Sistemska podešavanja" },
   { key: "icons", label: "Prikazi i ikone" },
+  { key: "themes", label: "Teme i paleta boja" },
   { key: "errors", label: "Greške u sistemu" },
   { key: "versions", label: "Istorija verzija" },
   { key: "deleted", label: "Obrisani redovi" },
@@ -243,6 +245,7 @@ export default function Workspace({ token, profile, zevs, onLogout, onProfile }:
         {active === "errors" && <SystemErrorsPage token={token} />}
         {active === "versions" && <VersionHistoryPage token={token} />}
         {active === "deleted" && <DeletedRecordsPage token={token} />}
+        {active === "themes" && <ThemeSettingsPage token={token} />}
       </main>
     </div>
   </div>;

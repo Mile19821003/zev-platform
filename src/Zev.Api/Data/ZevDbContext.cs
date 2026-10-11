@@ -66,6 +66,7 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
     public DbSet<RefreshSession> RefreshSessions => Set<RefreshSession>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<SystemSettings> SystemSettings => Set<SystemSettings>();
+    public DbSet<SystemThemeSettings> ThemeSettings => Set<SystemThemeSettings>();
     public DbSet<LookupType> LookupTypes => Set<LookupType>();
     public DbSet<LookupItem> LookupItems => Set<LookupItem>();
     public DbSet<ModuleIconSetting> ModuleIconSettings => Set<ModuleIconSetting>();
@@ -1158,6 +1159,18 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
             entity.Property(item => item.DefaultTheme).HasMaxLength(40).IsRequired();
             entity.HasOne<AppUser>().WithMany().HasForeignKey(item => item.UpdatedByUserId).OnDelete(DeleteBehavior.Restrict);
             entity.HasData(new SystemSettings());
+        });
+
+        modelBuilder.Entity<SystemThemeSettings>(entity =>
+        {
+            entity.ToTable("SystemThemeSettings", table => table.HasCheckConstraint("CK_SystemThemeSettings_Singleton", "[Id] = 1"));
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.Id).ValueGeneratedNever();
+            entity.Property(item => item.ActiveThemeName).HasMaxLength(40).IsRequired();
+            foreach (var color in SystemThemeSettings.ColorNames)
+                entity.Property<string>(color).HasMaxLength(7).IsUnicode(false).IsRequired();
+            entity.HasOne<AppUser>().WithMany().HasForeignKey(item => item.UpdatedByUserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasData(SystemThemeSettings.Factory());
         });
 
         modelBuilder.Entity<LookupType>(entity =>

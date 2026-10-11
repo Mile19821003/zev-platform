@@ -50,6 +50,7 @@ const modules: Record<string, ModuleInfo> = {
   settings: { group: "admin", icon: "sliders", catalog: "Sistemska podešavanja" },
   lookups: { group: "admin", icon: "barcode", catalog: "Šifarnici" },
   icons: { group: "admin", icon: "palette", catalog: "Prikazi i ikone" },
+  themes: { group: "admin", icon: "monitor", catalog: "Teme i paleta boja" },
   errors: { group: "admin", icon: "activity", catalog: "Greške u sistemu" },
   versions: { group: "admin", icon: "clipboard-check", catalog: "Istorija verzija" },
   deleted: { group: "admin", icon: "package", catalog: "Obrisani redovi" },

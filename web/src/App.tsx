@@ -7,6 +7,7 @@ import { useChangeRevision } from "./useChangeRevision.ts";
 import { refreshVisibleData } from "./dataSync.ts";
 import { setDisplaySettings } from "./displaySettings.ts";
 import { useSystemSettings } from "./useSystemSettings.ts";
+import { useTheme } from "./useTheme.ts";
 import { useModuleIcons } from "./useModuleIcons.ts";
 import { setModuleIcons } from "./navigationModel.ts";
 
@@ -32,6 +33,7 @@ export default function App() {
   const [profilePage, setProfilePage] = useState(false);
   const revision = useChangeRevision("organizations", "zevs", "access");
   const settings = useSystemSettings(token);
+  useTheme(token);
   setDisplaySettings(settings);
   setModuleIcons(useModuleIcons(token));
 

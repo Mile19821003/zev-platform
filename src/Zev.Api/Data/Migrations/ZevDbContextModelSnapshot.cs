@@ -2694,6 +2694,13 @@ namespace Zev.Api.Data.Migrations
                             IconKey = "package",
                             ModuleKey = "deleted",
                             UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("1c0e0000-0000-4000-8000-000000000038"),
+                            IconKey = "monitor",
+                            ModuleKey = "themes",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
                         });
                 });
 
@@ -3802,6 +3809,124 @@ namespace Zev.Api.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Zev.Api.Domain.SystemThemeSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int");
+
+                    b.Property<string>("AccentColor")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(7)");
+
+                    b.Property<string>("ActiveThemeName")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<string>("BackgroundColor")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(7)");
+
+                    b.Property<string>("BorderColor")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(7)");
+
+                    b.Property<string>("HeaderBgColor")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(7)");
+
+                    b.Property<string>("HeaderTextColor")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(7)");
+
+                    b.Property<string>("MenuActiveColor")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(7)");
+
+                    b.Property<string>("MenuBgColor")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(7)");
+
+                    b.Property<string>("MenuTextColor")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(7)");
+
+                    b.Property<string>("PrimaryColor")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(7)");
+
+                    b.Property<string>("SecondaryColor")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(7)");
+
+                    b.Property<string>("SurfaceColor")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(7)");
+
+                    b.Property<string>("TextColor")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(7)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UpdatedByUserId");
+
+                    b.ToTable("SystemThemeSettings", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SystemThemeSettings_Singleton", "[Id] = 1");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            AccentColor = "#e9f5ef",
+                            ActiveThemeName = "Default",
+                            BackgroundColor = "#f5f7f8",
+                            BorderColor = "#e4e9ec",
+                            HeaderBgColor = "#ffffff",
+                            HeaderTextColor = "#17233a",
+                            MenuActiveColor = "#23524d",
+                            MenuBgColor = "#102e31",
+                            MenuTextColor = "#e3eeeb",
+                            PrimaryColor = "#176d50",
+                            SecondaryColor = "#4f6070",
+                            SurfaceColor = "#ffffff",
+                            TextColor = "#17233a",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        });
+                });
+
             modelBuilder.Entity("Zev.Api.Domain.TariffVersion", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4880,6 +5005,14 @@ namespace Zev.Api.Data.Migrations
                 });
 
             modelBuilder.Entity("Zev.Api.Domain.SystemSettings", b =>
+                {
+                    b.HasOne("Zev.Api.Domain.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Zev.Api.Domain.SystemThemeSettings", b =>
                 {
                     b.HasOne("Zev.Api.Domain.AppUser", null)
                         .WithMany()
