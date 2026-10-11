@@ -36,8 +36,8 @@ test("unknown or missing settings fall back to the safe defaults", () => {
   assert.deepEqual(normalizeDisplaySettings(null), defaultDisplaySettings);
   assert.deepEqual(normalizeDisplaySettings({ decimalSeparator: ";", dateFormat: "MM/DD", fontSize: "40px" }), defaultDisplaySettings);
   assert.deepEqual(normalizeDisplaySettings({ decimalSeparator: ".", dateFormat: "YYYY-MM-DD", fontSize: "15px",
-    defaultTheme: "Default", updatedAt: "x" }), { decimalSeparator: ".", dateFormat: "YYYY-MM-DD", fontSize: "15px",
-    defaultTheme: "Default" });
+    defaultTheme: "Default", updatedAt: "x" }), { decimalSeparator: ".", dateFormat: "YYYY-MM-DD", fontSize: "15px" },
+    "an old defaultTheme value is ignored: the theme has one source (SystemThemeSettings)");
 });
 
 test("existing formatters follow the active settings", () => {

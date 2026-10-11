@@ -1159,7 +1159,6 @@ public sealed class ZevDbContext(DbContextOptions<ZevDbContext> options, IHttpCo
             entity.Property(item => item.DecimalSeparator).HasMaxLength(1).IsRequired();
             entity.Property(item => item.DateFormat).HasMaxLength(20).IsRequired();
             entity.Property(item => item.FontSize).HasMaxLength(10).IsRequired();
-            entity.Property(item => item.DefaultTheme).HasMaxLength(40).IsRequired();
             entity.HasOne<AppUser>().WithMany().HasForeignKey(item => item.UpdatedByUserId).OnDelete(DeleteBehavior.Restrict);
             entity.HasData(new SystemSettings());
         });

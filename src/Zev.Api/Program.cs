@@ -179,6 +179,7 @@ if (app.Environment.IsDevelopment())
     using var scope = app.Services.CreateScope();
     await scope.ServiceProvider.GetRequiredService<ZevDbContext>().Database.MigrateAsync();
 }
+await AppVersionRecorder.RecordAtStartupAsync(app.Services, app.Logger);
 
 app.UseExceptionHandler();
 app.UseForwardedHeaders();

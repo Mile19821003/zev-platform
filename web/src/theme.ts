@@ -139,3 +139,9 @@ export function applyTheme(style: StyleTarget, colors: ThemeColors): void {
 export function previewStyle(colors: ThemeColors): Record<string, string> {
   return Object.fromEntries(Object.entries(themeVariables(colors)).filter((entry): entry is [string, string] => entry[1] !== null));
 }
+
+// Name of the active colour theme (SystemThemeSettings.ActiveThemeName) as shown in the theme editor.
+export function activeThemeLabel(theme: Theme): string {
+  if (theme.activeThemeName === customThemeName) return "Prilagođena paleta";
+  return theme.presets.find((preset) => preset.name === theme.activeThemeName)?.label ?? theme.activeThemeName;
+}

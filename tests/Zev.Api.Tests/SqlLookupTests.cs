@@ -30,6 +30,10 @@ public sealed class SqlLookupTests
             Assert.Equal("Default", theme.ActiveThemeName);
             Assert.Equal(["v2.10", "v2.11", "v2.12", "v2.13", "v2.14", "v2.15", "v2.16", "v2.7", "v2.8", "v2.9"],
                 await database.VersionHistory.OrderBy(item => item.Version).Select(item => item.Version).ToListAsync());
+            // Startup recording adds the running release once, next to the migrated history.
+            Assert.True(await AppVersionRecorder.EnsureCurrentAsync(database, DateTimeOffset.UtcNow, CancellationToken.None));
+            Assert.False(await AppVersionRecorder.EnsureCurrentAsync(database, DateTimeOffset.UtcNow, CancellationToken.None));
+            Assert.Equal(AppVersions.StartupInstalledBy, (await database.VersionHistory.SingleAsync(item => item.Version == AppVersions.Current)).InstalledBy);
             Assert.Equal("Transfer", await database.LookupItems.Where(item => item.LookupTypeCode == "PAYMENT_METHOD"
                 && item.IsDefault).Select(item => item.Code).SingleAsync());
 

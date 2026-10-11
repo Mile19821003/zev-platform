@@ -2,6 +2,26 @@
 
 Sve značajne izmjene ZEV Platforme. Ranija historija (faze do 4) je u `CLOUD_HANDOFF_STATUS.md` i git logu.
 
+## [v2.17] - 2026-10-11
+
+### Dodano (Added)
+- **Automatska istorija verzija**: `AppVersions.Current` / `CurrentTitle` (najnovija verzija iz CHANGELOG.md) i
+  `AppVersionRecorder` — pri pokretanju API dodaje tekuću verziju u `AppVersionHistory` ako je nema
+  (`InstalledBy` = „Pokretanje aplikacije“, vrijeme pokretanja). Postojeći redovi i bilješke se ne diraju;
+  istovremeno pokretanje više instanci je zaštićeno primarnim ključem. Nova verzija više ne traži migraciju —
+  mijenjaju se samo dvije konstante (web test provjerava da `Current` odgovara vrhu CHANGELOG.md).
+  Upis se preskače za nerelacionu bazu (testovi), a nemigrirana baza ne sprečava pokretanje (upozorenje u logu).
+- Ekran „Sistemska podešavanja“: sekcija „Tema“ prikazuje aktivnu temu iz `SystemThemeSettings` i dugme
+  „Otvori Teme i paletu boja“.
+
+### Ispravljeno (Fixed)
+- **Jedan izvor istine za temu**: uklonjeno polje `SystemSettings.DefaultTheme` (model, `GET/PUT
+  /api/system/settings`, `options.themes`, web `DisplaySettings`). Tema se čita i mijenja isključivo preko
+  `SystemThemeSettings.ActiveThemeName` (`/api/system/theme`); stari klijent koji pošalje `defaultTheme` se ignoriše.
+
+### Baza / Migracije
+- `20261011104424_RemoveSystemSettingsDefaultTheme`: briše kolonu `SystemSettings.DefaultTheme`.
+
 ## [v2.16] - 2026-10-11
 
 ### Ispravljeno (Fixed)

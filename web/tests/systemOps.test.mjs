@@ -5,6 +5,7 @@ import { buildClientReport, createReporter } from "../src/errorReporting.ts";
 import { errorDraftChanged, errorFilters, errorStatusLabel, sortVersions, sourceBadge, versionNoteChanged, versionStatusLabel }
   from "../src/systemOpsUi.ts";
 import { lookupFallbacks } from "../src/lookupOptions.ts";
+import { activeThemeLabel } from "../src/theme.ts";
 import { iconCatalog } from "../src/navigationModel.ts";
 
 const source = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
@@ -63,12 +64,26 @@ test("versions are sorted numerically, newest first, and notes only save when ch
   assert.equal(versionStatusLabel("installed"), "Instalirana");
 });
 
-test("version seed covers v2.7 to the current CHANGELOG version", () => {
-  const seeded = [...source("../../src/Zev.Api/Domain/SystemOperationsEntities.cs").matchAll(/Row\("(v\d+\.\d+)"/g)]
-    .map((match) => match[1]);
+test("the running version equals the newest CHANGELOG entry; history rows before it come from migrations", () => {
+  const entities = source("../../src/Zev.Api/Domain/SystemOperationsEntities.cs");
+  const seeded = [...entities.matchAll(/Row\("(v\d+\.\d+)"/g)].map((match) => match[1]);
   assert.deepEqual(seeded, ["v2.7", "v2.8", "v2.9", "v2.10", "v2.11", "v2.12", "v2.13", "v2.14", "v2.15", "v2.16"]);
+  const current = entities.match(/public const string Current = "(v[0-9.]+)";/)[1];
   const latest = source("../../CHANGELOG.md").match(/^## \[(v[0-9.]+)\]/m)[1];
-  assert.equal(seeded.at(-1), latest, "Istorija verzija mora sadržati najnoviju verziju iz CHANGELOG.md");
+  assert.equal(current, latest, "AppVersions.Current mora biti najnovija verzija iz CHANGELOG.md (upisuje se pri pokretanju)");
+  assert.ok(!seeded.includes(current), "nova verzija se ne dodaje migracijom nego pri pokretanju");
+  assert.ok(source("../../src/Zev.Api/Program.cs").includes("await AppVersionRecorder.RecordAtStartupAsync(app.Services, app.Logger);"));
+});
+
+test("settings screen shows the theme from SystemThemeSettings only", () => {
+  const presets = [{ name: "Default", label: "Default ERP", colors: {} }, { name: "DarkNavy", label: "Tamna / Tamnoplava", colors: {} }];
+  assert.equal(activeThemeLabel({ activeThemeName: "DarkNavy", presets }), "Tamna / Tamnoplava");
+  assert.equal(activeThemeLabel({ activeThemeName: "Custom", presets }), "Prilagođena paleta");
+  const page = source("../src/admin/SystemSettingsPage.tsx");
+  assert.ok(page.includes('callApi<unknown>("/api/system/theme"'));
+  assert.doesNotMatch(page, /defaultTheme|themes:/);
+  assert.doesNotMatch(source("../src/displaySettings.ts"), /defaultTheme/);
+  assert.doesNotMatch(source("../../src/Zev.Api/Domain/SystemSettings.cs"), /DefaultTheme|Themes/);
 });
 
 test("document categories match the backend document type enum", () => {

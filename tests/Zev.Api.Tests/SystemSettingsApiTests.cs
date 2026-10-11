@@ -36,7 +36,7 @@ public sealed class SystemSettingsApiTests
         Assert.Equal(",", settings.GetProperty("decimalSeparator").GetString());
         Assert.Equal("DD.MM.YYYY", settings.GetProperty("dateFormat").GetString());
         Assert.Equal("13px", settings.GetProperty("fontSize").GetString());
-        Assert.Equal("Default", settings.GetProperty("defaultTheme").GetString());
+        Assert.False(settings.TryGetProperty("defaultTheme", out _), "the theme lives only in SystemThemeSettings");
         Assert.Equal([",", "."], settings.GetProperty("options").GetProperty("decimalSeparators").EnumerateArray()
             .Select(item => item.GetString()));
         using var anonymous = factory.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost") });

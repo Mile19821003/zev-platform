@@ -3798,11 +3798,6 @@ namespace Zev.Api.Data.Migrations
                         .HasMaxLength(1)
                         .HasColumnType("nvarchar(1)");
 
-                    b.Property<string>("DefaultTheme")
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("nvarchar(40)");
-
                     b.Property<string>("FontSize")
                         .IsRequired()
                         .HasMaxLength(10)
@@ -3835,7 +3830,6 @@ namespace Zev.Api.Data.Migrations
                             Id = 1,
                             DateFormat = "DD.MM.YYYY",
                             DecimalSeparator = ",",
-                            DefaultTheme = "Default",
                             FontSize = "13px",
                             UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 10, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
                         });

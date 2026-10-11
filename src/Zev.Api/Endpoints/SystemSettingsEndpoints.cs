@@ -22,8 +22,7 @@ public static class SystemSettingsEndpoints
             if (!await access.IsSystemAdministratorAsync(userId, cancellationToken)) return Results.Forbid();
             if (!SystemSettings.DecimalSeparators.Contains(request.DecimalSeparator)
                 || !SystemSettings.DateFormats.Contains(request.DateFormat)
-                || !SystemSettings.FontSizes.Contains(request.FontSize)
-                || !SystemSettings.Themes.Contains(request.DefaultTheme ?? "Default"))
+                || !SystemSettings.FontSizes.Contains(request.FontSize))
                 return Results.BadRequest(new { error = "Nedozvoljena vrijednost podešavanja." });
             var settings = await database.SystemSettings.SingleOrDefaultAsync(item => item.Id == SystemSettings.SingletonId,
                 cancellationToken);
@@ -39,7 +38,6 @@ public static class SystemSettingsEndpoints
             settings.DecimalSeparator = request.DecimalSeparator;
             settings.DateFormat = request.DateFormat;
             settings.FontSize = request.FontSize;
-            settings.DefaultTheme = request.DefaultTheme ?? "Default";
             settings.UpdatedAt = DateTimeOffset.UtcNow;
             settings.UpdatedByUserId = userId;
             database.AuditLogs.Add(new AuditLog
@@ -61,15 +59,15 @@ public static class SystemSettingsEndpoints
 
     private static object View(SystemSettings settings) => new
     {
-        settings.DecimalSeparator, settings.DateFormat, settings.FontSize, settings.DefaultTheme,
+        settings.DecimalSeparator, settings.DateFormat, settings.FontSize,
         settings.UpdatedAt, settings.UpdatedByUserId,
         options = new
         {
             decimalSeparators = SystemSettings.DecimalSeparators, dateFormats = SystemSettings.DateFormats,
-            fontSizes = SystemSettings.FontSizes, themes = SystemSettings.Themes
+            fontSizes = SystemSettings.FontSizes
         }
     };
 }
 
 public sealed record UpdateSystemSettingsRequest(string DecimalSeparator, string DateFormat, string FontSize,
-    string? DefaultTheme, DateTimeOffset? UpdatedAt);
+    DateTimeOffset? UpdatedAt);

@@ -53,8 +53,14 @@ public sealed class AppVersionHistory
 public static class AppVersions
 {
     public const string InstalledBy = "Migracija baze";
+    public const string StartupInstalledBy = "Pokretanje aplikacije";
 
-    // Releases recorded in CHANGELOG.md since the version history exists; a new release adds its row in its migration.
+    // The running release (top entry of CHANGELOG.md, checked by a web test). At startup AppVersionRecorder adds it
+    // to the history when it is not there yet, so a new release only changes these two constants.
+    public const string Current = "v2.17";
+    public const string CurrentTitle = "Tehničko čišćenje: jedan izvor istine za temu, automatska istorija verzija";
+
+    // Releases v2.7–v2.16, recorded by migrations before the startup recording existed.
     public static readonly AppVersionHistory[] Seed =
     [
         Row("v2.7", "Navigacija radnog prostora: kontrolna ploča i sklopivi meni", 2026, 10, 10),

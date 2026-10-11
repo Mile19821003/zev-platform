@@ -3,11 +3,11 @@
 // some environments) would otherwise print "145.00 KM" instead of "145,00 KM".
 export type DecimalSeparator = "," | ".";
 export type DateFormat = "DD.MM.YYYY" | "YYYY-MM-DD";
-export type DisplaySettings = { decimalSeparator: DecimalSeparator; dateFormat: DateFormat; fontSize: string;
-  defaultTheme: string };
+// The colour theme is not part of these settings: it comes from GET /api/system/theme (theme.ts, useTheme).
+export type DisplaySettings = { decimalSeparator: DecimalSeparator; dateFormat: DateFormat; fontSize: string };
 
 export const defaultDisplaySettings: DisplaySettings = { decimalSeparator: ",", dateFormat: "DD.MM.YYYY",
-  fontSize: "13px", defaultTheme: "Default" };
+  fontSize: "13px" };
 
 const fontSizes = ["13px", "14px", "15px"];
 let current: DisplaySettings = defaultDisplaySettings;
@@ -22,7 +22,6 @@ export function normalizeDisplaySettings(raw: unknown): DisplaySettings {
     decimalSeparator: value.decimalSeparator === "." ? "." : ",",
     dateFormat: value.dateFormat === "YYYY-MM-DD" ? "YYYY-MM-DD" : "DD.MM.YYYY",
     fontSize: typeof value.fontSize === "string" && fontSizes.includes(value.fontSize) ? value.fontSize : defaultDisplaySettings.fontSize,
-    defaultTheme: typeof value.defaultTheme === "string" ? value.defaultTheme : "Default",
   };
 }
 

@@ -2,21 +2,32 @@ import { FormEvent, useEffect, useState } from "react";
 import { callApi, errorText } from "../api";
 import { DisplaySettings, formatDate, formatDateTime, formatMoney, normalizeDisplaySettings } from "../displaySettings.ts";
 import { useChangeRevision } from "../useChangeRevision.ts";
+import { activeThemeLabel, normalizeTheme, Theme } from "../theme.ts";
 import { SectionTitle } from "./shared";
 
 type SettingsResponse = DisplaySettings & { updatedAt: string; updatedByUserId: string | null;
-  options: { decimalSeparators: string[]; dateFormats: string[]; fontSizes: string[]; themes: string[] } };
+  options: { decimalSeparators: string[]; dateFormats: string[]; fontSizes: string[] } };
+
 
 const separatorLabels: Record<string, string> = { ",": "Zarez (,)", ".": "Tačka (.)" };
 
 // Administration → "Sistemska podešavanja": regional display (system administrators only).
-export default function SystemSettingsPage({ token }: { token: string }) {
+export default function SystemSettingsPage({ token, onOpenThemes }: { token: string; onOpenThemes?: () => void }) {
   const [loaded, setLoaded] = useState<SettingsResponse | null>(null);
   const [draft, setDraft] = useState<DisplaySettings | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const revision = useChangeRevision("settings");
+  const themeRevision = useChangeRevision("theme");
+  const [theme, setTheme] = useState<Theme | null>(null);
+
+  useEffect(() => {
+    let current = true;
+    callApi<unknown>("/api/system/theme", {}, token).then((result) => { if (current) setTheme(normalizeTheme(result)); })
+      .catch(() => { /* the theme line is informative only */ });
+    return () => { current = false; };
+  }, [token, themeRevision]);
 
   useEffect(() => {
     let current = true;
@@ -60,6 +71,11 @@ export default function SystemSettingsPage({ token }: { token: string }) {
       </form>
       {error && <p className="error" role="alert">{error}</p>}{notice && <p className="notice" role="status">{notice}</p>}
       <p className="empty-inline">Posljednja izmjena: {loaded.updatedByUserId ? formatDateTime(loaded.updatedAt) : "početne vrijednosti"}</p>
+    </section>
+    <section className="panel settings-panel"><h2>Tema</h2>
+      <p>Aktivna tema: <strong>{theme ? activeThemeLabel(theme) : "…"}</strong></p>
+      <p className="empty-inline">Boje i tema se podešavaju na jednom mjestu — u „Teme i paleta boja“.</p>
+      {onOpenThemes && <button type="button" className="secondary" onClick={onOpenThemes}>Otvori Teme i paletu boja</button>}
     </section>
   </>;
 }

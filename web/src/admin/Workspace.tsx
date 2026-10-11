@@ -240,7 +240,7 @@ export default function Workspace({ token, profile, zevs, onLogout, onProfile }:
           onChanged={() => setRevision((value) => value + 1)} />}
         {active === "memberships" && activeZev && <ZevPermissionPage token={token} zevId={activeZev.id} zevs={zevs} />}
         {active === "accountLinks" && activeZev && <AccessControlPage token={token} zevId={activeZev.id} zevs={zevs} />}
-        {active === "settings" && <SystemSettingsPage token={token} />}
+        {active === "settings" && <SystemSettingsPage token={token} onOpenThemes={() => setActive("themes")} />}
         {active === "lookups" && <LookupsPage token={token} />}
         {active === "icons" && <IconSettingsPage token={token} />}
         {active === "errors" && <SystemErrorsPage token={token} />}
