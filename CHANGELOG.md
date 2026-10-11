@@ -28,6 +28,14 @@ Sve značajne izmjene ZEV Platforme. Ranija historija (faze do 4) je u `CLOUD_HA
   403/404/401), `web/tests/zevCover.test.mjs` (6, komponenta renderovana u HTML: slika i placeholder, polje za
   upload, pravila fajla); provjera u pregledniku 11/11.
 
+### Ispravljeno (Fixed)
+- Početni ekran „Pregled“ više ne sakriva zajednice nakon odabira ZEV-a (sistemska administracija i radni
+  prostor uloga): kartice ZEV-ova s fotografijama su uvijek na vrhu, a ispod njih „Moduli · <aktivni ZEV>“.
+  Cijela kartica (fotografija i naziv) je jedno dugme koje odmah aktivira taj ZEV; aktivna kartica ima obrub
+  u primarnoj boji i oznaku „Aktivan“ i prati i izbor u zaglavlju. Uklonjeni su panel „Radni prostor“ i dugme
+  „Sve zajednice“. Komponenta `ZevCardGrid`; `ModuleDashboard` dobija naslov s nazivom ZEV-a.
+- Placeholder bez fotografije zadržava punu širinu 16:9 i na klikabilnoj kartici.
+
 ### Baza / Migracije
 - `20261011081112_AddZevCoverImage`: kolone `ImageUrl`, `ImageStorageKey`, `ImageContentType` u `Zevs`
   (nullable); unos v2.15 u istoriju verzija.

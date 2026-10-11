@@ -20,7 +20,7 @@ import SystemErrorsPage from "./SystemErrorsPage";
 import VersionHistoryPage from "./VersionHistoryPage";
 import DeletedRecordsPage from "./DeletedRecordsPage";
 import ThemeSettingsPage from "./ThemeSettingsPage";
-import ZevCover from "./ZevCover";
+import ZevCardGrid from "./ZevCards";
 import { useChangeRevision } from "../useChangeRevision.ts";
 import WorkspaceNav, { useSidebarState } from "./WorkspaceNav";
 import ModuleDashboard from "./ModuleDashboard";
@@ -172,7 +172,6 @@ export default function Workspace({ token, profile, zevs, onLogout, onProfile }:
 }) {
   const [active, setActive] = useState<MenuKey>("overview");
   const [sidebar, setSidebar] = useSidebarState();
-  const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [contextError, setContextError] = useState("");
   const permissionRequestId = useRef(0);
   const [selectedZevId, setSelectedZevId] = useState(() => sessionStorage.getItem("activeZevId") ?? "");
@@ -185,7 +184,7 @@ export default function Workspace({ token, profile, zevs, onLogout, onProfile }:
 
   function selectZev(id: string) {
     setSelectedZevId(id); sessionStorage.setItem("activeZevId", id);
-    setActive("overview"); setWorkspaceOpen(true);
+    setActive("overview");
     setContextError("");
     const requestId = ++permissionRequestId.current;
     void callApi(`/api/zevs/${id}/access/permissions`, {}, token)
@@ -212,22 +211,21 @@ export default function Workspace({ token, profile, zevs, onLogout, onProfile }:
       </div></header>
       <main className="dashboard admin-main">
         {contextError && <p className="error" role="alert">{contextError}</p>}
-        {active === "overview" && workspaceOpen && activeZev && <section className="panel">
-          <p className="eyebrow">RADNI PROSTOR</p><h1>{activeZev.name}</h1><p>{activeZev.addressLine}</p>
-          <p>Trenutni ZEV: {activeZev.name}</p><button type="button" onClick={() => setWorkspaceOpen(false)}>Sve zajednice</button>
-        </section>}
-        {active === "overview" && <ModuleDashboard items={menu} onSelect={(key) => setActive(key as MenuKey)} />}
-        {active === "overview" && !workspaceOpen && <><p className="eyebrow">SISTEM</p><h1>Pregled platforme</h1>
+        {active === "overview" && <>
+          <section className="zev-home" aria-labelledby="zev-home-heading">
+            <div className="section-heading"><h2 id="zev-home-heading">Dostupne zajednice</h2>
+              <span>{zevs.length} prikazano · klik na karticu otvara radni prostor</span></div>
+            <ZevCardGrid token={token} zevs={zevs} activeId={activeZev?.id ?? null} onSelect={selectZev} />
+            {zevs.length === 0 && <div className="empty-state">Još nema aktivnih zajednica.</div>}
+          </section>
+          <ModuleDashboard items={menu} onSelect={(key) => setActive(key as MenuKey)}
+            title={activeZev ? `Moduli · ${activeZev.name}` : "Moduli"} />
+          <p className="eyebrow">SISTEM</p><h1>Pregled platforme</h1>
           <p className="lead">Organizacije, ZEV-ovi i pristupi na jednom mjestu.</p>
           {error && <p role="alert" className="error">{error}</p>}
           <div className="overview-grid"><div className="summary-card"><span>Organizacije</span><strong>{overview?.organizations ?? "…"}</strong></div>
             <div className="summary-card"><span>ZEV-ovi</span><strong>{overview?.zevs ?? "…"}</strong></div>
-            <div className="summary-card"><span>Aktivni ZEV-ovi</span><strong>{overview?.activeZevs ?? "…"}</strong></div></div>
-          <div className="section-heading"><h2>Dostupne zajednice</h2><span>{zevs.length} prikazano</span></div>
-          <div className="zev-grid">{zevs.map((zev) => <article className="zev-card" key={zev.id}>
-            <ZevCover token={token} imageUrl={zev.imageUrl} name={zev.name} />
-            <p className="eyebrow">{zev.code}</p><h3>{zev.name}</h3><p>{zev.addressLine}</p>
-            <button type="button" onClick={() => selectZev(zev.id)}>Otvori ZEV</button></article>)}</div></>}
+            <div className="summary-card"><span>Aktivni ZEV-ovi</span><strong>{overview?.activeZevs ?? "…"}</strong></div></div></>}
         {active === "organizations" && <OrganizationsPage token={token} onChanged={() => setRevision((value) => value + 1)} />}
         {active === "ownership" && <OwnershipPage token={token} />}
         {active === "finance" && <FinancePage token={token} zevs={scopedZevs} />}

@@ -11,7 +11,7 @@ import CommunityPage from "./CommunityPage";
 import ReportsPage from "./ReportsPage";
 import OwnerFinancePage from "./OwnerFinancePage";
 import ManagerRegistryPage from "./ManagerRegistryPage";
-import ZevCover from "./ZevCover";
+import ZevCardGrid from "./ZevCards";
 import { hasStaffPermission } from "../permissionUi.ts";
 import ZevPermissionPage from "./ZevPermissionPage";
 import WorkspaceNav, { useSidebarState } from "./WorkspaceNav";
@@ -27,7 +27,6 @@ export default function RoleWorkspace({ token, profile, zevs, onLogout, onProfil
 }) {
   const [active, setActive] = useState<PageKey>("overview");
   const [sidebar, setSidebar] = useSidebarState();
-  const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [selectedZevId, setSelectedZevId] = useState(() => sessionStorage.getItem("activeZevId") ?? "");
   const [permissionContext, setPermissionContext] = useState<{ zevId: string; isStaff: boolean;
     permissions: string[] } | null>(null);
@@ -93,7 +92,7 @@ export default function RoleWorkspace({ token, profile, zevs, onLogout, onProfil
   function selectZev(id: string) {
     setSelectedZevId(id);
     sessionStorage.setItem("activeZevId", id);
-    setActive("overview"); setWorkspaceOpen(true);
+    setActive("overview");
     setPermissionContext(null); setContextError("");
     const requestId = ++permissionRequestId.current;
     void callApi<{ isStaff: boolean; permissions: { key: string; effective: boolean }[] }>(
@@ -116,19 +115,14 @@ export default function RoleWorkspace({ token, profile, zevs, onLogout, onProfil
       <span className="user-email">{profile.email}</span><button className="text-button" onClick={onProfile}>Moj profil</button><button className="text-button" onClick={onLogout}>Odjavi se</button></div>
   </header><main className="dashboard admin-main">
     {contextError && <p className="error" role="alert">{contextError}</p>}
-    {active === "overview" && workspaceOpen && activeZev && <section className="panel"><p className="eyebrow">RADNI PROSTOR</p>
-      <h1>{activeZev.name}</h1><p>{activeZev.addressLine}</p><p>Trenutni ZEV: {activeZev.name}</p>
-      <button type="button" onClick={() => setWorkspaceOpen(false)}>Sve zajednice</button></section>}
-    {active === "overview" && workspaceOpen && activeZev && <ModuleDashboard key={activeZev.id} items={navigation}
-      onSelect={(key) => setActive(key as PageKey)} />}
-    {active === "overview" && !workspaceOpen && <><p className="eyebrow">RADNI PROSTOR</p><h1>Vaše zajednice</h1>
-      <p className="lead">Podaci i funkcije su ograničeni na dodijeljene uloge i ZEV-ove.</p>
-      <div className="zev-grid">{zevs.map((zev) => <article className="zev-card" key={zev.id}>
-        <ZevCover token={token} imageUrl={zev.imageUrl} name={zev.name} />
-        <p className="eyebrow">{zev.code}</p><h3>{zev.name}</h3>
-        <p>{zev.addressLine}</p><p>{zev.historicalSelfAccess ? "Samo istorijski finansijski podaci" : zev.sources?.join(", ")}</p>
-        <button type="button" onClick={() => selectZev(zev.id)}>Otvori ZEV</button></article>)}</div>
-      {zevs.length === 0 && <div className="empty-state">Nema dodijeljenih zajednica.</div>}</>}
+    {active === "overview" && <>
+      <p className="eyebrow">RADNI PROSTOR</p><h1>Vaše zajednice</h1>
+      <p className="lead">Podaci i funkcije su ograničeni na dodijeljene uloge i ZEV-ove. Klik na karticu otvara radni prostor tog ZEV-a.</p>
+      <ZevCardGrid token={token} zevs={zevs} activeId={activeZev?.id ?? null} onSelect={selectZev}
+        detail={(zev) => zev.historicalSelfAccess ? "Samo istorijski finansijski podaci" : zev.sources?.join(", ")} />
+      {zevs.length === 0 && <div className="empty-state">Nema dodijeljenih zajednica.</div>}
+      {activeZev && <ModuleDashboard key={activeZev.id} items={navigation} onSelect={(key) => setActive(key as PageKey)}
+        title={`Moduli · ${activeZev.name}`} />}</>}
     {active === "finance" && <FinancePage key={activeZev?.id} token={token} zevs={financeZevs} permissions={activeZev?.permissions} />}
     {active === "payments" && <PaymentsPage key={activeZev?.id} token={token} zevs={paymentZevs} permissions={activeZev?.permissions} />}
     {active === "bank-transactions" && <BankTransactionsPage key={activeZev?.id} token={token}

@@ -4,14 +4,16 @@ import { NavIcon } from "./WorkspaceNav";
 
 // Home grid: one large card per category; a category opens its module cards with a breadcrumb back.
 // Only modules the user may open are passed in, so categories follow the effective permissions.
-export default function ModuleDashboard({ items, onSelect }: { items: NavItem[]; onSelect: (key: string) => void }) {
+export default function ModuleDashboard({ items, onSelect, title = "Moduli" }: {
+  items: NavItem[]; onSelect: (key: string) => void; title?: string;
+}) {
   const [category, setCategory] = useState<NavGroupId | null>(null);
   const groups = groupNavigation(items);
   const selected = groups.find((group) => group.id === category);
   const featured = featuredModules(items);
 
   if (!selected) return <section className="module-dashboard" aria-label="Kontrolna ploča">
-    <h2>Moduli</h2>
+    <h2>{title}</h2>
     {groups.length === 0 ? <p className="empty-inline">Za ovaj ZEV nemate dodijeljenih modula.</p>
       : <div className="module-grid">{groups.map((group) => <button type="button" key={group.id}
         className="module-card category" onClick={() => setCategory(group.id)}>

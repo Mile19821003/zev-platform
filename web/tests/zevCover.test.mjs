@@ -17,11 +17,11 @@ const outDir = fileURLToPath(new URL("../node_modules/.cache/zev-tests/", import
 mkdirSync(outDir, { recursive: true });
 buildSync({
   stdin: { contents: `export * from "./src/admin/ZevCover.tsx"; export { default as ZevCover } from "./src/admin/ZevCover.tsx";
-    export { primeZevImage } from "./src/zevImage.ts";`, resolveDir: web, loader: "ts" },
+    export { primeZevImage } from "./src/zevImage.ts"; export { default as ZevCardGrid } from "./src/admin/ZevCards.tsx";`, resolveDir: web, loader: "ts" },
   bundle: true, format: "esm", platform: "neutral", jsx: "automatic", outfile: `${outDir}zevCover.mjs`,
   external: ["react", "react-dom", "react/jsx-runtime"], logLevel: "silent",
 });
-const { ZevCover, ZevCoverView, ImageUploadField, emptyImageDraft, primeZevImage } =
+const { ZevCover, ZevCoverView, ImageUploadField, emptyImageDraft, primeZevImage, ZevCardGrid } =
   await import(pathToFileURL(`${outDir}zevCover.mjs`).href);
 const render = (component, props) => renderToStaticMarkup(createElement(component, props));
 
@@ -79,13 +79,42 @@ test("file rules equal the API: JPG/JPEG/PNG/WEBP up to 5 MB, extension must mat
   assert.equal(maxImageBytes, 5_000_000);
 });
 
-test("cards and the ZEV form use the cover; a photo change refreshes the ZEV lists", () => {
-  for (const file of ["../src/admin/Workspace.tsx", "../src/admin/RoleWorkspace.tsx"])
-    assert.match(source(file), /<article className="zev-card" key=\{zev\.id\}>\s*<ZevCover token=\{token\} imageUrl=\{zev\.imageUrl\}/);
-  assert.match(source("../src/admin/Workspace.tsx"), /image: \{ label: "Fotografija zgrade", path: \(id\) => `\/api\/zevs\/\$\{id\}\/image`/);
+test("home cards: the whole card is one button, the active ZEV is outlined and marked Aktivan", () => {
+  primeZevImage("/api/zevs/a/image?v=1", "blob:a");
+  const zevs = [{ id: "a", code: "ZEV-A", name: "TEST ZEV A", addressLine: "Titova 1", imageUrl: "/api/zevs/a/image?v=1" },
+    { id: "b", code: "ZEV-B", name: "TEST ZEV B", addressLine: null, imageUrl: null }];
+  const html = render(ZevCardGrid, { token: "t", zevs, activeId: "b", onSelect: () => {}, detail: (zev) => `Uloga za ${zev.code}` });
+  const cards = html.split('<div role="listitem">').slice(1);
+  assert.equal(cards.length, 2);
+  assert.ok(cards[0].startsWith('<button type="button" class="zev-card selectable" aria-pressed="false" '
+    + 'aria-label="TEST ZEV A, otvori radni prostor"><div class="zev-cover"><img src="blob:a"'), cards[0]);
+  assert.doesNotMatch(cards[0], /Aktivan/);
+  assert.ok(cards[1].startsWith('<button type="button" class="zev-card selectable active" aria-pressed="true" '
+    + 'aria-label="TEST ZEV B (aktivni ZEV)">'), cards[1]);
+  assert.match(cards[1], /zev-cover placeholder/);
+  assert.ok(cards[1].includes('<span class="zev-active-badge">Aktivan</span>'));
+  assert.match(cards[1], /Uloga za ZEV-B/);
+  assert.equal((html.match(/<button/g) ?? []).length, 2, "no inner buttons: the card itself is the button");
+});
+
+test("home screen keeps the community cards above the modules of the active ZEV, in both workspaces", () => {
+  for (const file of ["../src/admin/Workspace.tsx", "../src/admin/RoleWorkspace.tsx"]) {
+    const page = source(file);
+    const overview = page.slice(page.indexOf('{active === "overview" && <>'));
+    const grid = overview.indexOf("<ZevCardGrid");
+    assert.ok(grid >= 0 && grid < overview.indexOf("<ModuleDashboard"), file);
+    assert.ok(overview.includes("activeId={activeZev?.id ?? null} onSelect={selectZev}"), file);
+    assert.doesNotMatch(page, /workspaceOpen|Sve zajednice/, "no hidden state that removes the cards");
+  }
+});
+
+test("ZEV form uses the cover; a photo change refreshes the ZEV lists", () => {
+  assert.ok(source("../src/admin/Workspace.tsx").includes('image: { label: "Fotografija zgrade", path: (id) => `/api/zevs/${id}/image`'));
   assert.equal(resourceKey("/api/zevs/z1/image"), "zevs");
   assert.ok(mutationKeys("/api/zevs/z1/image").includes("zevs"));
   const css = source("../src/admin.css");
-  assert.match(css, /\.zev-cover\{aspect-ratio:16\/9/);
+  assert.ok(css.includes(".zev-cover{aspect-ratio:16/9"));
   assert.match(css, /\.zev-cover img\{[^}]*object-fit:cover/);
+  assert.ok(css.includes(".zev-card.selectable.active{border:2px solid var(--zev-primary)"));
+  assert.ok(css.includes(".zev-card.selectable .zev-cover{align-self:stretch}"), "placeholder keeps the full 16:9 width");
 });
