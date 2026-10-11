@@ -2,6 +2,31 @@
 
 Sve značajne izmjene ZEV Platforme. Ranija historija (faze do 4) je u `CLOUD_HANDOFF_STATUS.md` i git logu.
 
+## [v2.19] - 2026-10-11
+
+### Dodano (Added)
+- **Posebna prava za brisanje** u katalogu prava (`GranularPermissions`):
+  - `Buildings.Delete` (zgrade), `PropertyUnits.Delete` (ulazi i posebni dijelovi) — podakcije modula
+    „Vlasnici i nekretnine“;
+  - `Suppliers.Delete` (dobavljači) — podakcija modula „Rashodi i dugovanja“;
+  - `Maintenance.Delete` (planovi održavanja) — akcija modula „Održavanje“, pa matrica prava ponovo prikazuje
+    kolonu „Brisanje“ (simboli ✓ / ✓+ / ✕ / □ kao i za ostala prava).
+  - Podrazumijevano ih imaju samo uloge Upravnik i Administrator organizacije (pravila uloga su u kodu,
+    `GranularPermissions.RoleDefault`, pa nije potrebna seed migracija); ostale uloge ih dobijaju samo ručnim
+    odobrenjem (✓+) u matrici, a upravniku se mogu i zabraniti (✕).
+- Testovi: `DeletePermissionApiTests` (3: katalog i podrazumijevana prava; korisnik s pravom izmjene a bez prava
+  brisanja dobija 403 na svim DELETE rutama i i dalje mijenja; samo pravo brisanja je dovoljno za brisanje),
+  `web/tests/deletePermissions.test.mjs` (kolona Brisanje, dugmad).
+- Tekuća verzija `v2.19`.
+
+### Ispravljeno (Fixed)
+- DELETE rute više ne koriste prava izmjene: zgrade traže `Buildings.Delete` (ranije `Buildings.Edit`), ulazi i
+  posebni dijelovi `PropertyUnits.Delete` (ranije `Entrances.Edit` / `PropertyUnits.Edit`), dobavljači
+  `Suppliers.Delete` (ranije `Expenses.Create`), planovi održavanja `Maintenance.Delete` (ranije
+  `Maintenance.Edit`; deaktivacija plana i dalje traži `Maintenance.Edit`).
+- Dugme „Obriši“ (registar upravnika, dobavljači, periodični planovi) prikazuje se samo uz odgovarajuće
+  `*.Delete` pravo za aktivni ZEV.
+
 ## [v2.18] - 2026-10-11
 
 ### Dodano (Added)

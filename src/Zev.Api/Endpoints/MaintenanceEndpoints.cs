@@ -265,7 +265,7 @@ public static class MaintenanceEndpoints
         group.MapDelete("/plans/{planId:guid}", async (Guid zevId, Guid planId, TenantAccess access, ZevDbContext database,
             MaintenanceScheduleService scheduleService, SoftDeleteAdminService recycleBin, CancellationToken cancellationToken) =>
         {
-            if (await access.RequirePermissionAsync(zevId, "Maintenance.Edit", cancellationToken) is { } denied) return denied;
+            if (await access.RequirePermissionAsync(zevId, "Maintenance.Delete", cancellationToken) is { } denied) return denied;
             var plan = await database.MaintenancePlans.SingleOrDefaultAsync(item => item.Id == planId && item.ZevId == zevId,
                 cancellationToken);
             if (plan is null) return Results.NotFound();

@@ -128,8 +128,8 @@ export default function ExpensesPage({ token, zevs, permissions }: { token: stri
         <label>Naziv<input required maxLength={200} value={supplierName} onChange={(event) => setSupplierName(event.target.value)} /></label>
         <button disabled={busy}>Dodaj dobavljača</button></form>
         {suppliers.items.length > 0 && <ul className="supplier-list" aria-label="Dobavljači">{suppliers.items.map((item) =>
-          <li key={item.id}><span>{item.name}</span><button type="button" className="danger" disabled={busy}
-            aria-label={`Obriši dobavljača ${item.name}`} onClick={() => void deleteSupplier(item)}>Obriši</button></li>)}</ul>}</section>}
+          <li key={item.id}><span>{item.name}</span>{allowed("Suppliers.Delete") && <button type="button" className="danger" disabled={busy}
+            aria-label={`Obriši dobavljača ${item.name}`} onClick={() => void deleteSupplier(item)}>Obriši</button>}</li>)}</ul>}</section>}
       {allowed("Expenses.Create") && <section className="panel"><h2>Novi ulazni račun</h2><form className="admin-form" onSubmit={createExpense}>
         <label>Fond<select required value={fundId} onChange={(event) => setFundId(event.target.value)}>
           <option value="">Odaberite</option>{funds.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>

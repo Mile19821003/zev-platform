@@ -40,13 +40,13 @@ public static class RecycleBinEndpoints
         return api;
     }
 
-    // "Obriši" in the manager workspace: the same edit permission that may deactivate the record.
+    // "Obriši" in the manager workspace: a separate delete permission (editing does not include deleting).
     public static RouteGroupBuilder MapManagerDeleteEndpoints(this RouteGroupBuilder api)
     {
         api.MapDelete("/zevs/{zevId:guid}/registry/buildings/{buildingId:guid}", async (Guid zevId, Guid buildingId,
             TenantAccess access, ZevDbContext database, SoftDeleteAdminService recycleBin, CancellationToken cancellationToken) =>
         {
-            if (await access.RequirePermissionAsync(zevId, "Buildings.Edit", cancellationToken) is { } denied) return denied;
+            if (await access.RequirePermissionAsync(zevId, "Buildings.Delete", cancellationToken) is { } denied) return denied;
             var building = await database.Buildings.SingleOrDefaultAsync(item => item.Id == buildingId && item.ZevId == zevId, cancellationToken);
             return building is null ? Results.NotFound()
                 : (await recycleBin.DeleteAsync(building, access.CurrentUserId, cancellationToken)).ToHttp();
@@ -54,7 +54,7 @@ public static class RecycleBinEndpoints
         api.MapDelete("/zevs/{zevId:guid}/registry/entrances/{entranceId:guid}", async (Guid zevId, Guid entranceId,
             TenantAccess access, ZevDbContext database, SoftDeleteAdminService recycleBin, CancellationToken cancellationToken) =>
         {
-            if (await access.RequirePermissionAsync(zevId, "Entrances.Edit", cancellationToken) is { } denied) return denied;
+            if (await access.RequirePermissionAsync(zevId, "PropertyUnits.Delete", cancellationToken) is { } denied) return denied;
             var entrance = await database.Entrances.SingleOrDefaultAsync(item => item.Id == entranceId && item.ZevId == zevId, cancellationToken);
             return entrance is null ? Results.NotFound()
                 : (await recycleBin.DeleteAsync(entrance, access.CurrentUserId, cancellationToken)).ToHttp();
@@ -62,7 +62,7 @@ public static class RecycleBinEndpoints
         api.MapDelete("/zevs/{zevId:guid}/registry/units/{unitId:guid}", async (Guid zevId, Guid unitId,
             TenantAccess access, ZevDbContext database, SoftDeleteAdminService recycleBin, CancellationToken cancellationToken) =>
         {
-            if (await access.RequirePermissionAsync(zevId, "PropertyUnits.Edit", cancellationToken) is { } denied) return denied;
+            if (await access.RequirePermissionAsync(zevId, "PropertyUnits.Delete", cancellationToken) is { } denied) return denied;
             var unit = await database.PropertyUnits.SingleOrDefaultAsync(item => item.Id == unitId && item.ZevId == zevId, cancellationToken);
             return unit is null ? Results.NotFound()
                 : (await recycleBin.DeleteAsync(unit, access.CurrentUserId, cancellationToken)).ToHttp();
@@ -70,7 +70,7 @@ public static class RecycleBinEndpoints
         api.MapDelete("/zevs/{zevId:guid}/expenses/suppliers/{supplierId:guid}", async (Guid zevId, Guid supplierId,
             TenantAccess access, ZevDbContext database, SoftDeleteAdminService recycleBin, CancellationToken cancellationToken) =>
         {
-            if (await access.RequirePermissionAsync(zevId, "Expenses.Create", cancellationToken) is { } denied) return denied;
+            if (await access.RequirePermissionAsync(zevId, "Suppliers.Delete", cancellationToken) is { } denied) return denied;
             var supplier = await database.Suppliers.SingleOrDefaultAsync(item => item.Id == supplierId
                 && database.Zevs.Any(zev => zev.Id == zevId && zev.OrganizationId == item.OrganizationId), cancellationToken);
             return supplier is null ? Results.NotFound()

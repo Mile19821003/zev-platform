@@ -134,8 +134,8 @@ export default function ManagerRegistryPage({ token, zevs, permissions }: { toke
           units: "PropertyUnits.Edit", people: "Persons.Edit" })[section]),
         allowStatus: allowed(({ buildings: "Buildings.Edit", entrances: "Entrances.Edit",
           units: "PropertyUnits.Edit", people: "Persons.Edit" })[section]),
-        allowDelete: section !== "people" && allowed(({ buildings: "Buildings.Edit", entrances: "Entrances.Edit",
-          units: "PropertyUnits.Edit", people: "" })[section]) }} token={token} onChanged={() => undefined}
+        allowDelete: section !== "people" && allowed(({ buildings: "Buildings.Delete", entrances: "PropertyUnits.Delete",
+          units: "PropertyUnits.Delete", people: "" })[section]) }} token={token} onChanged={() => undefined}
       onCreated={section === "people" ? (id) => { setPersonId(id); setSection("ownership");
         setNotice("Lice je kreirano. Odaberite posebni dio i evidentirajte vlasništvo."); } : undefined} />}
     {zevId && section === "ownership" && <>

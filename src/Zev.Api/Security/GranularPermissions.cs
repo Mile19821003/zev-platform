@@ -18,16 +18,16 @@ public static class GranularPermissions
                 "Payments.ReconcileAutomatic", "Payments.ReconcileManual", "Payments.Reverse",
                 "Payments.CreateManual", "Payments.ReverseAllocation", "Payments.ChangePayer"]),
         new("Expenses", "Rashodi i dugovanja", ["View", "Create", "Edit", "Approve", "Export"],
-            ["Expenses.Submit", "Expenses.Post", "Expenses.Reverse"]),
+            ["Expenses.Submit", "Expenses.Post", "Expenses.Reverse", "Suppliers.Delete"]),
         new("Reports", "Izvještaji", ["View", "Export"],
             ["Reports.Finance", "Reports.Debtors", "Reports.Maintenance", "Reports.Registry"]),
         new("Legal", "Pravni predmeti", ["View", "Create", "Edit", "Export"],
             ["Legal.ChangeStatus", "Legal.Documents"]),
         new("Registry", "Vlasnici i nekretnine", ["View", "Create", "Edit", "Export"],
-            ["Buildings.Create", "Buildings.Edit", "Entrances.Create", "Entrances.Edit",
-                "PropertyUnits.View", "PropertyUnits.Create", "PropertyUnits.Edit", "Persons.View",
+            ["Buildings.Create", "Buildings.Edit", "Buildings.Delete", "Entrances.Create", "Entrances.Edit",
+                "PropertyUnits.View", "PropertyUnits.Create", "PropertyUnits.Edit", "PropertyUnits.Delete", "Persons.View",
                 "Persons.Create", "Persons.Edit", "Ownership.View", "Ownership.Create", "Ownership.Close"]),
-        new("Maintenance", "Održavanje", ["View", "Create", "Edit", "Approve", "Export"],
+        new("Maintenance", "Održavanje", ["View", "Create", "Edit", "Delete", "Approve", "Export"],
             ["Maintenance.Assign", "Maintenance.Complete"]),
         new("Community", "Zajednica", ["View", "Create", "Edit", "Approve", "Export"],
             ["Announcements.Create", "Announcements.Edit", "Documents.View", "Documents.Upload",
@@ -39,6 +39,9 @@ public static class GranularPermissions
 
     public static bool IsKnown(string key) => Keys.Contains(key, StringComparer.Ordinal);
 
+    // Deleting is separate from editing: *.Delete keys (Buildings.Delete, PropertyUnits.Delete for entrances and units,
+    // Suppliers.Delete, Maintenance.Delete) are role defaults only for managers and organization administrators;
+    // anyone else needs an explicit grant in the permission matrix.
     public static bool RoleDefault(MembershipRole role, string key)
     {
         if (!IsKnown(key)) return false;

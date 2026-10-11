@@ -235,9 +235,10 @@ export default function MaintenancePage({ token, zevs, role, permissions }: {
           {plans.map((plan) => <tr key={plan.id} className={plan.isActive ? "" : "inactive"}><td>{plan.title}</td><td>{plan.category}</td>
             <td>{planFrequencyText(plan.frequencyDays)}</td><td>{formatDate(plan.firstDueOn)}</td>
             <td><span className={`badge plan-${plan.isActive ? "active" : "inactive"}`}>{planStatusLabel(plan.isActive)}</span></td>
-            <td className="actions">{role === "manager" && allowed("Maintenance.Edit") && <>
-              <button type="button" disabled={busy} onClick={() => void planAction(plan, "toggle")}>{plan.isActive ? "Deaktiviraj" : "Aktiviraj"}</button>
-              <button type="button" className="danger" disabled={busy} onClick={() => setPlanToDelete(plan)}>Obriši</button></>}</td></tr>)}
+            <td className="actions">{role === "manager" && allowed("Maintenance.Edit")
+              && <button type="button" disabled={busy} onClick={() => void planAction(plan, "toggle")}>{plan.isActive ? "Deaktiviraj" : "Aktiviraj"}</button>}
+              {role === "manager" && allowed("Maintenance.Delete")
+              && <button type="button" className="danger" disabled={busy} onClick={() => setPlanToDelete(plan)}>Obriši</button>}</td></tr>)}
         </tbody></table></div>
         {plans.length === 0 && <p className="empty-inline">Nema periodičnih planova.</p>}
         <p className="empty-inline">Aktivnih planova: {plans.filter((plan) => plan.isActive).length} od {plans.length}.

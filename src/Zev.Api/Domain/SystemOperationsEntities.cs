@@ -57,8 +57,8 @@ public static class AppVersions
 
     // The running release (top entry of CHANGELOG.md, checked by a web test). At startup AppVersionRecorder adds it
     // to the history when it is not there yet, so a new release only changes these two constants.
-    public const string Current = "v2.18";
-    public const string CurrentTitle = "Planovi održavanja: brisanje, deaktivacija i vraćanje iz Obrisanih redova";
+    public const string Current = "v2.19";
+    public const string CurrentTitle = "Posebna prava za brisanje (*.Delete) u matrici prava";
 
     // Releases v2.7–v2.16, recorded by migrations before the startup recording existed.
     public static readonly AppVersionHistory[] Seed =

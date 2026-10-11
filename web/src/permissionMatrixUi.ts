@@ -38,7 +38,7 @@ export function nextEffect(state: CellState): Effect {
   return state.effective ? "Deny" : "Grant";
 }
 
-// Only columns that at least one module uses (no module has a Delete action today).
+// Only columns that at least one module uses (Delete appears with Maintenance.Delete; other deletes are sub-actions).
 export function visibleColumns(modules: MatrixModule[]): string[] {
   return matrixColumns.filter((column) => modules.some((module) => module.actions.includes(column)));
 }
