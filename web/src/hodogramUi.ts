@@ -16,14 +16,8 @@ export const raciLabels: Record<RaciValue, string> = {
   R: "R – izvršava", A: "A – odgovoran", C: "C – konsultuje se", I: "I – informiše se",
 };
 
-export const roleLabels: Record<string, string> = {
-  Manager: "Upravnik", Accountant: "Računovođa", BuildingRepresentative: "Predstavnik zgrade",
-  Owner: "Vlasnik", OrganizationAdministrator: "Administrator organizacije",
-};
-
-export function roleLabel(role: string): string {
-  return roleLabels[role] ?? role;
-}
+// One mapping of role names for the whole app (uiLabels.ts).
+export { roleLabel, roleLabels } from "./uiLabels.ts";
 
 export function draftFromDetail(detail: HodogramDetail): MatrixDraft {
   return Object.fromEntries(detail.phases.flatMap((phase) => phase.steps)

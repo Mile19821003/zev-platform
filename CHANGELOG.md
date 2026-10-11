@@ -73,6 +73,12 @@ kartica na početnom ekranu, C — Reporting centar. Opis toka: `MAINTENANCE_WOR
 - Kalendar podrazumijevano prikazuje samo **aktivne obaveze** (Planirano, Dospjelo, U toku), pa se završeni termini
   ne dupliraju sa završenim radnim nalozima; završeni i otkazani vide se samo uz status „Završeno“, „Otkazano“
   ili „Svi statusi“.
+- **Nazivi uloga na bosanskom** u cijelom UI-ju (jedno mapiranje `roleLabels` u `uiLabels.ts`, koje koristi i
+  hodogram): Administrator organizacije, Upravnik, Računovođa, Predstavnik zgrade, Vlasnik, Stanar (Tenant /
+  Resident), Sistemski administrator. Padajući meni i kolona „Uloga“ na ekranu Uloge i matrica prava, red
+  „Uloga / Izvor“ u matrici prava i izvor pristupa na karticama zajednica (umjesto šifri `ZEV_MEMBERSHIP`,
+  `OWNERSHIP`…). API i baza i dalje koriste iste šifre (`Manager`, `OrganizationAdministrator`…).
+  `ResourcePage` dobija `optionLabels` za polja i `labels` za kolone.
 
 ### Baza / Migracije
 - `20261011123454_AddMaintenanceTicketNotifications`: `SystemSettings.DefaultAdminEmail`;

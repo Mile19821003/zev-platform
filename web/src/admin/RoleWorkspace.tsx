@@ -15,6 +15,7 @@ import ZevCardGrid from "./ZevCards";
 import NotificationBell from "./NotificationBell";
 import MaintenanceWidget from "./MaintenanceWidget";
 import { handlesTickets } from "../maintenanceTickets.ts";
+import { accessSourceList } from "../uiLabels.ts";
 import { hasStaffPermission } from "../permissionUi.ts";
 import ZevPermissionPage from "./ZevPermissionPage";
 import WorkspaceNav, { useSidebarState } from "./WorkspaceNav";
@@ -124,7 +125,7 @@ export default function RoleWorkspace({ token, profile, zevs, onLogout, onProfil
       <p className="eyebrow">RADNI PROSTOR</p><h1>Vaše zajednice</h1>
       <p className="lead">Podaci i funkcije su ograničeni na dodijeljene uloge i ZEV-ove. Klik na karticu otvara radni prostor tog ZEV-a.</p>
       <ZevCardGrid token={token} zevs={zevs} activeId={activeZev?.id ?? null} onSelect={selectZev}
-        detail={(zev) => zev.historicalSelfAccess ? "Samo istorijski finansijski podaci" : zev.sources?.join(", ")} />
+        detail={(zev) => zev.historicalSelfAccess ? "Samo istorijski finansijski podaci" : accessSourceList(zev.sources)} />
       {zevs.length === 0 && <div className="empty-state">Nema dodijeljenih zajednica.</div>}
       {activeZev?.isStaff && activeZev.permissions?.includes("Maintenance.View") && <MaintenanceWidget token={token} zevId={activeZev.id}
         onOpen={() => setActive(navigation.some((item) => item.key === "maintenance") ? "maintenance" : "representative-maintenance")} />}

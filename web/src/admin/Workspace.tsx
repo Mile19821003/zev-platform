@@ -21,6 +21,7 @@ import VersionHistoryPage from "./VersionHistoryPage";
 import DeletedRecordsPage from "./DeletedRecordsPage";
 import ThemeSettingsPage from "./ThemeSettingsPage";
 import ZevCardGrid from "./ZevCards";
+import { roleLabels } from "../uiLabels.ts";
 import NotificationBell from "./NotificationBell";
 import MaintenanceWidget from "./MaintenanceWidget";
 import { useChangeRevision } from "../useChangeRevision.ts";
@@ -161,10 +162,10 @@ const resources: Partial<Record<MenuKey, ResourceConfig>> = {
       { key: "zevId", label: "ZEV (prazno samo za administratora organizacije)", kind: "lookup", dependsOn: "organizationId", lookupPath: (form) =>
         form.organizationId ? `/api/system/zevs?organizationId=${form.organizationId}` : "" },
       { key: "role", label: "Uloga", kind: "select", required: true,
-        options: ["OrganizationAdministrator", "Manager", "Accountant", "BuildingRepresentative"] },
+        options: ["OrganizationAdministrator", "Manager", "Accountant", "BuildingRepresentative"], optionLabels: roleLabels },
     ],
     columns: [{ key: "userEmail", label: "Korisnik" }, { key: "organizationName", label: "Organizacija" },
-      { key: "zevName", label: "ZEV" }, { key: "role", label: "Uloga" }],
+      { key: "zevName", label: "ZEV" }, { key: "role", label: "Uloga", labels: roleLabels }],
     allowStatus: true,
   },
 };

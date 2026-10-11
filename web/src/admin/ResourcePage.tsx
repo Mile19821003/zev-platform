@@ -17,6 +17,8 @@ export type ResourceField = {
   required?: boolean;
   kind?: "text" | "email" | "password" | "number" | "date" | "select" | "lookup";
   options?: string[];
+  // Display names of the options (the stored value stays the option itself).
+  optionLabels?: Record<string, string>;
   lookupPath?: (form: Record<string, string>) => string;
   // Options from GET /api/lookups/{lookupType}; the stored value is the item code.
   lookupType?: LookupTypeCode;
@@ -31,7 +33,7 @@ export type ResourceConfig = {
   description: string;
   path: string;
   fields: ResourceField[];
-  columns: { key: string; label: string; lookupType?: LookupTypeCode }[];
+  columns: { key: string; label: string; lookupType?: LookupTypeCode; labels?: Record<string, string> }[];
   allowEdit?: boolean;
   allowCreate?: boolean;
   allowStatus?: boolean;
@@ -224,7 +226,7 @@ export default function ResourcePage({ config, token, onChanged, onCreated }: {
                   value={form[field.key] ?? ""} onChange={(value) => updateForm(field.key, value)} />
                 : field.kind === "select" ? <select required={field.required} value={form[field.key] ?? ""}
                   onChange={(event) => updateForm(field.key, event.target.value)}>
-                  <option value="">Odaberite</option>{field.options?.map((option) => <option key={option} value={option}>{option}</option>)}
+                  <option value="">Odaberite</option>{field.options?.map((option) => <option key={option} value={option}>{field.optionLabels?.[option] ?? option}</option>)}
                 </select> : <input type={field.kind === "password" && showCreatePassword ? "text" : field.kind ?? "text"}
                   required={field.required}
                   maxLength={field.maxLength} step={field.step} value={form[field.key] ?? ""}
@@ -257,7 +259,7 @@ export default function ResourcePage({ config, token, onChanged, onCreated }: {
             onChange={(value) => { setFilters((current) => ({ ...current, [field.key]: value })); setPage(1); }} />
             : <label key={field.key}>{field.label}<select value={filters[field.key] ?? ""}
               onChange={(event) => { setFilters((current) => ({ ...current, [field.key]: event.target.value })); setPage(1); }}>
-              <option value="">Svi</option>{field.options?.map((option) => <option key={option} value={option}>{option}</option>)}
+              <option value="">Svi</option>{field.options?.map((option) => <option key={option} value={option}>{field.optionLabels?.[option] ?? option}</option>)}
             </select></label>)}</div>}
         {error && <p className="error" role="alert">{error}</p>}
         {loadError && <p className="error" role="alert">Učitavanje liste: {loadError}</p>}
@@ -267,6 +269,7 @@ export default function ResourcePage({ config, token, onChanged, onCreated }: {
             <th>Status</th><th>Radnje</th></tr></thead><tbody>{data.items.map((item) => <tr key={item.id}>
               {config.columns.map((column) => <td key={column.key}>{column.lookupType
                 ? <LookupLabel typeCode={column.lookupType} token={token} value={item[column.key] as string | null} />
+                : column.labels ? column.labels[String(item[column.key])] ?? String(item[column.key] ?? "—")
                 : String(item[column.key] ?? "—")}</td>)}
               <td>{item.isActive === undefined ? "—" : <Status active={item.isActive} />}</td>
               <td className="actions">{config.allowEdit && <button type="button" disabled={busy} onClick={() => edit(item)}>Uredi</button>}

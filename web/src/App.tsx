@@ -10,6 +10,7 @@ import { useSystemSettings } from "./useSystemSettings.ts";
 import { useTheme } from "./useTheme.ts";
 import { useModuleIcons } from "./useModuleIcons.ts";
 import { setModuleIcons } from "./navigationModel.ts";
+import { roleList } from "./uiLabels.ts";
 
 type TokenResponse = { accessToken: string; expiresUtc: string };
 
@@ -158,7 +159,7 @@ export default function App() {
           <p className="eyebrow">RADNI PROSTOR</p>
           <h1>Dobro došli</h1>
           <p className="lead">Vaše zajednice i ovlaštenja na jednom mjestu.</p>
-          <div className="summary-card"><span>Uloga</span><strong>{profile.isSystemAdministrator ? "Sistemski administrator" : profile.memberships.map((item) => item.role).join(", ") || "Bez dodijeljene uloge"}</strong></div>
+          <div className="summary-card"><span>Uloga</span><strong>{profile.isSystemAdministrator ? "Sistemski administrator" : roleList(profile.memberships.map((item) => item.role)) || "Bez dodijeljene uloge"}</strong></div>
           <div className="section-heading"><h2>Zajednice kojima imate pristup</h2><span>{zevs.length} prikazano</span></div>
           <div className="zev-grid">
             {zevs.map((zev) => <article className="zev-card" key={zev.id}><div className="zev-icon">Z</div><p className="eyebrow">{zev.code}</p><h3>{zev.name}</h3><p>Organizacija: {zev.organizationId}</p></article>)}

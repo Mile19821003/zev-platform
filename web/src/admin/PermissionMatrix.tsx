@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useState } from "react";
 import { callApi, errorText } from "../api";
 import { useChangeRevision } from "../useChangeRevision.ts";
+import { accessSourceList, roleLabel, roleList } from "../uiLabels.ts";
 import "../permissions.css";
 import { cellState, cellView, columnLabels as labels, Effect, MatrixModule as Module, nextEffect, pendingChanges,
   PermissionState, visibleColumns } from "../permissionMatrixUi.ts";
@@ -47,7 +48,7 @@ export default function PermissionMatrix({ token, zevId, zevs, users, selectedUs
   }, [token, zevId, selectedUser, revision]);
 
   const columns = visibleColumns(modules);
-  const roleName = context ? context.roles.join(", ") || (context.isOwner ? "Owner" : "nema") : "";
+  const roleName = context ? roleList(context.roles) || (context.isOwner ? roleLabel("Owner") : "nema") : "";
   const changes = context ? pendingChanges(context.permissions, draft) : [];
   function state(key: string) {
     return cellState(context?.permissions.find((item) => item.key === key), draft, key);
@@ -103,8 +104,8 @@ export default function PermissionMatrix({ token, zevId, zevs, users, selectedUs
         <option value="">Odaberite korisnika</option>{users.filter((item) => item.isActive && !item.isSystemAdministrator)
           .map((item) => <option key={item.id} value={item.id}>{item.email}</option>)}</select></label>
       <span>ZEV: {zevs.find((item) => item.id === zevId)?.name ?? zevId}</span></div>
-    {context && <><p>Uloga: {context.roles.join(", ") || (context.isOwner ? "Owner (vlasništvo)" : "Bez članstva")}
-      · Izvor: {context.sources.join(", ")} · Role default + override</p>
+    {context && <><p>Uloga: {roleList(context.roles) || (context.isOwner ? "Vlasnik (vlasništvo)" : "Bez članstva")}
+      · Izvor: {accessSourceList(context.sources)} · prava uloge + ručne izmjene</p>
       <div className="filter-row"><button type="button" title="Uklanja sve ručne dozvole i zabrane u nacrtu; snimanje ih trajno uklanja"
         onClick={() => setKeys(context.permissions.filter((item) => item.override !== null).map((item) => item.key), null)}>
         Vrati sve na default uloge</button>{changes.length > 0 && <span>Nesačuvanih promjena: {changes.length}</span>}
