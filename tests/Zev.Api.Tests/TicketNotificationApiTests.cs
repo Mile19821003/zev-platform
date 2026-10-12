@@ -46,6 +46,8 @@ public sealed class TicketNotificationApiTests
         Assert.Equal("odrzavanje@zev.example", mail.To);
         Assert.Equal("Nova prijava kvara – Zgrada Centar: Rasvjeta", mail.Subject);
         Assert.Contains("Zajednički prostori – Ulaz A, stubište", mail.Body);
+        // Priority as named in the MAINTENANCE_PRIORITY code list, not the enum code.
+        Assert.Contains("Prioritet: Standardni", mail.Body);
         Assert.Contains("owner@example.invalid", mail.Body);
         Assert.Contains("Ne radi svjetlo na drugom spratu.", mail.Body);
 
@@ -108,7 +110,12 @@ public sealed class TicketNotificationApiTests
             CreatedUtc = new DateTimeOffset(2026, 10, 11, 8, 30, 0, TimeSpan.Zero) };
         var message = Zev.Api.Maintenance.TicketNotifications.Compose("a@b.c", "Zgrada", "Z1", "S4", "vlasnik@b.c", ticket, "https://zev.example");
         Assert.Equal("Nova prijava kvara – Zgrada: Lift", message.Subject);
-        Assert.Contains("Prioritet: Urgent", message.Body);
+        Assert.Contains("Prioritet: Hitno", message.Body);
+        Assert.DoesNotContain("Urgent", message.Body);
+        Assert.Contains("Prioritet: Vrlo hitno", Zev.Api.Maintenance.TicketNotifications.Compose("a@b.c", "Zgrada", "Z1", null, null,
+            ticket, null, "Vrlo hitno").Body);
+        Assert.Equal(["Nizak", "Standardni", "Visok", "Hitno"], Enum.GetValues<MaintenancePriority>()
+            .Select(Zev.Api.Maintenance.TicketNotifications.PriorityLabel));
         Assert.Contains("Stan / posebni dio S4 – Ulaz B", message.Body);
         Assert.Contains("11.10.2026 08:30 UTC", message.Body);
         Assert.EndsWith("https://zev.example", message.Body);

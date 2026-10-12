@@ -22,10 +22,26 @@ services:
       Bootstrap__AdminEmail: ${BOOTSTRAP_ADMIN_EMAIL:-}
       Bootstrap__AdminPassword: ${BOOTSTRAP_ADMIN_PASSWORD:-}
       Web__Origin: ${WEB_ORIGIN:-http://localhost:5173}
+      # E-mail (fault reports): Mailpit below by default; real SMTP (e.g. Gmail) via SMTP_* in .env (see .env.example).
+      Smtp__Host: ${SMTP_HOST:-mailpit}
+      Smtp__Port: ${SMTP_PORT:-1025}
+      Smtp__EnableSsl: ${SMTP_ENABLE_SSL:-false}
+      Smtp__From: ${SMTP_FROM:-zev-platforma@localhost}
+      Smtp__User: ${SMTP_USER:-}
+      Smtp__Password: ${SMTP_PASSWORD:-}
     ports:
       - "8080:8080"
     volumes:
       - file-data:/app/storage
+
+  # Local mail catcher: every e-mail the API sends ends up here, nothing reaches real inboxes.
+  # Web UI: http://localhost:8025, SMTP: localhost:1025 (mailpit:1025 inside the compose network).
+  mailpit:
+    image: axllent/mailpit:v1.21.8
+    restart: unless-stopped
+    ports:
+      - "8025:8025"
+      - "1025:1025"
 
   web:
     build:

@@ -25,18 +25,34 @@ public sealed class TicketNotifications(ZevDbContext database, EmailQueue queue,
             : null;
         var reporter = await database.Users.AsNoTracking().Where(item => item.Id == ticket.ReportedByUserId)
             .Select(item => item.Email).SingleOrDefaultAsync(cancellationToken);
-        return queue.Enqueue(Compose(recipient, zev.Name, zev.Code, unit, reporter, ticket, configuration["Web:Origin"]));
+        // The priority as named in the MAINTENANCE_PRIORITY code list (what the reporter picked in the form).
+        var priorityCode = ticket.Priority.ToString();
+        var priorityName = await database.LookupItems.AsNoTracking()
+            .Where(item => item.LookupTypeCode == "MAINTENANCE_PRIORITY" && item.Code == priorityCode)
+            .Select(item => item.Name).FirstOrDefaultAsync(cancellationToken);
+        return queue.Enqueue(Compose(recipient, zev.Name, zev.Code, unit, reporter, ticket, configuration["Web:Origin"],
+            priorityName));
     }
 
+    // Bosnian priority names, as seeded in the MAINTENANCE_PRIORITY code list; used when the list has no entry.
+    public static string PriorityLabel(MaintenancePriority priority) => priority switch
+    {
+        MaintenancePriority.Urgent => "Hitno",
+        MaintenancePriority.High => "Visok",
+        MaintenancePriority.Normal => "Standardni",
+        MaintenancePriority.Low => "Nizak",
+        _ => priority.ToString()
+    };
+
     public static EmailMessage Compose(string to, string zevName, string zevCode, string? unitCode, string? reporter,
-        MaintenanceTicket ticket, string? webOrigin) => new(to,
+        MaintenanceTicket ticket, string? webOrigin, string? priorityName = null) => new(to,
         $"Nova prijava kvara – {zevName}: {ticket.Category}",
         string.Join("\n", new[]
         {
             $"Prijavljen je novi kvar u zajednici {zevName} ({zevCode}).",
             "",
             $"Kategorija: {ticket.Category}",
-            $"Prioritet: {ticket.Priority}",
+            $"Prioritet: {(string.IsNullOrWhiteSpace(priorityName) ? PriorityLabel(ticket.Priority) : priorityName)}",
             $"Mjesto: {(unitCode is null ? "Zajednički prostori" : $"Stan / posebni dio {unitCode}")} – {ticket.Location}",
             $"Prijavio: {reporter ?? "nepoznat korisnik"}",
             $"Vrijeme: {ticket.CreatedUtc:dd.MM.yyyy HH:mm} UTC",

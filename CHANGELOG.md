@@ -69,6 +69,16 @@ kartica na početnom ekranu, C — Reporting centar. Opis toka: `MAINTENANCE_WOR
 - Tekuća verzija `v2.20`.
 
 ### Ispravljeno (Fixed)
+- **E-mail obavijesti se stvarno šalju (Mailpit lokalno, Gmail opcionalno)**: lokalni stack nije imao SMTP, pa je API
+  e-mailove o prijavi kvara samo upisivao u log (`LogOnlyEmailSender`).
+  - `compose.yaml` ima novi servis `mailpit` (`axllent/mailpit:v1.21.8`, web UI http://localhost:8025, SMTP 1025).
+  - Servis `api` dobija `Smtp__Host/Port/EnableSsl/From/User/Password` iz `SMTP_*` varijabli. Podrazumijevano
+    šalje na Mailpit (`mailpit:1025`, bez SSL-a).
+  - `.env.example` dokumentuje postavke za stvarni Gmail (`smtp.gmail.com:587`, STARTTLS, App Password).
+- **Prioritet u e-mailu o prijavi kvara na bosanskom**: umjesto `Urgent` / `Normal` piše naziv iz šifrarnika
+  `MAINTENANCE_PRIORITY` (Hitno, Visok, Standardni, Nizak), isti koji prijavilac bira u formi. Ako šifrarnik nema
+  stavku, koristi se rezervni prevod (`TicketNotifications.PriorityLabel`). Testovi: `TicketNotificationApiTests`
+  dopunjen.
 - **Tipografija bočnog menija**: stavke su kompaktnije i lakše (.92rem, težina 500, blago prigušena boja), a aktivna
   stavka se ističe težinom 600 i punom bojom. Naslovi grupa su mala verzalna oznaka (.78rem, 700, razmak slova
   .06em). Ikonice stavki u raširenom meniju imaju 17 px, a sažeti meni zadržava ikonice od 20 px. Veličine su u
