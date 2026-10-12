@@ -16,6 +16,17 @@
 .workspace-nav .nav-item:hover,.workspace-nav .nav-group-header:hover{background:var(--zev-menu-hover,#1b4440)}.workspace-nav .nav-item.active{background:var(--zev-menu-active)}
 .workspace-nav .nav-group{margin-top:6px}.workspace-nav .nav-group-header{color:var(--zev-menu-muted,#9ebdb7);font-size:.82rem;letter-spacing:.02em}
 .workspace-nav .nav-sign{margin-left:auto;font-size:1rem}
+/* Menu typography: group headers are small uppercase section labels, items are compact medium-weight text
+   (sizes in rem follow the font size from system settings). The active item stands out by weight and colour. */
+.workspace-nav .nav-item{font-size:.92rem;font-weight:500;line-height:1.3;padding:7px 10px;
+  color:color-mix(in srgb,var(--zev-menu-text) 82%,var(--zev-menu-bg))}
+.workspace-nav .nav-item:hover{color:var(--zev-menu-text)}
+.workspace-nav .nav-item.active{color:var(--zev-menu-text);font-weight:600}
+.workspace-nav:not(.collapsed) .nav-group-items .nav-icon{width:17px;height:17px}
+.workspace-nav .nav-group-header{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+  padding:10px 10px 6px}
+.workspace-nav .nav-group-header .nav-icon{width:16px;height:16px}
+.workspace-nav .nav-group-header .nav-sign{font-size:.95rem;font-weight:600}
 .workspace-nav .nav-group-items{display:flex;flex-direction:column;gap:2px;padding-left:12px}
 .workspace-nav .nav-item .nav-text,.workspace-nav .nav-group-header .nav-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .workspace-nav .nav-icon{flex:none}

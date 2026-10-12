@@ -69,6 +69,10 @@ kartica na početnom ekranu, C — Reporting centar. Opis toka: `MAINTENANCE_WOR
 - Tekuća verzija `v2.20`.
 
 ### Ispravljeno (Fixed)
+- **Tipografija bočnog menija**: stavke su kompaktnije i lakše (.92rem, težina 500, blago prigušena boja), a aktivna
+  stavka se ističe težinom 600 i punom bojom. Naslovi grupa su mala verzalna oznaka (.78rem, 700, razmak slova
+  .06em). Ikonice stavki u raširenom meniju imaju 17 px, a sažeti meni zadržava ikonice od 20 px. Veličine su u
+  `rem`, pa prate postavku veličine fonta. Važi za sve grupe i stavke. Test: `web/tests/sidebarTypography.test.mjs`.
 - **Prijava s mobitela preko lokalne IP adrese** (`http://192.168.x.x:5173`): frontend je API zvao na
   `http://localhost:8080`, pa je preglednik na telefonu gađao sam sebe.
   - API pozivi su sada relativni (`/api` na istom porijeklu). Adresa je na jednom mjestu, u `web/src/apiBase.ts`,
